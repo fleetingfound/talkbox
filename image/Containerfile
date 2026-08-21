@@ -1,0 +1,35 @@
+FROM debian:trixie-slim
+
+ENV LANG=C.UTF-8
+
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    findutils \
+    git \
+    less \
+    sudo \
+    tree \
+    vim-tiny \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -g 1000 dev && \
+    useradd -m -u 1000 -g 1000 -s /bin/bash dev && \
+    echo 'dev ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/dev && \
+    chmod 0440 /etc/sudoers.d/dev && \
+    visudo -cf /etc/sudoers.d/dev
+
+COPY --chmod=755 entrypoint.sh /usr/local/bin/entrypoint.sh
+
+RUN install -d -o dev -g dev /working
+
+USER dev
+
+RUN mkdir -p /home/dev/.local/share/opencode
+
+WORKDIR /working
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
