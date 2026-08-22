@@ -1,6 +1,8 @@
 PROJECT_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
 
-SD_TIMEOUT="${SD_TIMEOUT:-60}"
+INDIVIDUAL_TEST_TIMEOUT="${INDIVIDUAL_TEST_TIMEOUT:-60}"
+SD_TIMEOUT="${SD_TIMEOUT:-$((INDIVIDUAL_TEST_TIMEOUT - 5))}"
+(( SD_TIMEOUT > 0 )) || SD_TIMEOUT=1
 
 sdrun() {
 	systemd-run --user --wait --collect --pipe \

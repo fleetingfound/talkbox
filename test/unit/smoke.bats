@@ -20,3 +20,9 @@ PROJECT_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
 	run bash -n "$PROJECT_ROOT/test/run-suite.sh"
 	[[ "$status" -eq 0 ]]
 }
+
+@test "dispatcher rejects an unknown container name with exit code 2" {
+	run "$PROJECT_ROOT/talkbox.sh" bogus
+	[[ "$status" -eq 2 ]]
+	[[ "$output" == *"talkbox: unknown container: bogus"* ]]
+}

@@ -46,3 +46,10 @@ setup() {
 	[[ "$ONBOX_COMMAND" == 'true' ]]
 	[[ "$ONBOX_INTERACTIVE" == no ]]
 }
+
+@test "unknown options are rejected with exit code 2 and a message" {
+	load_lib options.sh
+	run parse_onbox_options --bogus
+	[[ "$status" -eq 2 ]]
+	[[ "$output" == *"talkbox: unknown option: --bogus"* ]]
+}

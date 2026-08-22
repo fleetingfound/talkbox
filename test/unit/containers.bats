@@ -96,15 +96,19 @@ setup() {
 	plan_line "^$img$"
 }
 
+@test "onbox plan emits --rm so the container is removed after exit" {
+	load_onbox_plan
+	run plan_onbox "$PROJECT" '' yes
+	[[ "$status" -eq 0 ]]
+	plan_line '^--rm$'
+}
+
 @test "onbox interactive plan allocates a terminal" {
 	load_onbox_plan
 	run plan_onbox "$PROJECT" '' yes
 	[[ "$status" -eq 0 ]]
-	if plan_line '^--interactive$|^-it$|^-i$|^--tty$|^-t$'; then
-		:
-	else
-		return 1
-	fi
+	plan_line '^--interactive$'
+	plan_line '^--tty$'
 }
 
 @test "onbox noninteractive plan does not allocate a terminal" {

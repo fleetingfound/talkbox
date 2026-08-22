@@ -24,9 +24,23 @@ teardown() {
 }
 
 @test "onbox container has internet access" {
+	if ! curl -fsS --max-time 10 https://example.com >/dev/null 2>&1; then
+		skip "host has no internet connectivity; skipping the onbox internet test"
+	fi
 	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'curl -fsS --max-time 15 https://example.com >/dev/null && echo ONLINE'
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'ONLINE'* ]]
+}
+
+@test "onbox dotfiles global bind-mount is read-only inside the container" {
+	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'touch /talkbox/dotfiles.global/probe'
+	[[ "$status" -ne 0 ]]
+}
+
+@test "onbox dotfiles project bind-mount is read-only inside the container" {
+	mkdir -p "$PROJECT/.dotfiles"
+	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'touch /talkbox/dotfiles.project/probe'
+	[[ "$status" -ne 0 ]]
 }
 
 @test "global dotfiles are copied into /home/dev" {
@@ -54,11 +68,18 @@ teardown() {
 	rm -rf "$bindir"
 }
 
+@test "onbox --command long form drives the container end-to-end" {
+	# shellcheck disable=SC2016 # $0/$1 expand inside the wrapped bash -c
+	run sdrun bash -c 'cd "$1" && "$0/talkbox.sh" onbox --command --noninteractive "pwd"' "$TALKBOX" "$PROJECT"
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *"/working/$PROJECT_BASE"* ]]
+}
+
 @test "onbox starts an interactive shell that exits via exit" {
 	local exp
 	exp="$(mktemp --suffix=.exp)"
 	cat >"$exp" <<'EXPECT'
-set timeout 90
+set timeout 30
 set marker "SHELL_READY_[pid]"
 cd [lindex $argv 0]
 spawn "[lindex $argv 1]/talkbox.sh" onbox
@@ -67,6 +88,27 @@ expect {
     "$marker" { }
     timeout { puts stderr "TIMEOUT waiting for interactive shell"; exit 1 }
     eof { puts stderr "EOF before interactive shell ready"; exit 1 }
+}
+send "exit\r"
+expect eof
+EXPECT
+	run sdrun expect "$exp" "$PROJECT" "$TALKBOX"
+	[[ "$status" -eq 0 ]]
+	rm -f "$exp"
+}
+
+@test "onbox -c --interactive runs a command and the session exits via exit" {
+	local exp
+	exp="$(mktemp --suffix=.exp)"
+	cat >"$exp" <<'EXPECT'
+set timeout 30
+set marker "CMD_READY_[pid]"
+cd [lindex $argv 0]
+spawn "[lindex $argv 1]/talkbox.sh" onbox -c --interactive "echo $marker"
+expect {
+    "$marker" { }
+    timeout { puts stderr "TIMEOUT waiting for interactive command output"; exit 1 }
+    eof { puts stderr "EOF before interactive command output"; exit 1 }
 }
 send "exit\r"
 expect eof

@@ -30,11 +30,7 @@ load helpers
 	[[ "$(project_slug '/tmp/my-project-v2')" == 'my-project-v2' ]]
 }
 
-@test "base_image_name returns a non-empty stable name" {
+@test "base_image_name prints the shared base image name talkbox/base:latest" {
 	load_lib naming.sh
-	local first second
-	first="$(base_image_name)"
-	second="$(base_image_name)"
-	[[ -n "$first" ]]
-	[[ "$first" == "$second" ]]
+	[[ "$(base_image_name)" == 'talkbox/base:latest' ]]
 }

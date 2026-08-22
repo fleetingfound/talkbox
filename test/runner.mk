@@ -24,6 +24,7 @@ help:
 	@echo 'timeouts (override on the command line, e.g. GLOBAL_TEST_TIMEOUT=1200 INDIVIDUAL_TEST_TIMEOUT=60 make test-unit):'
 	@echo '  GLOBAL_TEST_TIMEOUT     suite-level timeout in seconds (default $(GLOBAL_TEST_TIMEOUT))'
 	@echo '  INDIVIDUAL_TEST_TIMEOUT per-test timeout in seconds (default $(INDIVIDUAL_TEST_TIMEOUT))'
+	@echo 'note: the per-test BATS_TEST_TIMEOUT is set only when tests run via make; direct bats invocation has no per-test timeout'
 
 test-unit: ; @$(RUNNER) test-unit test/unit
 test-e2e: ; @$(RUNNER) test-e2e test/e2e
