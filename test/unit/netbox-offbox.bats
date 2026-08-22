@@ -139,7 +139,7 @@ setup() {
 	plan_netbox args "$PROJECT" yes read_mounts write_mounts PORTS "$(base_image_name)"
 	array_contains '/host/data:/talkbox/wdata:ro' "${args[@]}"
 	array_contains 'talkbox-proj.netbox.write.talkbox-wdata:/talkbox/wdata' "${args[@]}"
-	array_has_none '/talkbox/wdata:ro' "${args[@]}"
+	array_has_none 'talkbox-proj.netbox.write.talkbox-wdata:/talkbox/wdata:ro' "${args[@]}"
 }
 
 @test "netbox plan uses pasta networking without loopback restriction and drops caps" {
@@ -207,7 +207,7 @@ setup() {
 	plan_offbox args "$PROJECT" yes read_mounts write_mounts PORTS "$(base_image_name)"
 	array_contains '/host/data:/talkbox/wdata:ro' "${args[@]}"
 	array_contains 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/wdata' "${args[@]}"
-	array_has_none '/talkbox/wdata:ro' "${args[@]}"
+	array_has_none 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/wdata:ro' "${args[@]}"
 }
 
 @test "netbox run plan creates, starts and execs into the container" {

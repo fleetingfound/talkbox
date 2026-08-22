@@ -1,6 +1,5 @@
 target: test-unit
-started: '2026-08-22T13:31:11Z'
-exit: 1
-totals: { total: 117, pass: 115, fail: 2, skip: 0 }
+started: '2026-08-22T13:35:07Z'
+exit: 0
+totals: { total: 117, pass: 117, fail: 0, skip: 0 }
 fail:
- - '(unknown) :: offbox plan emits write-mount volumes and read-only read mounts'
