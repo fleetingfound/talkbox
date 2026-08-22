@@ -1,0 +1,4 @@
+[submodule ".opencode"]
+	path = .opencode
+	url = git@github.com:fleetingfound/zettel-agents.git
+	branch = main

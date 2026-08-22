@@ -1,0 +1,15 @@
+.git/
+.coreignore
+
+AGENTS.md
+SPEC*.md
+opencode.json
+.opencode/
+
+test/
+
+*.gen.md
+.llm/
+
+.dotfiles/
+.gitmodules
