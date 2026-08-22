@@ -39,6 +39,35 @@ onbox_action() {
 	esac
 }
 
+sandbox_action() {
+	local container="$1"
+	shift
+	parse_onbox_options "$@"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local read_mounts=() write_mounts=() ports=() write_srcs=() write_dsts=()
+	mount_args read_mounts read "$TALKBOX_ROOT/defaults/read.mounts" "$(pwd)" "$HOME" "${ONBOX_READ[@]}"
+	mount_entries write_srcs write_dsts write "$TALKBOX_ROOT/defaults/write.mounts" "$(pwd)" "$HOME" "${ONBOX_WRITE[@]}"
+	mount_volume_args write_mounts "$container" "$TALKBOX_ROOT/defaults/write.mounts" "$(pwd)" "$HOME" "${ONBOX_WRITE[@]}"
+	port_args ports "$TALKBOX_ROOT/defaults/ports" "${ONBOX_PORT[@]}"
+	case "$ONBOX_VERB" in
+	recontain)
+		"run_${container}_recontain" "$(pwd)" "$ONBOX_INTERACTIVE" read_mounts write_mounts write_srcs write_dsts ports
+		;;
+	rebuild)
+		"run_${container}_rebuild" "$(pwd)" "$ONBOX_INTERACTIVE" read_mounts write_mounts write_srcs write_dsts ports
+		;;
+	rm-container)
+		"run_${container}_rm_container" "$(pwd)"
+		;;
+	rm-image)
+		"run_${container}_rm_image" "$(pwd)"
+		;;
+	*)
+		"run_${container}" "$(pwd)" "$ONBOX_COMMAND" "$ONBOX_INTERACTIVE" read_mounts write_mounts write_srcs write_dsts ports
+		;;
+	esac
+}
+
 invoked="$(basename "$0")"
 if [[ "$invoked" == "talkbox.sh" ]]; then
 	if [[ $# -eq 0 ]]; then
@@ -54,8 +83,11 @@ case "$container" in
 onbox)
 	onbox_action "$@"
 	;;
-netbox | offbox)
-	die "$container is not implemented yet" 1
+netbox)
+	sandbox_action netbox "$@"
+	;;
+offbox)
+	sandbox_action offbox "$@"
 	;;
 *)
 	die "unknown container: $container" 2

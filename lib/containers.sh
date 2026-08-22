@@ -202,3 +202,600 @@ run_rm_image() {
 	plan_rm_image plan "$project" no
 	execute_plan "${plan[@]}"
 }
+
+source_exists() {
+	local source="$1" onbox_e="$2" netbox_e="$3" offbox_e="$4"
+	case "$source" in
+	onbox) [[ "$onbox_e" == yes ]] ;;
+	netbox) [[ "$netbox_e" == yes ]] ;;
+	offbox) [[ "$offbox_e" == yes ]] ;;
+	*) return 1 ;;
+	esac
+}
+
+inherit_source() {
+	local container="$1" onbox_e="$2" netbox_e="$3" offbox_e="$4" fresh="$5" inherit="$6"
+	if [[ "$fresh" == yes ]]; then
+		printf '%s\n' base
+		return
+	fi
+	if [[ -n "$inherit" ]]; then
+		if source_exists "$inherit" "$onbox_e" "$netbox_e" "$offbox_e"; then
+			printf '%s\n' "$inherit"
+		else
+			printf '%s\n' base
+		fi
+		return
+	fi
+	case "$container" in
+	netbox)
+		if [[ "$onbox_e" == yes ]]; then
+			printf '%s\n' onbox
+		else
+			printf '%s\n' base
+		fi
+		;;
+	offbox)
+		if [[ "$netbox_e" == yes ]]; then
+			printf '%s\n' netbox
+		elif [[ "$onbox_e" == yes ]]; then
+			printf '%s\n' onbox
+		else
+			printf '%s\n' base
+		fi
+		;;
+	esac
+}
+
+container_name_of() {
+	local source="$1" project="$2"
+	case "$source" in
+	onbox) printf '%s\n' "$(onbox_container_name "$project")" ;;
+	netbox) printf '%s\n' "$(netbox_container_name "$project")" ;;
+	offbox) printf '%s\n' "$(offbox_container_name "$project")" ;;
+	esac
+}
+
+plan_volume_populate() {
+	local -n _plan_out="$1"
+	local target="$2" source_kind="$3" source="$4"
+	_plan_out+=("podman" "run" "--rm" "--network=none" "--userns=keep-id:uid=1000,gid=1000")
+	if [[ "$source_kind" == volume ]]; then
+		_plan_out+=("-v" "$source:/talkbox/source")
+	else
+		_plan_out+=("-v" "$source:/talkbox/source:ro")
+	fi
+	_plan_out+=("-v" "$target:/talkbox/target")
+	_plan_out+=("$(base_image_name)")
+	_plan_out+=("cp" "-a" "/talkbox/source/." "/talkbox/target/")
+}
+
+plan_netbox() {
+	local -n _plan_out="$1"
+	local project="$2" interactive="$3"
+	local -n _read="$4" _write="$5" _ports="$6"
+	local image="$7"
+	local base net port_list
+	base="$(project_base "$project")"
+	net="pasta"
+	if ((${#_ports[@]} > 0)); then
+		printf -v port_list '%s,' "${_ports[@]}"
+		port_list="${port_list%,}"
+		net+=":$port_list"
+	fi
+	_plan_out+=("--workdir=/working/$base")
+	_plan_out+=("--userns=keep-id:uid=1000,gid=1000")
+	_plan_out+=("--network=$net")
+	_plan_out+=("--cap-drop=NET_ADMIN")
+	_plan_out+=("--cap-drop=NET_RAW")
+	_plan_out+=("-v" "$(netbox_worktree_volume "$project"):/working/$base")
+	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
+		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
+	fi
+	if [[ -d "$project/.dotfiles" ]]; then
+		_plan_out+=("-v" "$project/.dotfiles:/talkbox/dotfiles.project:ro")
+	fi
+	_plan_out+=("${_read[@]}")
+	_plan_out+=("${_write[@]}")
+	_plan_out+=("--name=$(netbox_container_name "$project")")
+	if [[ "$interactive" == yes ]]; then
+		_plan_out+=("--interactive")
+		_plan_out+=("--tty")
+	fi
+	_plan_out+=("$image")
+	_plan_out+=("sleep" "infinity")
+}
+
+plan_offbox() {
+	local -n _plan_out="$1"
+	local project="$2" interactive="$3"
+	local -n _read="$4" _write="$5" _ports="$6"
+	local image="$7"
+	local base net port_list
+	base="$(project_base "$project")"
+	net="pasta"
+	if ((${#_ports[@]} > 0)); then
+		printf -v port_list '%s,' "${_ports[@]}"
+		port_list="${port_list%,}"
+		net+=":$port_list,-i,lo,-I,talkbox0"
+	else
+		net+=":-i,lo,-I,talkbox0"
+	fi
+	_plan_out+=("--workdir=/working/$base")
+	_plan_out+=("--userns=keep-id:uid=1000,gid=1000")
+	_plan_out+=("--network=$net")
+	_plan_out+=("--cap-drop=NET_ADMIN")
+	_plan_out+=("--cap-drop=NET_RAW")
+	_plan_out+=("-v" "$(offbox_worktree_volume "$project"):/working/$base")
+	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
+		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
+	fi
+	if [[ -d "$project/.dotfiles" ]]; then
+		_plan_out+=("-v" "$project/.dotfiles:/talkbox/dotfiles.project:ro")
+	fi
+	_plan_out+=("${_read[@]}")
+	_plan_out+=("${_write[@]}")
+	_plan_out+=("--name=$(offbox_container_name "$project")")
+	if [[ "$interactive" == yes ]]; then
+		_plan_out+=("--interactive")
+		_plan_out+=("--tty")
+	fi
+	_plan_out+=("$image")
+	_plan_out+=("sleep" "infinity")
+}
+
+plan_netbox_run() {
+	local -n _plan_out="$1"
+	local project="$2" command="$3" interactive="$4"
+	local -n _read="$5" _write="$6" _ports="$7"
+	local image="$8"
+	local -a create_args=()
+	plan_netbox create_args "$project" "$interactive" "$5" "$6" "$7" "$image"
+	_plan_out+=("podman" "create")
+	_plan_out+=("${create_args[@]}")
+	_plan_out+=("podman" "start" "$(netbox_container_name "$project")")
+	if [[ -n "$command" ]]; then
+		_plan_out+=("podman" "exec")
+		if [[ "$interactive" == yes ]]; then
+			_plan_out+=("--interactive")
+			_plan_out+=("--tty")
+		fi
+		_plan_out+=("$(netbox_container_name "$project")" "bash" "-c" "$command")
+	fi
+}
+
+plan_offbox_run() {
+	local -n _plan_out="$1"
+	local project="$2" command="$3" interactive="$4"
+	local -n _read="$5" _write="$6" _ports="$7"
+	local image="$8"
+	local -a create_args=()
+	plan_offbox create_args "$project" "$interactive" "$5" "$6" "$7" "$image"
+	_plan_out+=("podman" "create")
+	_plan_out+=("${create_args[@]}")
+	_plan_out+=("podman" "start" "$(offbox_container_name "$project")")
+	if [[ -n "$command" ]]; then
+		_plan_out+=("podman" "exec")
+		if [[ "$interactive" == yes ]]; then
+			_plan_out+=("--interactive")
+			_plan_out+=("--tty")
+		fi
+		_plan_out+=("$(offbox_container_name "$project")" "bash" "-c" "$command")
+	fi
+}
+
+plan_netbox_recontain() {
+	local -n _plan_out="$1"
+	local project="$2" interactive="$3"
+	local -n _read="$4" _write="$5" _ports="$6"
+	local source="$7"
+	local ctr root image
+	ctr="$(netbox_container_name "$project")"
+	root="$(netbox_root_image "$project")"
+	image="$root"
+	if [[ "$source" != base ]]; then
+		_plan_out+=("podman" "commit" "$(container_name_of "$source" "$project")" "$root")
+	else
+		image="$(base_image_name)"
+	fi
+	_plan_out+=("podman" "rm" "-f" "--volumes" "$ctr")
+	local -a create_args=()
+	plan_netbox create_args "$project" "$interactive" "$4" "$5" "$6" "$image"
+	_plan_out+=("podman" "create")
+	_plan_out+=("${create_args[@]}")
+	_plan_out+=("podman" "start" "$ctr")
+}
+
+plan_offbox_recontain() {
+	local -n _plan_out="$1"
+	local project="$2" interactive="$3"
+	local -n _read="$4" _write="$5" _ports="$6"
+	local source="$7"
+	local ctr root image
+	ctr="$(offbox_container_name "$project")"
+	root="$(offbox_root_image "$project")"
+	image="$root"
+	if [[ "$source" != base ]]; then
+		_plan_out+=("podman" "commit" "$(container_name_of "$source" "$project")" "$root")
+	else
+		image="$(base_image_name)"
+	fi
+	_plan_out+=("podman" "rm" "-f" "--volumes" "$ctr")
+	local -a create_args=()
+	plan_offbox create_args "$project" "$interactive" "$4" "$5" "$6" "$image"
+	_plan_out+=("podman" "create")
+	_plan_out+=("${create_args[@]}")
+	_plan_out+=("podman" "start" "$ctr")
+}
+
+plan_netbox_rebuild() {
+	local -n _plan_out="$1"
+	local project="$2" interactive="$3"
+	local -n _read="$4" _write="$5" _ports="$6"
+	local source="$7"
+	local ctr root image
+	ctr="$(netbox_container_name "$project")"
+	root="$(netbox_root_image "$project")"
+	image="$root"
+	_plan_out+=("podman" "build" "-t" "$(base_image_name)" "-f" "$TALKBOX_ROOT/image/Containerfile" "$TALKBOX_ROOT/image")
+	if [[ "$source" != base ]]; then
+		_plan_out+=("podman" "commit" "$(container_name_of "$source" "$project")" "$root")
+	else
+		image="$(base_image_name)"
+	fi
+	_plan_out+=("podman" "rm" "-f" "--volumes" "$ctr")
+	local -a create_args=()
+	plan_netbox create_args "$project" "$interactive" "$4" "$5" "$6" "$image"
+	_plan_out+=("podman" "create")
+	_plan_out+=("${create_args[@]}")
+	_plan_out+=("podman" "start" "$ctr")
+}
+
+plan_offbox_rebuild() {
+	local -n _plan_out="$1"
+	local project="$2" interactive="$3"
+	local -n _read="$4" _write="$5" _ports="$6"
+	local source="$7"
+	local ctr root image
+	ctr="$(offbox_container_name "$project")"
+	root="$(offbox_root_image "$project")"
+	image="$root"
+	_plan_out+=("podman" "build" "-t" "$(base_image_name)" "-f" "$TALKBOX_ROOT/image/Containerfile" "$TALKBOX_ROOT/image")
+	if [[ "$source" != base ]]; then
+		_plan_out+=("podman" "commit" "$(container_name_of "$source" "$project")" "$root")
+	else
+		image="$(base_image_name)"
+	fi
+	_plan_out+=("podman" "rm" "-f" "--volumes" "$ctr")
+	local -a create_args=()
+	plan_offbox create_args "$project" "$interactive" "$4" "$5" "$6" "$image"
+	_plan_out+=("podman" "create")
+	_plan_out+=("${create_args[@]}")
+	_plan_out+=("podman" "start" "$ctr")
+}
+
+plan_netbox_rm_container() {
+	local -n _plan_out="$1"
+	local project="$2"
+	_plan_out+=("podman" "rm" "-f" "--volumes" "$(netbox_container_name "$project")")
+	_plan_out+=("podman" "rmi" "$(netbox_root_image "$project")")
+}
+
+plan_offbox_rm_container() {
+	local -n _plan_out="$1"
+	local project="$2"
+	_plan_out+=("podman" "rm" "-f" "--volumes" "$(offbox_container_name "$project")")
+	_plan_out+=("podman" "rmi" "$(offbox_root_image "$project")")
+}
+
+plan_netbox_rm_image() {
+	plan_rm_image "$@"
+}
+
+plan_offbox_rm_image() {
+	plan_rm_image "$@"
+}
+
+exists_yn() {
+	local ctr="$1"
+	if container_exists "$ctr"; then
+		printf 'yes\n'
+	else
+		printf 'no\n'
+	fi
+}
+
+volume_exists() {
+	podman volume exists "$1" 2>/dev/null
+}
+
+plan_netbox_populate() {
+	local -n _plan_out="$1"
+	local project="$2"
+	local -n _srcs="$3" _dsts="$4"
+	local -a vp=()
+	plan_volume_populate vp "$(netbox_worktree_volume "$project")" host "$project"
+	_plan_out+=("${vp[@]}")
+	local i
+	for ((i = 0; i < ${#_srcs[@]}; i++)); do
+		vp=()
+		plan_volume_populate vp "$(netbox_write_volume "$project" "$(dest_slug "${_dsts[$i]}")")" host "${_srcs[$i]}"
+		_plan_out+=("${vp[@]}")
+	done
+}
+
+plan_offbox_populate() {
+	local -n _plan_out="$1"
+	local project="$2" root_source="$3"
+	local -n _srcs="$4" _dsts="$5"
+	local -a vp=()
+	local netbox_wt netbox_wv
+	netbox_wt="$(netbox_worktree_volume "$project")"
+	if [[ "$root_source" == netbox ]] && volume_exists "$netbox_wt"; then
+		plan_volume_populate vp "$(offbox_worktree_volume "$project")" volume "$netbox_wt"
+	else
+		plan_volume_populate vp "$(offbox_worktree_volume "$project")" host "$project"
+	fi
+	_plan_out+=("${vp[@]}")
+	local i
+	for ((i = 0; i < ${#_srcs[@]}; i++)); do
+		vp=()
+		netbox_wv="$(netbox_write_volume "$project" "$(dest_slug "${_dsts[$i]}")")"
+		if [[ "$root_source" == netbox ]] && volume_exists "$netbox_wv"; then
+			plan_volume_populate vp "$(offbox_write_volume "$project" "$(dest_slug "${_dsts[$i]}")")" volume "$netbox_wv"
+		else
+			plan_volume_populate vp "$(offbox_write_volume "$project" "$(dest_slug "${_dsts[$i]}")")" host "${_srcs[$i]}"
+		fi
+		_plan_out+=("${vp[@]}")
+	done
+}
+
+create_netbox() {
+	local project="$1" interactive="$2"
+	shift 2
+	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
+	local source image
+	source="$(inherit_source netbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$(netbox_container_name "$project")")" "$(exists_yn "$(offbox_container_name "$project")")" "$ONBOX_FRESH" "$ONBOX_INHERIT")"
+	if [[ "$source" != base ]]; then
+		podman commit "$(container_name_of "$source" "$project")" "$(netbox_root_image "$project")"
+		image="$(netbox_root_image "$project")"
+	else
+		ensure_base_image
+		image="$(base_image_name)"
+	fi
+	local -a plan=()
+	plan_netbox_populate plan "$project" "$3" "$4"
+	local -a create_args=()
+	plan_netbox create_args "$project" "$interactive" "$1" "$2" "$5" "$image"
+	plan+=("podman" "create")
+	plan+=("${create_args[@]}")
+	execute_plan "${plan[@]}"
+}
+
+create_offbox() {
+	local project="$1" interactive="$2"
+	shift 2
+	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
+	local source image
+	source="$(inherit_source offbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$(netbox_container_name "$project")")" "$(exists_yn "$(offbox_container_name "$project")")" "$ONBOX_FRESH" "$ONBOX_INHERIT")"
+	if [[ "$source" != base ]]; then
+		podman commit "$(container_name_of "$source" "$project")" "$(offbox_root_image "$project")"
+		image="$(offbox_root_image "$project")"
+	else
+		ensure_base_image
+		image="$(base_image_name)"
+	fi
+	local -a plan=()
+	plan_offbox_populate plan "$project" "$source" "$3" "$4"
+	local -a create_args=()
+	plan_offbox create_args "$project" "$interactive" "$1" "$2" "$5" "$image"
+	plan+=("podman" "create")
+	plan+=("${create_args[@]}")
+	execute_plan "${plan[@]}"
+}
+
+run_netbox() {
+	local project="$1" command="$2" interactive="$3"
+	shift 3
+	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
+	local ctr
+	ctr="$(netbox_container_name "$project")"
+	if ! container_exists "$ctr"; then
+		create_netbox "$project" "$interactive" "$1" "$2" "$3" "$4" "$5"
+	fi
+	podman start "$ctr"
+	local -a exec_args=()
+	if [[ "$interactive" == yes ]]; then
+		exec_args+=("--interactive" "--tty")
+	fi
+	local status=0
+	if [[ -n "$command" ]]; then
+		podman exec "${exec_args[@]}" "$ctr" bash -c "$command" || status=$?
+	else
+		podman exec --interactive --tty "$ctr" /bin/bash || status=$?
+	fi
+	podman stop -t 1 "$ctr" >/dev/null 2>&1 || true
+	return "$status"
+}
+
+run_offbox() {
+	local project="$1" command="$2" interactive="$3"
+	shift 3
+	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
+	local ctr
+	ctr="$(offbox_container_name "$project")"
+	if ! container_exists "$ctr"; then
+		create_offbox "$project" "$interactive" "$1" "$2" "$3" "$4" "$5"
+	fi
+	podman start "$ctr"
+	local -a exec_args=()
+	if [[ "$interactive" == yes ]]; then
+		exec_args+=("--interactive" "--tty")
+	fi
+	local status=0
+	if [[ -n "$command" ]]; then
+		podman exec "${exec_args[@]}" "$ctr" bash -c "$command" || status=$?
+	else
+		podman exec --interactive --tty "$ctr" /bin/bash || status=$?
+	fi
+	podman stop -t 1 "$ctr" >/dev/null 2>&1 || true
+	return "$status"
+}
+
+run_netbox_recontain() {
+	local project="$1" interactive="$2"
+	shift 2
+	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
+	local ctr source image
+	ctr="$(netbox_container_name "$project")"
+	source="$(inherit_source netbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$ctr")" "$(exists_yn "$(offbox_container_name "$project")")" "$ONBOX_FRESH" "$ONBOX_INHERIT")"
+	local -a plan=()
+	if [[ "$source" != base ]]; then
+		plan+=("podman" "commit" "$(container_name_of "$source" "$project")" "$(netbox_root_image "$project")")
+		image="$(netbox_root_image "$project")"
+	else
+		ensure_base_image
+		image="$(base_image_name)"
+	fi
+	plan+=("podman" "rm" "-f" "--volumes" "$ctr")
+	plan_netbox_populate plan "$project" "$3" "$4"
+	local -a create_args=()
+	plan_netbox create_args "$project" "$interactive" "$1" "$2" "$5" "$image"
+	plan+=("podman" "create")
+	plan+=("${create_args[@]}")
+	plan+=("podman" "start" "$ctr")
+	execute_plan "${plan[@]}"
+	podman stop -t 1 "$ctr" >/dev/null 2>&1 || true
+}
+
+run_offbox_recontain() {
+	local project="$1" interactive="$2"
+	shift 2
+	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
+	local ctr source image
+	ctr="$(offbox_container_name "$project")"
+	source="$(inherit_source offbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$(netbox_container_name "$project")")" "$(exists_yn "$ctr")" "$ONBOX_FRESH" "$ONBOX_INHERIT")"
+	local -a plan=()
+	if [[ "$source" != base ]]; then
+		plan+=("podman" "commit" "$(container_name_of "$source" "$project")" "$(offbox_root_image "$project")")
+		image="$(offbox_root_image "$project")"
+	else
+		ensure_base_image
+		image="$(base_image_name)"
+	fi
+	plan+=("podman" "rm" "-f" "--volumes" "$ctr")
+	plan_offbox_populate plan "$project" "$source" "$3" "$4"
+	local -a create_args=()
+	plan_offbox create_args "$project" "$interactive" "$1" "$2" "$5" "$image"
+	plan+=("podman" "create")
+	plan+=("${create_args[@]}")
+	plan+=("podman" "start" "$ctr")
+	execute_plan "${plan[@]}"
+	podman stop -t 1 "$ctr" >/dev/null 2>&1 || true
+}
+
+run_netbox_rebuild() {
+	local project="$1" interactive="$2"
+	shift 2
+	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
+	local ctr source image
+	ctr="$(netbox_container_name "$project")"
+	source="$(inherit_source netbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$ctr")" "$(exists_yn "$(offbox_container_name "$project")")" "$ONBOX_FRESH" "$ONBOX_INHERIT")"
+	local -a plan=()
+	plan+=("podman" "build" "-t" "$(base_image_name)" "-f" "$TALKBOX_ROOT/image/Containerfile" "$TALKBOX_ROOT/image")
+	if [[ "$source" != base ]]; then
+		plan+=("podman" "commit" "$(container_name_of "$source" "$project")" "$(netbox_root_image "$project")")
+		image="$(netbox_root_image "$project")"
+	else
+		image="$(base_image_name)"
+	fi
+	plan+=("podman" "rm" "-f" "--volumes" "$ctr")
+	plan_netbox_populate plan "$project" "$3" "$4"
+	local -a create_args=()
+	plan_netbox create_args "$project" "$interactive" "$1" "$2" "$5" "$image"
+	plan+=("podman" "create")
+	plan+=("${create_args[@]}")
+	plan+=("podman" "start" "$ctr")
+	execute_plan "${plan[@]}"
+	podman stop -t 1 "$ctr" >/dev/null 2>&1 || true
+}
+
+run_offbox_rebuild() {
+	local project="$1" interactive="$2"
+	shift 2
+	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
+	local ctr source image
+	ctr="$(offbox_container_name "$project")"
+	source="$(inherit_source offbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$(netbox_container_name "$project")")" "$(exists_yn "$ctr")" "$ONBOX_FRESH" "$ONBOX_INHERIT")"
+	local -a plan=()
+	plan+=("podman" "build" "-t" "$(base_image_name)" "-f" "$TALKBOX_ROOT/image/Containerfile" "$TALKBOX_ROOT/image")
+	if [[ "$source" != base ]]; then
+		plan+=("podman" "commit" "$(container_name_of "$source" "$project")" "$(offbox_root_image "$project")")
+		image="$(offbox_root_image "$project")"
+	else
+		image="$(base_image_name)"
+	fi
+	plan+=("podman" "rm" "-f" "--volumes" "$ctr")
+	plan_offbox_populate plan "$project" "$source" "$3" "$4"
+	local -a create_args=()
+	plan_offbox create_args "$project" "$interactive" "$1" "$2" "$5" "$image"
+	plan+=("podman" "create")
+	plan+=("${create_args[@]}")
+	plan+=("podman" "start" "$ctr")
+	execute_plan "${plan[@]}"
+	podman stop -t 1 "$ctr" >/dev/null 2>&1 || true
+}
+
+run_netbox_rm_container() {
+	local project="$1"
+	local ctr root
+	ctr="$(netbox_container_name "$project")"
+	root="$(netbox_root_image "$project")"
+	local -a plan=()
+	if podman image exists "$root" >/dev/null 2>&1; then
+		plan_netbox_rm_container plan "$project"
+	else
+		plan+=("podman" "rm" "-f" "--volumes" "$ctr")
+	fi
+	execute_plan "${plan[@]}"
+}
+
+run_offbox_rm_container() {
+	local project="$1"
+	local ctr root
+	ctr="$(offbox_container_name "$project")"
+	root="$(offbox_root_image "$project")"
+	local -a plan=()
+	if podman image exists "$root" >/dev/null 2>&1; then
+		plan_offbox_rm_container plan "$project"
+	else
+		plan+=("podman" "rm" "-f" "--volumes" "$ctr")
+	fi
+	execute_plan "${plan[@]}"
+}
+
+run_netbox_rm_image() {
+	local project="$1"
+	local ctr
+	ctr="$(netbox_container_name "$project")"
+	if image_in_use "$(base_image_name)" "$ctr"; then
+		die "cannot remove base image: it is in use by other containers" 1
+	fi
+	container_exists "$ctr" && podman rm -f --volumes "$ctr"
+	local -a plan=()
+	plan_netbox_rm_image plan "$project" no
+	execute_plan "${plan[@]}"
+}
+
+run_offbox_rm_image() {
+	local project="$1"
+	local ctr
+	ctr="$(offbox_container_name "$project")"
+	if image_in_use "$(base_image_name)" "$ctr"; then
+		die "cannot remove base image: it is in use by other containers" 1
+	fi
+	container_exists "$ctr" && podman rm -f --volumes "$ctr"
+	local -a plan=()
+	plan_offbox_rm_image plan "$project" no
+	execute_plan "${plan[@]}"
+}

@@ -48,40 +48,39 @@ dest_depth() {
 	printf '%d\n' "$((${#slashes} + 1))"
 }
 
-mount_args() {
-	local -n _out="$1"
-	local mode="$2" file="$3" project="$4" home="$5"
-	shift 5
+mount_entries() {
+	local -n _esrcs="$1" _edsts="$2"
+	local mode="$3" file="$4" project="$5" home="$6"
+	shift 6
 	local -a cli_specs=("$@")
-	local -a srcs=() dsts=()
-	local line src dst
+	local -a lsrcs=() ldsts=()
+	local line src dst spec
 	if [[ -f "$file" ]]; then
 		while IFS= read -r line || [[ -n "$line" ]]; do
 			line="$(trim "$line")"
 			[[ -z "$line" || "$line" == '#'* ]] && continue
 			mount_spec src dst "$line"
 			expand_mount "$mode" "$src" "$dst" "$project" "$home" src dst
-			srcs+=("$src")
-			dsts+=("$dst")
+			lsrcs+=("$src")
+			ldsts+=("$dst")
 		done <"$file"
 	fi
-	local spec
 	for spec in "${cli_specs[@]}"; do
 		spec="$(trim "$spec")"
 		[[ -z "$spec" || "$spec" == '#'* ]] && continue
 		mount_spec src dst "$spec"
 		expand_mount "$mode" "$src" "$dst" "$project" "$home" src dst
-		srcs+=("$src")
-		dsts+=("$dst")
+		lsrcs+=("$src")
+		ldsts+=("$dst")
 	done
 	local -A seen=()
 	local -a usrcs=() udsts=() depthlines=() idx=()
 	local i j
-	for ((i = ${#srcs[@]} - 1; i >= 0; i--)); do
-		if [[ -z "${seen[${dsts[$i]}]+x}" ]]; then
-			seen["${dsts[$i]}"]=1
-			usrcs=("${srcs[$i]}" "${usrcs[@]}")
-			udsts=("${dsts[$i]}" "${udsts[@]}")
+	for ((i = ${#lsrcs[@]} - 1; i >= 0; i--)); do
+		if [[ -z "${seen[${ldsts[$i]}]+x}" ]]; then
+			seen["${ldsts[$i]}"]=1
+			usrcs=("${lsrcs[$i]}" "${usrcs[@]}")
+			udsts=("${ldsts[$i]}" "${udsts[@]}")
 		fi
 	done
 	for ((j = 0; j < ${#udsts[@]}; j++)); do
@@ -90,10 +89,43 @@ mount_args() {
 	if ((${#depthlines[@]} > 0)); then
 		mapfile -t idx < <(printf '%s\n' "${depthlines[@]}" | sort -n -s -k1,1 | cut -d' ' -f2)
 	fi
+	_esrcs=()
+	_edsts=()
+	for j in "${idx[@]}"; do
+		_esrcs+=("${usrcs[$j]}")
+		_edsts+=("${udsts[$j]}")
+	done
+}
+
+mount_args() {
+	local -n _out="$1"
+	local mode="$2" file="$3" project="$4" home="$5"
+	shift 5
+	local -a srcs=() dsts=()
+	mount_entries srcs dsts "$mode" "$file" "$project" "$home" "$@"
 	local ro=""
 	[[ "$mode" == read ]] && ro=":ro"
+	local i
 	_out=()
-	for j in "${idx[@]}"; do
-		_out+=("-v" "${usrcs[$j]}:${udsts[$j]}$ro")
+	for ((i = 0; i < ${#srcs[@]}; i++)); do
+		_out+=("-v" "${srcs[$i]}:${dsts[$i]}$ro")
+	done
+}
+
+mount_volume_args() {
+	local -n _out="$1"
+	local container="$2" file="$3" project="$4" home="$5"
+	shift 5
+	local -a srcs=() dsts=()
+	mount_entries srcs dsts write "$file" "$project" "$home" "$@"
+	local i vol
+	_out=()
+	for ((i = 0; i < ${#srcs[@]}; i++)); do
+		if [[ "$container" == offbox ]]; then
+			vol="$(offbox_write_volume "$project" "$(dest_slug "${dsts[$i]}")")"
+		else
+			vol="$(netbox_write_volume "$project" "$(dest_slug "${dsts[$i]}")")"
+		fi
+		_out+=("-v" "$vol:${dsts[$i]}")
 	done
 }

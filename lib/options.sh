@@ -11,6 +11,8 @@ parse_onbox_options() {
 	ONBOX_READ=()
 	ONBOX_WRITE=()
 	ONBOX_PORT=()
+	ONBOX_FRESH="no"
+	ONBOX_INHERIT=""
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 		-c | --command) ;;
@@ -31,6 +33,13 @@ parse_onbox_options() {
 		--port)
 			shift
 			ONBOX_PORT+=("$1")
+			;;
+		--fresh)
+			ONBOX_FRESH="yes"
+			;;
+		--inherit)
+			shift
+			ONBOX_INHERIT="$1"
 			;;
 		--recontain)
 			ONBOX_VERB="recontain"
