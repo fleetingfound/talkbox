@@ -1,12 +1,10 @@
 # Phase 3: netbox and offbox containers
 
-Status: `BLOCKED`
+Status: `SUCCESS`
 
 This build implements [phase-3-netbox-offbox.gen.md](../plans/phase-3-netbox-offbox.gen.md), which adds the `netbox` and `offbox` containers, their volume-based worktree and write mounts, root filesystem inheritance via `podman commit`, the no-network volume-population helper container, the `--fresh`/`--inherit` options, the offbox network isolation, and the netbox/offbox lifecycle verbs.
 
-No verdict document was provided for this phase.
-
-A new dispute document, [phase-3-mount-write-assertion-contradiction.gen.md](../disputes/phase-3-mount-write-assertion-contradiction.gen.md), records two unit tests whose assertions are mutually exclusive (they require the read-only read bind-mount `/host/data:/talkbox/wdata:ro` to be present while also asserting that no argument contains the substring `/talkbox/wdata:ro`), so no implementation can satisfy them. No new issue documents were created.
+The verdict [phase-3-mount-write-assertion-contradiction.gen.md](../verdicts/phase-3-mount-write-assertion-contradiction.gen.md) resolves the earlier dispute [phase-3-mount-write-assertion-contradiction.gen.md](../disputes/phase-3-mount-write-assertion-contradiction.gen.md), which found two unit tests internally contradictory (they required the read-only read bind-mount `/host/data:/talkbox/wdata:ro` while asserting no argument contains `/talkbox/wdata:ro`); the tests were rescoped to the write-volume element only, and no issue documents were created.
 
 ## Overview
 
@@ -18,7 +16,7 @@ A new dispute document, [phase-3-mount-write-assertion-contradiction.gen.md](../
 
 ## Verification
 
-- `make test-unit` - exit `1`; 115/117 tests passed, 2 failed (disputed tests above).
+- `make test-unit` - exit `0`; 117/117 tests passed (including the two disputed unit tests after their repair).
 - `make test-e2e` - exit `0`; 33/33 tests passed.
 - `make lint` - exit `0`; ShellCheck clean on all modified scripts.
 - `make format` - `shfmt` clean on all modified scripts.
