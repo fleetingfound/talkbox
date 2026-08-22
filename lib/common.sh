@@ -5,3 +5,10 @@ die() {
 	printf 'talkbox: %s\n' "$message" >&2
 	exit "$code"
 }
+
+trim() {
+	local s="$1"
+	s="${s#"${s%%[![:space:]]*}"}"
+	s="${s%"${s##*[![:space:]]}"}"
+	printf '%s' "$s"
+}

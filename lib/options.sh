@@ -7,6 +7,10 @@ source "$TALKBOX_ROOT/lib/common.sh"
 parse_onbox_options() {
 	ONBOX_COMMAND=""
 	ONBOX_INTERACTIVE="yes"
+	ONBOX_VERB=""
+	ONBOX_READ=()
+	ONBOX_WRITE=()
+	ONBOX_PORT=()
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 		-c | --command) ;;
@@ -15,6 +19,30 @@ parse_onbox_options() {
 			;;
 		--noninteractive)
 			ONBOX_INTERACTIVE="no"
+			;;
+		--read)
+			shift
+			ONBOX_READ+=("$1")
+			;;
+		--write)
+			shift
+			ONBOX_WRITE+=("$1")
+			;;
+		--port)
+			shift
+			ONBOX_PORT+=("$1")
+			;;
+		--recontain)
+			ONBOX_VERB="recontain"
+			;;
+		--rebuild)
+			ONBOX_VERB="rebuild"
+			;;
+		--rm-container)
+			ONBOX_VERB="rm-container"
+			;;
+		--rm-image)
+			ONBOX_VERB="rm-image"
 			;;
 		-*)
 			die "unknown option: $1" 2

@@ -1,9 +1,5 @@
 target: test-unit
-started: '2026-08-22T11:27:59Z'
-exit: 1
-totals: { total: 70, pass: 20, fail: 50, skip: 0 }
+started: '2026-08-22T12:38:14Z'
+exit: 0
+totals: { total: 70, pass: 70, fail: 0, skip: 0 }
 fail:
- - 'test/unit/naming.bats :: onbox_container_name returns the project slug with a .onbox suffix'
- - 'test/unit/naming.bats :: onbox_container_name derives the container name for an already-slugged path'
- - 'test/unit/options.bats :: the default verb is empty'
- - '(unknown) :: port_args unions defaults-file and CLI ports in order'

@@ -23,3 +23,7 @@ project_slug() {
 base_image_name() {
 	printf '%s\n' 'talkbox/base:latest'
 }
+
+onbox_container_name() {
+	printf '%s\n' "$(project_slug "$1").onbox"
+}

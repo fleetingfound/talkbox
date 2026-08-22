@@ -1,13 +1,5 @@
 target: test-e2e
-started: '2026-08-22T11:27:59Z'
-exit: 1
-totals: { total: 22, pass: 14, fail: 8, skip: 0 }
+started: '2026-08-22T12:38:24Z'
+exit: 0
+totals: { total: 22, pass: 22, fail: 0, skip: 0 }
 fail:
- - 'test/e2e/lifecycle.bats :: onbox creates a persistent container that survives after the shell exits'
- - 'test/e2e/lifecycle.bats :: onbox -c <command> runs within the same persistent container'
- - 'test/e2e/lifecycle.bats :: onbox --read exposes a read-only mount inside the container'
- - 'test/e2e/lifecycle.bats :: onbox --write exposes a writable mount inside the container'
- - 'test/e2e/lifecycle.bats :: onbox --port makes a host port reachable inside the container'
- - 'test/e2e/lifecycle.bats :: onbox --rm-container removes the persistent container'
- - 'test/e2e/lifecycle.bats :: onbox --recontain recreates the container and starts it'
- - 'test/e2e/lifecycle.bats :: onbox --rebuild rebuilds the base image and starts the container'

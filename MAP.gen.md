@@ -2,11 +2,13 @@
 
 Core files implemented for the talkbox commands:
 
-- [talkbox.sh](talkbox.sh) - the dispatcher which routes `onbox` (via `talkbox.sh onbox` or an `onbox` symlink) to the onbox action and rejects the not-yet-implemented `netbox`/`offbox`.
-- [lib/common.sh](lib/common.sh) - shared utilities module providing the `die()` helper, which prints `talkbox: <message>` to stderr and exits with the given code.
-- [lib/naming.sh](lib/naming.sh) - pure helpers producing `<project-base>`, `<project-slug>` and the shared base image name.
-- [lib/options.sh](lib/options.sh) - argument parsing for `onbox` (`-c`/`--command`, `--interactive`, `--noninteractive`), recording the selected command and interactive mode.
-- [lib/containers.sh](lib/containers.sh) - base image build, the `plan_onbox` podman argument-list planner, and the `run_onbox` executor which actually runs `podman`.
+- [talkbox.sh](talkbox.sh) - the dispatcher which routes `onbox` (via `talkbox.sh onbox` or an `onbox` symlink) to the onbox action (assembling mounts/ports and dispatching the lifecycle verbs) and rejects the not-yet-implemented `netbox`/`offbox`.
+- [lib/common.sh](lib/common.sh) - shared utilities module providing the `die()` helper (prints `talkbox: <message>` to stderr and exits with the given code) and `trim()` (strips leading/trailing whitespace).
+- [lib/naming.sh](lib/naming.sh) - pure helpers producing `<project-base>`, `<project-slug>`, the shared base image name and the onbox container name `<project-slug>.onbox`.
+- [lib/options.sh](lib/options.sh) - argument parsing for `onbox` (`-c`/`--command`, `--interactive`, `--noninteractive`, repeatable `--read`/`--write`/`--port`, and the `--recontain`/`--rebuild`/`--rm-container`/`--rm-image` lifecycle verbs), recording the selected command, interactive mode, verb and mount/port lists.
+- [lib/mounts.sh](lib/mounts.sh) - parses mount files and CLI specs into depth-ordered, deduplicated `podman` `-v` argument lists per read/write mode, expanding `~`/`$HOME`/`$PROJECT` and deriving default dests.
+- [lib/ports.sh](lib/ports.sh) - parses `defaults/ports` and CLI `--port` values into the deduplicated, ordered `pasta` `-T,<port>` token list.
+- [lib/containers.sh](lib/containers.sh) - base image build, the `plan_onbox` persistent-container argument-list planner, the normal-run and lifecycle plan functions, the `execute_plan` runner, and the `run_*` executors which actually run `podman`.
 - [image/Containerfile](image/Containerfile) - shared base image definition used to build `talkbox/base:latest`.
 - [image/entrypoint.sh](image/entrypoint.sh) - in-container entrypoint which copies global then project dotfiles into `/home/dev/` and executes the user command or an interactive shell.
 
