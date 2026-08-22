@@ -33,7 +33,36 @@ mk_talkbox() {
 	mkdir -p "$dest/defaults/dotfiles"
 	printf 'talkbox-e2e-global-marker\n' >"$dest/defaults/dotfiles/talkbox_marker"
 	printf 'global\n' >"$dest/defaults/dotfiles/conf.txt"
+	# Neutralise the copied default mounts/ports so e2e is hermetic: default
+	# mounts would otherwise reference host paths outside the test and are
+	# covered by unit tests; e2e exercises only the CLI --read/--write/--port.
+	: >"$dest/defaults/read.mounts"
+	: >"$dest/defaults/write.mounts"
+	: >"$dest/defaults/ports"
 	printf '%s\n' "$dest"
+}
+
+onbox_ctr_name() {
+	local base
+	base="$(basename "$1")"
+	base="${base,,}"
+	base="${base//[^a-z0-9]/-}"
+	while [[ "$base" == *--* ]]; do
+		base="${base//--/-}"
+	done
+	base="${base#-}"
+	base="${base%-}"
+	printf '%s\n' "$base.onbox"
+}
+
+free_host_port() {
+	python3 - <<'PY'
+import socket
+s = socket.socket()
+s.bind(('127.0.0.1', 0))
+print(s.getsockname()[1])
+s.close()
+PY
 }
 
 run_onbox_noninteractive() {

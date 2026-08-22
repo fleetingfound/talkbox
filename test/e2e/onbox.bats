@@ -4,9 +4,11 @@ setup() {
 	PROJECT="$(mk_project)"
 	TALKBOX="$(mk_talkbox)"
 	PROJECT_BASE="$(basename "$PROJECT")"
+	CTR="$(onbox_ctr_name "$PROJECT")"
 }
 
 teardown() {
+	sdrun podman rm -f -v "$CTR" >/dev/null 2>&1 || true
 	rm -rf "$PROJECT" "$TALKBOX"
 }
 

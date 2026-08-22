@@ -34,3 +34,13 @@ load helpers
 	load_lib naming.sh
 	[[ "$(base_image_name)" == 'talkbox/base:latest' ]]
 }
+
+@test "onbox_container_name returns the project slug with a .onbox suffix" {
+	load_lib naming.sh
+	[[ "$(onbox_container_name '/tmp/My Project')" == 'my-project.onbox' ]]
+}
+
+@test "onbox_container_name derives the container name for an already-slugged path" {
+	load_lib naming.sh
+	[[ "$(onbox_container_name '/tmp/example-project')" == 'example-project.onbox' ]]
+}
