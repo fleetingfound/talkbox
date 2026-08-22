@@ -381,3 +381,12 @@ Any test which invokes `podman`, including those which call `talkbox.sh`, `onbox
 All tests which create a `podman` container should use a temporary git repository or non-git folder as a stand-in for `<project>`.
 
 Most end-to-end tests should be implemented with `-c --noninteractive` to ensure that the container is run non-interactively. However, some tests should test `talkbox.sh` running interactively. Tests for interactive cases should drive the session through `expect`, running scripts that terminate with `exit`.
+
+## references
+
+References to relevant documentation and source are available in `.llm/ref/`, indexed by `.llm/ref/sources.yaml`. These include:
+
+- `.llm/ref/podman.docs` - podman documentation
+- `.llm/ref/passt.docs` - passt documentation
+- `.llm/ref/bats-core.docs` - bats man page
+- `.llm/ref/linux.man/capabilities.7.txt` - capabilities man page for linux

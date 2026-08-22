@@ -1,0 +1,30 @@
+- type: git
+  local: podman.docs
+  url: https://github.com/podman-container-tools/podman
+  description: "Podman documentation"
+  ref: main
+  commit: 1fecb62b349e1c531ec2429da9d612ca4492962b
+  subpath: docs/source/markdown
+
+- type: git
+  local: passt.docs
+  url: https://github.com/akerouanton/passt
+  description: "passt and pasta documentation"
+  ref: master
+  commit: 6e1e44293ef991d8c946dd59fbbd65c54901b255
+  subpath: passt.1
+
+- type: git
+  local: bats-core.docs
+  url: https://github.com/bats-core/bats-core
+  description: "bats documentation"
+  ref: master
+  commit: 5a7db7a98951d9d89b3b5e7800037e655a93345f
+  subpath: man
+  filter: "*.ronn"
+
+- type: http
+  local: linux.man/capabilities.7.txt
+  url: https://man.archlinux.org/man/capabilities.7.txt
+  description: "Linux capabilities man page"
+  sha256: 3eedf210e148ed990bcb7242cc82423db7fd68a102598b8e79a20021b10d743b
