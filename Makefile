@@ -1,1 +1,1 @@
--include test/harness.mk
+include test/runner.mk

@@ -1,0 +1,7 @@
+target: test-canary
+started: '2026-08-22T00:40:25Z'
+exit: 1
+totals: { total: 2, pass: 0, fail: 2, skip: 0 }
+fail:
+ - 'test/canary/false.bats :: canary: an assertion which is intentionally false'
+ - 'test/canary/false.bats :: canary: a command which exits nonzero'
