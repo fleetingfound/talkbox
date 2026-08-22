@@ -1,6 +1,5 @@
 target: test-unit
-started: '2026-08-22T01:25:35Z'
-exit: 1
-totals: { total: 29, pass: 5, fail: 24, skip: 0 }
+started: '2026-08-22T01:46:13Z'
+exit: 0
+totals: { total: 29, pass: 29, fail: 0, skip: 0 }
 fail:
- - '(unknown) :: --noninteractive is recognised before the command'
