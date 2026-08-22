@@ -14,7 +14,9 @@ plan_onbox() {
 	printf '%s\n' '--cap-drop=NET_RAW'
 	printf -- '-v %s:/working/%s\n' "$project" "$base"
 	printf -- '-v %s/defaults/dotfiles:/talkbox/dotfiles.global:ro\n' "$TALKBOX_ROOT"
-	printf -- '-v %s/.dotfiles:/talkbox/dotfiles.project:ro\n' "$project"
+	if [[ -d "$project/.dotfiles" ]]; then
+		printf -- '-v %s/.dotfiles:/talkbox/dotfiles.project:ro\n' "$project"
+	fi
 	printf '%s\n' '--rm'
 	if [[ "$interactive" == yes ]]; then
 		printf '%s\n' '--interactive'
@@ -36,9 +38,6 @@ run_onbox() {
 	local project="$1" command="$2" interactive="$3"
 	local args=() line
 	while IFS= read -r line; do
-		if [[ "$line" == "-v $project/.dotfiles:"* && ! -d "$project/.dotfiles" ]]; then
-			continue
-		fi
 		if [[ "$line" == -v\ * ]]; then
 			args+=("-v" "${line#-v }")
 		else
