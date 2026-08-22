@@ -19,6 +19,18 @@ array_contains() {
 	return 1
 }
 
+array_has_none() {
+	local needle="$1"
+	shift
+	local element
+	for element in "$@"; do
+		if [[ "$element" == *"$needle"* ]]; then
+			return 1
+		fi
+	done
+	return 0
+}
+
 plan_subcommands() {
 	local -n _plan="$1"
 	local i
@@ -79,6 +91,88 @@ setup() {
 	load_lifecycle_plan
 	local args=()
 	plan_rm_image args "$PROJECT" yes
+	[[ ${#args[@]} -eq 0 ]]
+	[[ -z "$(plan_subcommands args)" ]]
+}
+
+@test "netbox recontain plan commits the source and recreates the container" {
+	load_lifecycle_plan
+	local args=()
+	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS onbox
+	[[ "$(plan_subcommands args)" == $'commit\nrm\ncreate\nstart' ]]
+	array_contains 'talkbox-proj.onbox' "${args[@]}"
+	array_contains 'talkbox-proj.netbox.root' "${args[@]}"
+	array_contains '--name=talkbox-proj.netbox' "${args[@]}"
+}
+
+@test "offbox recontain plan commits the netbox source and recreates the container" {
+	load_lifecycle_plan
+	local args=()
+	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS netbox
+	[[ "$(plan_subcommands args)" == $'commit\nrm\ncreate\nstart' ]]
+	array_contains 'talkbox-proj.netbox' "${args[@]}"
+	array_contains 'talkbox-proj.offbox.root' "${args[@]}"
+	array_contains '--name=talkbox-proj.offbox' "${args[@]}"
+}
+
+@test "netbox recontain plan skips the commit when the source is the base image" {
+	load_lifecycle_plan
+	local args=()
+	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS base
+	[[ "$(plan_subcommands args)" == $'rm\ncreate\nstart' ]]
+	array_has_none 'podman commit' "${args[@]}"
+}
+
+@test "netbox rebuild plan rebuilds the base image, commits and recreates" {
+	load_lifecycle_plan
+	local args=()
+	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS onbox
+	[[ "$(plan_subcommands args)" == $'build\ncommit\nrm\ncreate\nstart' ]]
+	array_contains 'talkbox/base:latest' "${args[@]}"
+	array_contains 'talkbox-proj.netbox.root' "${args[@]}"
+}
+
+@test "offbox rebuild plan rebuilds the base image, commits and recreates" {
+	load_lifecycle_plan
+	local args=()
+	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS onbox
+	[[ "$(plan_subcommands args)" == $'build\ncommit\nrm\ncreate\nstart' ]]
+	array_contains 'talkbox/base:latest' "${args[@]}"
+	array_contains 'talkbox-proj.offbox.root' "${args[@]}"
+}
+
+@test "netbox rm-container plan removes the container and its root image" {
+	load_lifecycle_plan
+	local args=()
+	plan_netbox_rm_container args "$PROJECT"
+	[[ "$(plan_subcommands args)" == $'rm\nrmi' ]]
+	array_contains 'talkbox-proj.netbox' "${args[@]}"
+	array_contains '--volumes' "${args[@]}"
+	array_contains 'talkbox-proj.netbox.root' "${args[@]}"
+}
+
+@test "offbox rm-container plan removes the container and its root image" {
+	load_lifecycle_plan
+	local args=()
+	plan_offbox_rm_container args "$PROJECT"
+	[[ "$(plan_subcommands args)" == $'rm\nrmi' ]]
+	array_contains 'talkbox-proj.offbox' "${args[@]}"
+	array_contains '--volumes' "${args[@]}"
+	array_contains 'talkbox-proj.offbox.root' "${args[@]}"
+}
+
+@test "netbox rm-image plan removes the base image when it is not in use" {
+	load_lifecycle_plan
+	local args=()
+	plan_netbox_rm_image args "$PROJECT" no
+	[[ "$(plan_subcommands args)" == 'rmi' ]]
+	array_contains 'talkbox/base:latest' "${args[@]}"
+}
+
+@test "netbox rm-image plan refuses to remove the base image when it is in use" {
+	load_lifecycle_plan
+	local args=()
+	plan_netbox_rm_image args "$PROJECT" yes
 	[[ ${#args[@]} -eq 0 ]]
 	[[ -z "$(plan_subcommands args)" ]]
 }

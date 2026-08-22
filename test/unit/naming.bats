@@ -44,3 +44,57 @@ load helpers
 	load_lib naming.sh
 	[[ "$(onbox_container_name '/tmp/example-project')" == 'example-project.onbox' ]]
 }
+
+@test "netbox_container_name returns the project slug with a .netbox suffix" {
+	load_lib naming.sh
+	[[ "$(netbox_container_name '/tmp/My Project')" == 'my-project.netbox' ]]
+	[[ "$(netbox_container_name '/tmp/example-project')" == 'example-project.netbox' ]]
+}
+
+@test "offbox_container_name returns the project slug with a .offbox suffix" {
+	load_lib naming.sh
+	[[ "$(offbox_container_name '/tmp/My Project')" == 'my-project.offbox' ]]
+	[[ "$(offbox_container_name '/tmp/example-project')" == 'example-project.offbox' ]]
+}
+
+@test "dest_slug lowercases and hyphenates a dest path" {
+	load_lib naming.sh
+	[[ "$(dest_slug '/home/dev/My Data')" == 'home-dev-my-data' ]]
+	[[ "$(dest_slug '/talkbox/wdata')" == 'talkbox-wdata' ]]
+}
+
+@test "dest_slug strips leading and trailing slashes" {
+	load_lib naming.sh
+	[[ "$(dest_slug '/a/b/c/')" == 'a-b-c' ]]
+	[[ "$(dest_slug '/')" == '' ]]
+}
+
+@test "netbox_worktree_volume names the netbox worktree volume" {
+	load_lib naming.sh
+	[[ "$(netbox_worktree_volume '/tmp/My Project')" == 'my-project.netbox.worktree' ]]
+}
+
+@test "offbox_worktree_volume names the offbox worktree volume" {
+	load_lib naming.sh
+	[[ "$(offbox_worktree_volume '/tmp/My Project')" == 'my-project.offbox.worktree' ]]
+}
+
+@test "netbox_write_volume names the netbox write volume from a dest-slug" {
+	load_lib naming.sh
+	[[ "$(netbox_write_volume '/tmp/My Project' 'talkbox-wdata')" == 'my-project.netbox.write.talkbox-wdata' ]]
+}
+
+@test "offbox_write_volume names the offbox write volume from a dest-slug" {
+	load_lib naming.sh
+	[[ "$(offbox_write_volume '/tmp/My Project' 'talkbox-wdata')" == 'my-project.offbox.write.talkbox-wdata' ]]
+}
+
+@test "netbox_root_image names the netbox root image" {
+	load_lib naming.sh
+	[[ "$(netbox_root_image '/tmp/My Project')" == 'my-project.netbox.root' ]]
+}
+
+@test "offbox_root_image names the offbox root image" {
+	load_lib naming.sh
+	[[ "$(offbox_root_image '/tmp/My Project')" == 'my-project.offbox.root' ]]
+}

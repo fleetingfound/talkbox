@@ -42,7 +42,7 @@ mk_talkbox() {
 	printf '%s\n' "$dest"
 }
 
-onbox_ctr_name() {
+project_slug_e2e() {
 	local base
 	base="$(basename "$1")"
 	base="${base,,}"
@@ -52,7 +52,19 @@ onbox_ctr_name() {
 	done
 	base="${base#-}"
 	base="${base%-}"
-	printf '%s\n' "$base.onbox"
+	printf '%s\n' "$base"
+}
+
+onbox_ctr_name() {
+	printf '%s\n' "$(project_slug_e2e "$1").onbox"
+}
+
+netbox_ctr_name() {
+	printf '%s\n' "$(project_slug_e2e "$1").netbox"
+}
+
+offbox_ctr_name() {
+	printf '%s\n' "$(project_slug_e2e "$1").offbox"
 }
 
 free_host_port() {
@@ -68,4 +80,10 @@ PY
 run_onbox_noninteractive() {
 	local project="$1" talkbox="$2" cmd="$3"
 	sdrun bash -c 'cd "$1" && "$0/talkbox.sh" onbox -c --noninteractive "$2"' "$talkbox" "$project" "$cmd"
+}
+
+run_talkbox() {
+	local project="$1" talkbox="$2"
+	shift 2
+	sdrun bash -c 'cd "$1" && shift && exec "$@"' bash "$project" "$talkbox/talkbox.sh" "$@"
 }

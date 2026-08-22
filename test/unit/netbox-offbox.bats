@@ -1,0 +1,226 @@
+load helpers
+
+load_netbox_plan() {
+	load_lib naming.sh
+	load_lib mounts.sh
+	load_lib ports.sh
+	load_lib containers.sh
+}
+
+array_contains() {
+	local value="$1"
+	shift
+	local element
+	for element in "$@"; do
+		if [[ "$element" == "$value" ]]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+array_has_none() {
+	local needle="$1"
+	shift
+	local element
+	for element in "$@"; do
+		if [[ "$element" == *"$needle"* ]]; then
+			return 1
+		fi
+	done
+	return 0
+}
+
+plan_subcommands() {
+	local -n _plan="$1"
+	local i
+	for ((i = 0; i < ${#_plan[@]}; i++)); do
+		if [[ "${_plan[$i]}" == podman ]]; then
+			printf '%s\n' "${_plan[$((i + 1))]}"
+		fi
+	done
+}
+
+# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+setup() {
+	PROJECT="$BATS_TEST_TMPDIR/talkbox-proj"
+	mkdir -p "$PROJECT"
+	READ_MOUNTS=()
+	WRITE_MOUNTS=()
+	PORTS=()
+}
+
+@test "inheritance planner uses the base image when no source container exists" {
+	load_netbox_plan
+	[[ "$(inherit_source netbox no no no no '')" == base ]]
+	[[ "$(inherit_source offbox no no no no '')" == base ]]
+}
+
+@test "inheritance planner defaults netbox to onbox when onbox exists" {
+	load_netbox_plan
+	[[ "$(inherit_source netbox yes no no no '')" == onbox ]]
+}
+
+@test "inheritance planner defaults offbox to netbox, then onbox, then base" {
+	load_netbox_plan
+	[[ "$(inherit_source offbox yes yes no no '')" == netbox ]]
+	[[ "$(inherit_source offbox no yes no no '')" == netbox ]]
+	[[ "$(inherit_source offbox yes no no no '')" == onbox ]]
+	[[ "$(inherit_source offbox no no no no '')" == base ]]
+}
+
+@test "inheritance planner --fresh prevents root filesystem inheritance" {
+	load_netbox_plan
+	[[ "$(inherit_source netbox yes no no yes '')" == base ]]
+	[[ "$(inherit_source offbox yes yes no yes '')" == base ]]
+}
+
+@test "inheritance planner --inherit selects the explicit source" {
+	load_netbox_plan
+	[[ "$(inherit_source netbox yes yes yes no offbox)" == offbox ]]
+	[[ "$(inherit_source offbox yes yes no no onbox)" == onbox ]]
+	[[ "$(inherit_source netbox yes yes no no netbox)" == netbox ]]
+}
+
+@test "inheritance planner falls back to base when the --inherit source does not exist" {
+	load_netbox_plan
+	[[ "$(inherit_source netbox no no no no onbox)" == base ]]
+	[[ "$(inherit_source netbox yes no no no offbox)" == base ]]
+	[[ "$(inherit_source offbox no no no no netbox)" == base ]]
+}
+
+@test "inheritance planner --fresh overrides an --inherit selection" {
+	load_netbox_plan
+	[[ "$(inherit_source netbox yes yes yes no offbox)" == offbox ]]
+	[[ "$(inherit_source netbox yes yes yes yes offbox)" == base ]]
+}
+
+@test "volume-population planner runs a no-network helper with the host source read-only" {
+	load_netbox_plan
+	local args=()
+	plan_volume_populate args 'talkbox-proj.netbox.worktree' host "$PROJECT"
+	[[ "$(plan_subcommands args)" == 'run' ]]
+	array_contains '--rm' "${args[@]}"
+	array_contains '--network=none' "${args[@]}"
+	array_contains "$PROJECT:/talkbox/source:ro" "${args[@]}"
+	array_contains 'talkbox-proj.netbox.worktree:/talkbox/target' "${args[@]}"
+	array_has_none '/talkbox/target:ro' "${args[@]}"
+	array_contains 'cp' "${args[@]}"
+}
+
+@test "volume-population planner mounts a source volume read-write" {
+	load_netbox_plan
+	local args=()
+	plan_volume_populate args 'talkbox-proj.offbox.worktree' volume 'talkbox-proj.netbox.worktree'
+	[[ "$(plan_subcommands args)" == 'run' ]]
+	array_contains '--network=none' "${args[@]}"
+	array_contains 'talkbox-proj.netbox.worktree:/talkbox/source' "${args[@]}"
+	array_has_none '/talkbox/source:ro' "${args[@]}"
+	array_contains 'talkbox-proj.offbox.worktree:/talkbox/target' "${args[@]}"
+	array_contains 'cp' "${args[@]}"
+}
+
+@test "netbox plan mounts the worktree volume and names the container" {
+	load_netbox_plan
+	local args=()
+	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_contains 'talkbox-proj.netbox.worktree:/working/talkbox-proj' "${args[@]}"
+	array_contains '--name=talkbox-proj.netbox' "${args[@]}"
+}
+
+@test "netbox plan keeps read mounts read-only and write mounts as volumes" {
+	load_netbox_plan
+	local home="$BATS_TEST_TMPDIR/home" args=()
+	mkdir -p "$home"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local read_mounts=() write_mounts=()
+	mount_args read_mounts read "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
+	mount_volume_args write_mounts netbox "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
+	plan_netbox args "$PROJECT" yes read_mounts write_mounts PORTS "$(base_image_name)"
+	array_contains '/host/data:/talkbox/wdata:ro' "${args[@]}"
+	array_contains 'talkbox-proj.netbox.write.talkbox-wdata:/talkbox/wdata' "${args[@]}"
+	array_has_none '/talkbox/wdata:ro' "${args[@]}"
+}
+
+@test "netbox plan uses pasta networking without loopback restriction and drops caps" {
+	load_netbox_plan
+	local args=()
+	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_contains '--network=pasta' "${args[@]}"
+	array_has_none '-i,lo' "${args[@]}"
+	array_contains '--cap-drop=NET_ADMIN' "${args[@]}"
+	array_contains '--cap-drop=NET_RAW' "${args[@]}"
+}
+
+@test "netbox plan forwards -T ports on pasta" {
+	load_netbox_plan
+	# shellcheck disable=SC2054 # -T,<port> tokens are single array elements
+	# shellcheck disable=SC2034 # ports is consumed by nameref planner parameter
+	local -a ports=(-T,8080 -T,9090) args=()
+	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS ports "$(base_image_name)"
+	array_contains '--network=pasta:-T,8080,-T,9090' "${args[@]}"
+}
+
+@test "netbox plan binds dotfiles read-only and runs the supplied image" {
+	load_netbox_plan
+	local img args=()
+	img="$(netbox_root_image "$PROJECT")"
+	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$img"
+	array_contains "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro" "${args[@]}"
+	array_contains "$img" "${args[@]}"
+}
+
+@test "offbox plan mounts the worktree volume and names the container" {
+	load_netbox_plan
+	local args=()
+	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_contains 'talkbox-proj.offbox.worktree:/working/talkbox-proj' "${args[@]}"
+	array_contains '--name=talkbox-proj.offbox' "${args[@]}"
+}
+
+@test "offbox plan restricts pasta to loopback and excludes talkbox0" {
+	load_netbox_plan
+	local args=()
+	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_contains '--network=pasta:-i,lo,-I,talkbox0' "${args[@]}"
+	array_contains '--cap-drop=NET_ADMIN' "${args[@]}"
+	array_contains '--cap-drop=NET_RAW' "${args[@]}"
+}
+
+@test "offbox plan forwards -T ports alongside the loopback restriction" {
+	load_netbox_plan
+	# shellcheck disable=SC2054 # -T,<port> tokens are single array elements
+	# shellcheck disable=SC2034 # ports is consumed by nameref planner parameter
+	local -a ports=(-T,8080) args=()
+	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS ports "$(base_image_name)"
+	array_contains '--network=pasta:-T,8080,-i,lo,-I,talkbox0' "${args[@]}"
+}
+
+@test "offbox plan emits write-mount volumes and read-only read mounts" {
+	load_netbox_plan
+	local home="$BATS_TEST_TMPDIR/home" args=()
+	mkdir -p "$home"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local read_mounts=() write_mounts=()
+	mount_args read_mounts read "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
+	mount_volume_args write_mounts offbox "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
+	plan_offbox args "$PROJECT" yes read_mounts write_mounts PORTS "$(base_image_name)"
+	array_contains '/host/data:/talkbox/wdata:ro' "${args[@]}"
+	array_contains 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/wdata' "${args[@]}"
+	array_has_none '/talkbox/wdata:ro' "${args[@]}"
+}
+
+@test "netbox run plan creates, starts and execs into the container" {
+	load_netbox_plan
+	local args=()
+	plan_netbox_run args "$PROJECT" 'pwd' no READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	[[ "$(plan_subcommands args)" == $'create\nstart\nexec' ]]
+	[[ "${args[${#args[@]} - 1]}" == 'pwd' ]]
+}
+
+@test "offbox run plan creates and starts the container for an interactive shell" {
+	load_netbox_plan
+	local args=()
+	plan_offbox_run args "$PROJECT" '' yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	[[ "$(plan_subcommands args)" == $'create\nstart' ]]
+}

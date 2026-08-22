@@ -1,5 +1,16 @@
 target: test-e2e
-started: '2026-08-22T12:38:24Z'
-exit: 0
-totals: { total: 22, pass: 22, fail: 0, skip: 0 }
+started: '2026-08-22T12:57:50Z'
+exit: 1
+totals: { total: 33, pass: 22, fail: 11, skip: 0 }
 fail:
+ - 'test/e2e/netbox-offbox.bats :: netbox container has internet access'
+ - 'test/e2e/netbox-offbox.bats :: netbox edits land in the worktree volume, never the host'
+ - 'test/e2e/netbox-offbox.bats :: netbox inherits the onbox root filesystem when onbox exists'
+ - 'test/e2e/netbox-offbox.bats :: offbox blocks internet access'
+ - 'test/e2e/netbox-offbox.bats :: offbox writes land in its volumes, never the host'
+ - 'test/e2e/netbox-offbox.bats :: offbox created after netbox copies the netbox worktree and write volumes'
+ - 'test/e2e/netbox-offbox.bats :: netbox --fresh ignores existing containers and copies from host'
+ - 'test/e2e/netbox-offbox.bats :: --inherit selects the explicit inheritance source'
+ - 'test/e2e/netbox-offbox.bats :: netbox --rm-container removes the container and its root image'
+ - 'test/e2e/netbox-offbox.bats :: netbox --rm-image removes the base image'
+ - 'test/e2e/netbox-offbox.bats :: netbox --rebuild commits onbox and recreates the container'

@@ -115,3 +115,33 @@ setup() {
 	[[ "${r[*]}" == "-v /src:/home/dev/data:ro" ]]
 	[[ "${w[*]}" == "-v /src:/home/dev/data" ]]
 }
+
+@test "mount_volume_args emits netbox write mounts as volumes named <slug>.netbox.write.<dest-slug>" {
+	load_lib mounts.sh
+	local out=()
+	mount_volume_args out netbox "$ABSENT" "$PROJECT" "$HOME_FAKE" '/host/data:/talkbox/wdata'
+	[[ "${out[*]}" == "-v talkbox-proj.netbox.write.talkbox-wdata:/talkbox/wdata" ]]
+}
+
+@test "mount_volume_args emits offbox write mounts as volumes named <slug>.offbox.write.<dest-slug>" {
+	load_lib mounts.sh
+	local out=()
+	mount_volume_args out offbox "$ABSENT" "$PROJECT" "$HOME_FAKE" '/host/data:/talkbox/wdata'
+	[[ "${out[*]}" == "-v talkbox-proj.offbox.write.talkbox-wdata:/talkbox/wdata" ]]
+}
+
+@test "mount_volume_args derives the dest-slug from the dest basename path" {
+	load_lib mounts.sh
+	local out=()
+	mount_volume_args out netbox "$ABSENT" "$PROJECT" "$HOME_FAKE" '/host/data:/a/b/c'
+	[[ "${out[*]}" == "-v talkbox-proj.netbox.write.a-b-c:/a/b/c" ]]
+}
+
+@test "mount_volume_args merges defaults-file and CLI write specs" {
+	load_lib mounts.sh
+	local file="$BATS_TEST_TMPDIR/write.mounts"
+	printf '/def:/x\n' >"$file"
+	local out=()
+	mount_volume_args out netbox "$file" "$PROJECT" "$HOME_FAKE" '/cli:/y'
+	[[ "${out[*]}" == "-v talkbox-proj.netbox.write.x:/x -v talkbox-proj.netbox.write.y:/y" ]]
+}

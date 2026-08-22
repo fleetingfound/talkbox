@@ -7,6 +7,8 @@ setup() {
 	ONBOX_READ=()
 	ONBOX_WRITE=()
 	ONBOX_PORT=()
+	ONBOX_FRESH=""
+	ONBOX_INHERIT=""
 }
 
 @test "onbox defaults to an interactive shell with no command" {
@@ -106,5 +108,34 @@ setup() {
 	parse_onbox_options --read '/a:/b' -c 'pwd'
 	[[ "${#ONBOX_READ[@]}" -eq 1 ]]
 	[[ "${ONBOX_READ[0]}" == '/a:/b' ]]
+	[[ "$ONBOX_COMMAND" == 'pwd' ]]
+}
+
+@test "--fresh is recognised" {
+	load_lib options.sh
+	parse_onbox_options --fresh
+	[[ "$ONBOX_FRESH" == yes ]]
+}
+
+@test "--inherit <source> records the explicit inheritance source" {
+	load_lib options.sh
+	parse_onbox_options --inherit offbox
+	[[ "$ONBOX_INHERIT" == offbox ]]
+	parse_onbox_options --inherit netbox
+	[[ "$ONBOX_INHERIT" == netbox ]]
+}
+
+@test "the default is not fresh and has no explicit inherit source" {
+	load_lib options.sh
+	parse_onbox_options
+	[[ "$ONBOX_FRESH" == no ]]
+	[[ -z "$ONBOX_INHERIT" ]]
+}
+
+@test "--fresh and --inherit are not treated as the command" {
+	load_lib options.sh
+	parse_onbox_options --fresh --inherit onbox -c 'pwd'
+	[[ "$ONBOX_FRESH" == yes ]]
+	[[ "$ONBOX_INHERIT" == onbox ]]
 	[[ "$ONBOX_COMMAND" == 'pwd' ]]
 }
