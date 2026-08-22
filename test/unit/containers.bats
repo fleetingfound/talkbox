@@ -5,19 +5,28 @@ load_onbox_plan() {
 	load_lib containers.sh
 }
 
-plan_line() {
-	local re="$1"
-	local line
-	while IFS= read -r line; do
-		if [[ "$line" =~ $re ]]; then
+array_contains() {
+	local value="$1"
+	shift
+	local element
+	for element in "$@"; do
+		if [[ "$element" == "$value" ]]; then
 			return 0
 		fi
-	done <<<"$output"
+	done
 	return 1
 }
 
-last_line() {
-	tail -n 1 <<<"$output"
+array_has_none() {
+	local needle="$1"
+	shift
+	local element
+	for element in "$@"; do
+		if [[ "$element" == *"$needle"* ]]; then
+			return 1
+		fi
+	done
+	return 0
 }
 
 setup() {
@@ -27,102 +36,119 @@ setup() {
 
 @test "onbox plan sets the working directory to /working/<project-base>" {
 	load_onbox_plan
-	run plan_onbox "$PROJECT" '' yes
-	[[ "$status" -eq 0 ]]
-	plan_line '^--workdir=/working/talkbox-proj$'
+	local args=()
+	plan_onbox args "$PROJECT" '' yes yes
+	array_contains '--workdir=/working/talkbox-proj' "${args[@]}"
 }
 
 @test "onbox plan maps the host user to container uid/gid 1000" {
 	load_onbox_plan
-	run plan_onbox "$PROJECT" '' yes
-	[[ "$status" -eq 0 ]]
-	plan_line '^--userns=keep-id:uid=1000,gid=1000$'
+	local args=()
+	plan_onbox args "$PROJECT" '' yes yes
+	array_contains '--userns=keep-id:uid=1000,gid=1000' "${args[@]}"
 }
 
 @test "onbox plan uses rootless pasta networking without host-port forwarding" {
 	load_onbox_plan
-	run plan_onbox "$PROJECT" '' yes
-	[[ "$status" -eq 0 ]]
-	plan_line '^--network=pasta$'
-	[[ "$output" != *'-T,'* ]]
+	local args=()
+	plan_onbox args "$PROJECT" '' yes yes
+	array_contains '--network=pasta' "${args[@]}"
+	[[ "${args[*]}" != *'-T,'* ]]
 }
 
 @test "onbox plan drops NET_ADMIN and NET_RAW capabilities" {
 	load_onbox_plan
-	run plan_onbox "$PROJECT" '' yes
-	[[ "$status" -eq 0 ]]
-	plan_line '^--cap-drop=NET_ADMIN$'
-	plan_line '^--cap-drop=NET_RAW$'
+	local args=()
+	plan_onbox args "$PROJECT" '' yes yes
+	array_contains '--cap-drop=NET_ADMIN' "${args[@]}"
+	array_contains '--cap-drop=NET_RAW' "${args[@]}"
 }
 
 @test "onbox plan bind-mounts the host worktree read-write" {
 	load_onbox_plan
-	run plan_onbox "$PROJECT" '' yes
-	[[ "$status" -eq 0 ]]
-	plan_line "^-v $PROJECT:/working/talkbox-proj(:rw)?$"
-	if plan_line "^-v $PROJECT:/working/talkbox-proj:ro$"; then
+	local args=()
+	plan_onbox args "$PROJECT" '' yes yes
+	array_contains "$PROJECT:/working/talkbox-proj" "${args[@]}"
+	if array_contains "$PROJECT:/working/talkbox-proj:ro" "${args[@]}"; then
 		return 1
 	fi
 }
 
 @test "onbox plan bind-mounts global dotfiles read-only" {
 	load_onbox_plan
-	run plan_onbox "$PROJECT" '' yes
-	[[ "$status" -eq 0 ]]
-	plan_line '^.*/defaults/dotfiles:/talkbox/dotfiles.global:ro$'
+	local args=()
+	plan_onbox args "$PROJECT" '' yes yes
+	array_contains "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro" "${args[@]}"
 }
 
 @test "onbox plan bind-mounts project dotfiles read-only when they exist" {
 	load_onbox_plan
 	mkdir -p "$PROJECT/.dotfiles"
-	run plan_onbox "$PROJECT" '' yes
-	[[ "$status" -eq 0 ]]
-	plan_line "^-v $PROJECT/.dotfiles:/talkbox/dotfiles.project:ro$"
+	local args=()
+	plan_onbox args "$PROJECT" '' yes yes
+	array_contains "$PROJECT/.dotfiles:/talkbox/dotfiles.project:ro" "${args[@]}"
 }
 
 @test "onbox plan omits the project dotfiles bind-mount when .dotfiles is absent" {
 	load_onbox_plan
-	run plan_onbox "$PROJECT" '' yes
-	[[ "$status" -eq 0 ]]
-	[[ "$output" != *'dotfiles.project'* ]]
+	local args=()
+	plan_onbox args "$PROJECT" '' yes yes
+	array_has_none 'dotfiles.project' "${args[@]}"
 }
 
 @test "onbox plan runs the shared base image" {
 	load_onbox_plan
-	local img
+	local img args=()
 	img="$(base_image_name)"
-	run plan_onbox "$PROJECT" '' yes
-	[[ "$status" -eq 0 ]]
-	plan_line "^$img$"
+	plan_onbox args "$PROJECT" '' yes yes
+	array_contains "$img" "${args[@]}"
 }
 
 @test "onbox plan emits --rm so the container is removed after exit" {
 	load_onbox_plan
-	run plan_onbox "$PROJECT" '' yes
-	[[ "$status" -eq 0 ]]
-	plan_line '^--rm$'
+	local args=()
+	plan_onbox args "$PROJECT" '' yes yes
+	array_contains '--rm' "${args[@]}"
 }
 
-@test "onbox interactive plan allocates a terminal" {
+@test "onbox plan omits --rm when the rm input is no" {
 	load_onbox_plan
-	run plan_onbox "$PROJECT" '' yes
-	[[ "$status" -eq 0 ]]
-	plan_line '^--interactive$'
-	plan_line '^--tty$'
-}
-
-@test "onbox noninteractive plan does not allocate a terminal" {
-	load_onbox_plan
-	run plan_onbox "$PROJECT" 'pwd' no
-	[[ "$status" -eq 0 ]]
-	if plan_line '^--interactive$|^-it$|^-i$|^--tty$|^-t$'; then
+	local args=()
+	plan_onbox args "$PROJECT" '' yes no
+	if array_contains '--rm' "${args[@]}"; then
 		return 1
 	fi
 }
 
-@test "onbox noninteractive plan appends the command" {
+@test "onbox interactive plan allocates a terminal" {
 	load_onbox_plan
-	run plan_onbox "$PROJECT" 'pwd' no
-	[[ "$status" -eq 0 ]]
-	[[ "$(last_line)" == 'pwd' ]]
+	local args=()
+	plan_onbox args "$PROJECT" '' yes yes
+	array_contains '--interactive' "${args[@]}"
+	array_contains '--tty' "${args[@]}"
+}
+
+@test "onbox noninteractive plan does not allocate a terminal" {
+	load_onbox_plan
+	local args=()
+	plan_onbox args "$PROJECT" 'pwd' no yes
+	if array_contains '--interactive' "${args[@]}" || array_contains '--tty' "${args[@]}"; then
+		return 1
+	fi
+}
+
+@test "onbox noninteractive plan appends the command as the last element" {
+	load_onbox_plan
+	local args=()
+	plan_onbox args "$PROJECT" 'pwd' no yes
+	[[ "${args[${#args[@]} - 1]}" == 'pwd' ]]
+}
+
+@test "onbox plan omits the global dotfiles bind-mount when defaults/dotfiles is absent" {
+	load_onbox_plan
+	TALKBOX_ROOT="$BATS_TEST_TMPDIR/talkbox-root-no-dotfiles"
+	mkdir -p "$TALKBOX_ROOT"
+	local args=()
+	plan_onbox args "$PROJECT" '' yes yes
+	array_has_none 'dotfiles.global' "${args[@]}"
 }

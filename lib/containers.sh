@@ -1,30 +1,35 @@
-#!/usr/bin/env bash
+# shellcheck shell=bash
 
 TALKBOX_ROOT="${TALKBOX_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 source "$TALKBOX_ROOT/lib/naming.sh"
 
 plan_onbox() {
-	local project="$1" command="$2" interactive="$3"
+	local -n _plan_out="$1"
+	local project="$2" command="$3" interactive="$4" rm="$5"
 	local base
 	base="$(project_base "$project")"
-	printf -- '--workdir=/working/%s\n' "$base"
-	printf '%s\n' '--userns=keep-id:uid=1000,gid=1000'
-	printf '%s\n' '--network=pasta'
-	printf '%s\n' '--cap-drop=NET_ADMIN'
-	printf '%s\n' '--cap-drop=NET_RAW'
-	printf -- '-v %s:/working/%s\n' "$project" "$base"
-	printf -- '-v %s/defaults/dotfiles:/talkbox/dotfiles.global:ro\n' "$TALKBOX_ROOT"
+	_plan_out+=("--workdir=/working/$base")
+	_plan_out+=("--userns=keep-id:uid=1000,gid=1000")
+	_plan_out+=("--network=pasta")
+	_plan_out+=("--cap-drop=NET_ADMIN")
+	_plan_out+=("--cap-drop=NET_RAW")
+	_plan_out+=("-v" "$project:/working/$base")
+	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
+		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
+	fi
 	if [[ -d "$project/.dotfiles" ]]; then
-		printf -- '-v %s/.dotfiles:/talkbox/dotfiles.project:ro\n' "$project"
+		_plan_out+=("-v" "$project/.dotfiles:/talkbox/dotfiles.project:ro")
 	fi
-	printf '%s\n' '--rm'
+	if [[ "$rm" == yes ]]; then
+		_plan_out+=("--rm")
+	fi
 	if [[ "$interactive" == yes ]]; then
-		printf '%s\n' '--interactive'
-		printf '%s\n' '--tty'
+		_plan_out+=("--interactive")
+		_plan_out+=("--tty")
 	fi
-	printf '%s\n' "$(base_image_name)"
+	_plan_out+=("$(base_image_name)")
 	if [[ -n "$command" ]]; then
-		printf '%s\n' "$command"
+		_plan_out+=("$command")
 	fi
 }
 
@@ -36,13 +41,7 @@ ensure_base_image() {
 
 run_onbox() {
 	local project="$1" command="$2" interactive="$3"
-	local args=() line
-	while IFS= read -r line; do
-		if [[ "$line" == -v\ * ]]; then
-			args+=("-v" "${line#-v }")
-		else
-			args+=("$line")
-		fi
-	done < <(plan_onbox "$project" "$command" "$interactive")
+	local args=()
+	plan_onbox args "$project" "$command" "$interactive" yes
 	podman run "${args[@]}"
 }

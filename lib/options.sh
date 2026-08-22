@@ -1,4 +1,7 @@
-#!/usr/bin/env bash
+# shellcheck shell=bash
+
+TALKBOX_ROOT="${TALKBOX_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+source "$TALKBOX_ROOT/lib/common.sh"
 
 # shellcheck disable=SC2034
 parse_onbox_options() {
@@ -14,8 +17,7 @@ parse_onbox_options() {
 			ONBOX_INTERACTIVE="no"
 			;;
 		-*)
-			printf 'talkbox: unknown option: %s\n' "$1" >&2
-			return 2
+			die "unknown option: $1" 2
 			;;
 		*)
 			ONBOX_COMMAND="$1"

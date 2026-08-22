@@ -3,6 +3,7 @@
 Core files implemented for the talkbox commands:
 
 - [talkbox.sh](talkbox.sh) - the dispatcher which routes `onbox` (via `talkbox.sh onbox` or an `onbox` symlink) to the onbox action and rejects the not-yet-implemented `netbox`/`offbox`.
+- [lib/common.sh](lib/common.sh) - shared utilities module providing the `die()` helper, which prints `talkbox: <message>` to stderr and exits with the given code.
 - [lib/naming.sh](lib/naming.sh) - pure helpers producing `<project-base>`, `<project-slug>` and the shared base image name.
 - [lib/options.sh](lib/options.sh) - argument parsing for `onbox` (`-c`/`--command`, `--interactive`, `--noninteractive`), recording the selected command and interactive mode.
 - [lib/containers.sh](lib/containers.sh) - base image build, the `plan_onbox` podman argument-list planner, and the `run_onbox` executor which actually runs `podman`.
