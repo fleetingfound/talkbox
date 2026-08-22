@@ -1,5 +1,12 @@
 target: test-e2e
-started: '2026-08-22T00:40:24Z'
-exit: 0
-totals: { total: 3, pass: 3, fail: 0, skip: 0 }
+started: '2026-08-22T01:25:43Z'
+exit: 1
+totals: { total: 10, pass: 3, fail: 7, skip: 0 }
 fail:
+ - 'test/e2e/onbox.bats :: onbox starts a container whose working directory is /working/<project-base>'
+ - 'test/e2e/onbox.bats :: files written inside the container appear on the host worktree'
+ - 'test/e2e/onbox.bats :: onbox container has internet access'
+ - 'test/e2e/onbox.bats :: global dotfiles are copied into /home/dev'
+ - 'test/e2e/onbox.bats :: project dotfiles override global dotfiles in /home/dev'
+ - 'test/e2e/onbox.bats :: onbox symlink invocation starts a working session'
+ - 'test/e2e/onbox.bats :: onbox starts an interactive shell that exits via exit'
