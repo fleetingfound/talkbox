@@ -10,8 +10,8 @@ Git mounts (gitdir volumes and `/host/git`) are deferred to Phase 4, where they 
 
 ### Implemented from SPEC.md
 
-- `netbox` container: root image = `podman commit` of `onbox` if it exists, else shared base image; worktree volume `<project-slug>.netbox.worktree` (populated from host working tree); write mounts as read-write volumes (copied from host source, named `<project-slug>.netbox.write.<dest-slug>`); read mounts as read-only bind-mounts; global + project dotfiles bind-mounted read-only as in onbox; never has host write access.
-- `offbox` container: root image = `podman commit` of `netbox` if it exists, else of `onbox`, else shared base image; worktree volume `<project-slug>.offbox.worktree` (copied from `netbox` worktree volume if it exists, else from host); write-mount volumes copied from the corresponding `netbox` write volume if it exists, else from host source (named `<project-slug>.offbox.write.<dest-slug>`); read mounts and dotfiles as in onbox.
+- `netbox` container: root image = `podman commit` of `onbox` if it exists (the persistent container model from Phase 2 ensures the `onbox` container survives after its shell exits), else shared base image; worktree volume `<project-slug>.netbox.worktree` (populated from host working tree); write mounts as read-write volumes (copied from host source, named `<project-slug>.netbox.write.<dest-slug>`); read mounts as read-only bind-mounts; global + project dotfiles bind-mounted read-only as in onbox; never has host write access.
+- `offbox` container: root image = `podman commit` of `netbox` if it exists (persistent per Phase 2/3), else of `onbox` (persistent per Phase 2), else shared base image; worktree volume `<project-slug>.offbox.worktree` (copied from `netbox` worktree volume if it exists, else from host); write-mount volumes copied from the corresponding `netbox` write volume if it exists, else from host source (named `<project-slug>.offbox.write.<dest-slug>`); read mounts and dotfiles as in onbox.
 - `<dest-slug>` derivation (`<dest>` converted to a hyphenated alphanumeric slug).
 - Root filesystem inheritance rules (onbox<-base, netbox<-onbox, offbox<-netbox<-onbox<-base).
 - `--fresh` prevents default inheritance of the root filesystem and read-write volumes.
@@ -33,7 +33,7 @@ Git mounts (gitdir volumes and `/host/git`) are deferred to Phase 4, where they 
 
 ## Files to create / modify
 
-- Modify `lib/naming.sh` - emit netbox/offbox volume and root-image names; `<dest-slug>` derivation.
+- Modify `lib/naming.sh` - emit netbox/offbox container names (`<project-slug>.netbox`, `<project-slug>.offbox`), volume and root-image names; `<dest-slug>` derivation.
 - Modify `lib/options.sh` - parse `--fresh` and `--inherit <source>`.
 - Modify `lib/mounts.sh` - support emitting volume-mount flags (not just bind-mounts) for write mounts under netbox/offbox, while read mounts remain read-only bind-mounts.
 - Modify `lib/containers.sh` - implement: root-image inheritance planner (`podman commit` source selection given existence state and `--fresh`/`--inherit`); the no-network helper-container volume populator (mounts host source read-only or a source volume, target volume read-write, `--network=none`, copies the tree); netbox/offbox create/start; lifecycle verbs for netbox/offbox (including root image recreation/removal).
@@ -47,7 +47,7 @@ Git mounts (gitdir volumes and `/host/git`) are deferred to Phase 4, where they 
 
 ## Key internal interfaces
 
-- `lib/naming.sh`: pure functions returning netbox/offbox volume names, root-image names, and `<dest-slug>` for a given dest path.
+- `lib/naming.sh`: pure functions returning netbox/offbox container names, volume names, root-image names, and `<dest-slug>` for a given dest path.
 - `lib/mounts.sh`: a mode parameter selects bind-mount (onbox) vs. volume-mount (netbox/offbox) emission for write mounts.
 - `lib/options.sh`: the inheritance selection is exposed alongside the other parsed flags.
 - `lib/containers.sh`:
@@ -57,5 +57,5 @@ Git mounts (gitdir volumes and `/host/git`) are deferred to Phase 4, where they 
 
 ## Tests
 
-- **Unit tests** (`test/unit/`): `<dest-slug>` derivation; inheritance planner for all combinations of existing containers and `--fresh`/`--inherit` (including base-image fallback when no source container exists); volume-population planner argument lists for host-source and volume-source cases (asserting `--network=none` and read-only host source mount); netbox/offbox `podman` argument-list assembly (volume mounts for writes, read-only bind-mounts for reads, correct pasta flags incl. offbox's `-i,lo,-I,talkbox0`); lifecycle plan assembly for netbox/offbox including root-image commit/removal.
+- **Unit tests** (`test/unit/`): netbox/offbox container name derivation; `<dest-slug>` derivation; inheritance planner for all combinations of existing containers and `--fresh`/`--inherit` (including base-image fallback when no source container exists); volume-population planner argument lists for host-source and volume-source cases (asserting `--network=none` and read-only host source mount); netbox/offbox `podman` argument-list assembly (volume mounts for writes, read-only bind-mounts for reads, correct pasta flags incl. offbox's `-i,lo,-I,talkbox0`); lifecycle plan assembly for netbox/offbox including root-image commit/removal.
 - **End-to-end tests** (`test/e2e/`): `netbox` container has internet, edits land in the worktree volume (not the host), and inherits `onbox` root when onbox exists; `offbox` container has no internet (a bounded network probe fails) and no host write; `offbox` created after `netbox` copies the netbox worktree/write volumes; `--fresh` ignores existing containers/volumes and copies from host; `--inherit` selects the specified source; `netbox --rm-container`/`--rm-image` remove the root image; `netbox --rebuild` commits onbox and recreates. Run under the existing `systemd-run`-wrapped runner.

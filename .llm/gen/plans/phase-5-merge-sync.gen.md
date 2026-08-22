@@ -26,13 +26,13 @@ Implements the remaining git-transport subcommands that move committed changes b
 
 - Modify `lib/git.sh` - implement `custom_merge()` (DESCENDANT_CHECK, current-branch Cases 1-3, other-branch fast-forward), the `merge` action (fetch from the gitdir volume then `custom_merge <container> <branch>`), and the `sync` action (run git inside the container's repository to fetch from the `host` remote then `custom_merge host <branch>`).
 - Modify `lib/options.sh` - parse the `merge`/`sync` subcommand verbs, their `--all` flag and optional `<branchname>`.
-- Modify `lib/containers.sh` - helper to run git inside a given container's git repository (via `podman exec` or a temporary container mounting the container's gitdir volume, with no network needed) for `sync`.
+- Modify `lib/containers.sh` - helper to run git inside a given container's git repository for `sync` (via `podman exec` if the persistent container is running, or a temporary no-network container mounting the container's gitdir volume otherwise).
 - Modify `talkbox.sh` - route `merge`/`sync` subcommands for each container.
 
 ## Files to read during implementation
 
 - `SPEC.md` (git as transport, `custom_merge()`, merge, sync).
-- `lib/git.sh` from Phase 4.
+- `lib/git.sh` from Phase 4; `lib/containers.sh` (persistent container model and exec helper from Phase 2).
 - `.llm/ref/podman.docs`.
 
 ## Key internal interfaces
@@ -40,7 +40,7 @@ Implements the remaining git-transport subcommands that move committed changes b
 - `lib/git.sh`:
   - `custom_merge <remote> <branchname>` - the merge logic, factored so its pure precondition checks (DESCENDANT_CHECK, clean-worktree detection, branch-existence, descendant-of) are individually unit-testable against a fixture git repository; only the final `git merge --ff-only` / `git reset --mixed` / `git branch -f` / warning emit execute `git`.
   - The `merge` action composes the Phase-4 `fetch` with `custom_merge <container> <branch>`.
-  - The `sync` action runs its git commands inside the container's repository (via `podman exec` or a temporary container mounting the container's gitdir volume, with no network needed) then applies `custom_merge host <branch>`.
+  - The `sync` action runs its git commands inside the container's repository (via `podman exec` if the persistent container is running, or a temporary no-network container mounting the container's gitdir volume otherwise) then applies `custom_merge host <branch>`.
 - `lib/options.sh`: the `merge`/`sync` verb, `--all` flag and `<branchname>` positional are exposed in the parsed record.
 
 ## Tests
