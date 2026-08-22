@@ -1,5 +1,6 @@
 target: test-unit
-started: '2026-08-22T07:44:01Z'
-exit: 0
-totals: { total: 29, pass: 29, fail: 0, skip: 0 }
+started: '2026-08-22T08:45:20Z'
+exit: 1
+totals: { total: 30, pass: 29, fail: 1, skip: 0 }
 fail:
+ - 'test/unit/containers.bats :: onbox plan omits the project dotfiles bind-mount when .dotfiles is absent'
