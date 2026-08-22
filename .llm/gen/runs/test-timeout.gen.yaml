@@ -1,5 +1,6 @@
 target: test-timeout
-started: '2026-08-22T00:40:28Z'
-exit: timeout
-totals: { total: 0, pass: 0, fail: 0, skip: 0 }
+started: '2026-08-22T07:58:48Z'
+exit: 1
+totals: { total: 1, pass: 0, fail: 1, skip: 0 }
 fail:
+ - 'test/timeout/hang.bats :: timeout canary: a non-terminating command is killed'
