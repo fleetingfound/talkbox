@@ -1,5 +1,14 @@
 target: test-e2e
-started: '2026-08-22T13:41:11Z'
-exit: 0
-totals: { total: 33, pass: 33, fail: 0, skip: 0 }
+started: '2026-08-23T17:03:06Z'
+exit: 1
+totals: { total: 42, pass: 33, fail: 9, skip: 0 }
 fail:
+ - 'test/e2e/git-transport.bats :: onbox exposes the host git history as the host remote inside the container'
+ - 'test/e2e/git-transport.bats :: onbox gitdir volume is a fresh git directory wired to the host remote, not a copy of the host git dir'
+ - 'test/e2e/git-transport.bats :: the onbox container working tree is connected to the host history via the initial fetch'
+ - 'test/e2e/git-transport.bats :: a commit made in the container is visible in the container gitdir volume'
+ - 'test/e2e/git-transport.bats :: onbox adds git mounts for a git-tracked project but not for a non-git folder'
+ - 'test/e2e/git-transport.bats :: onbox, netbox and offbox refuse when the project .git points outside the project'
+ - 'test/e2e/git-transport.bats :: git operations inside a submodule are blocked within the container'
+ - 'test/e2e/git-transport.bats :: onbox fetch brings a container commit into the host repo via a bundle without transferring configs or hooks'
+ - 'test/e2e/git-transport.bats :: onbox fetch --all fetches from the onbox, netbox and offbox git histories'

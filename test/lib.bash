@@ -26,9 +26,10 @@ parse_tap() {
 			desc="${desc% # *}"
 			pending="$desc"
 			;;
-		'# (in test file '*)
+		'# (in test file '* | '#  in test file '*)
 			if [[ -n "$pending" ]]; then
 				local src="${line#\# (in test file }"
+				src="${src#\#  in test file }"
 				src="${src%%, line *}"
 				src="${src#"$PROJECT_ROOT"/}"
 				FAIL_NAMES+=("$src :: $pending")

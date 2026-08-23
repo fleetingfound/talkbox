@@ -224,3 +224,29 @@ setup() {
 	plan_offbox_run args "$PROJECT" '' yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
 	[[ "$(plan_subcommands args)" == $'create\nstart' ]]
 }
+
+@test "netbox plan adds the git mounts and the populate leaves the gitdir volume empty" {
+	load_netbox_plan
+	mkdir -p "$PROJECT/.git"
+	local args=()
+	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_contains "$PROJECT/.git:/host/git:ro" "${args[@]}"
+	array_contains 'talkbox-proj.netbox.gitdir:/working/talkbox-proj/.git' "${args[@]}"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local srcs=() dsts=() plan=()
+	plan_netbox_populate plan "$PROJECT" srcs dsts
+	array_has_none 'talkbox-proj.netbox.gitdir' "${plan[@]}"
+}
+
+@test "offbox plan adds the git mounts and the populate leaves the gitdir volume empty" {
+	load_netbox_plan
+	mkdir -p "$PROJECT/.git"
+	local args=()
+	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_contains "$PROJECT/.git:/host/git:ro" "${args[@]}"
+	array_contains 'talkbox-proj.offbox.gitdir:/working/talkbox-proj/.git' "${args[@]}"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local srcs=() dsts=() plan=()
+	plan_offbox_populate plan "$PROJECT" base srcs dsts
+	array_has_none 'talkbox-proj.offbox.gitdir' "${plan[@]}"
+}

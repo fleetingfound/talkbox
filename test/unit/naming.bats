@@ -98,3 +98,14 @@ load helpers
 	load_lib naming.sh
 	[[ "$(offbox_root_image '/tmp/My Project')" == 'my-project.offbox.root' ]]
 }
+
+@test "gitdir_volume names the onbox gitdir volume" {
+	load_lib naming.sh
+	[[ "$(gitdir_volume '/tmp/My Project' onbox)" == 'my-project.onbox.gitdir' ]]
+}
+
+@test "gitdir_volume names the netbox and offbox gitdir volumes" {
+	load_lib naming.sh
+	[[ "$(gitdir_volume '/tmp/example-project' netbox)" == 'example-project.netbox.gitdir' ]]
+	[[ "$(gitdir_volume '/tmp/example-project' offbox)" == 'example-project.offbox.gitdir' ]]
+}

@@ -1,5 +1,27 @@
 target: test-unit
-started: '2026-08-22T13:40:45Z'
-exit: 0
-totals: { total: 117, pass: 117, fail: 0, skip: 0 }
+started: '2026-08-23T16:55:28Z'
+exit: 1
+totals: { total: 139, pass: 117, fail: 22, skip: 0 }
 fail:
+ - 'test/unit/containers.bats :: onbox plan adds the git mounts for a git-tracked project and omits them for a non-git project'
+ - 'test/unit/git.bats :: git_tracked succeeds for a project with a .git directory'
+ - 'test/unit/git.bats :: git_tracked succeeds for a project whose .git is a gitdir file'
+ - 'test/unit/git.bats :: git_tracked fails for a project without .git'
+ - 'test/unit/git.bats :: resolve_git_dir prints the project .git directory for a plain repository'
+ - 'test/unit/git.bats :: resolve_git_dir follows an absolute gitdir file to a path outside the project'
+ - 'test/unit/git.bats :: resolve_git_dir follows a relative gitdir file from the project directory'
+ - 'test/unit/git.bats :: classify_git_dir prints inside for a project with an internal .git directory'
+ - 'test/unit/git.bats :: classify_git_dir prints outside when the gitdir file points outside the project'
+ - 'test/unit/git.bats :: classify_git_dir treats a sibling gitdir outside the project as outside'
+ - 'test/unit/git.bats :: classify_git_dir prints none for a non-git project'
+ - 'test/unit/git.bats :: list_submodule_git_dirs lists the submodule git dirs under the top-level git dir'
+ - 'test/unit/git.bats :: list_submodule_git_dirs yields nothing when the git dir has no submodules'
+ - 'test/unit/git.bats :: plan_fetch builds a no-network gitdir bundle command against the container gitdir volume'
+ - 'test/unit/git.bats :: plan_fetch fetches the bundle into the host repo under refs/remotes/<container>'
+ - 'test/unit/naming.bats :: gitdir_volume names the onbox gitdir volume'
+ - 'test/unit/naming.bats :: gitdir_volume names the netbox and offbox gitdir volumes'
+ - 'test/unit/netbox-offbox.bats :: netbox plan adds the git mounts and the populate leaves the gitdir volume empty'
+ - 'test/unit/netbox-offbox.bats :: offbox plan adds the git mounts and the populate leaves the gitdir volume empty'
+ - 'test/unit/options.bats :: onbox fetch is parsed as the fetch verb while -c fetch remains a command'
+ - 'test/unit/options.bats :: onbox fetch --all sets the fetch verb and the --all flag'
+ - 'test/unit/options.bats :: the --all flag defaults to no'

@@ -1,3 +1,4 @@
+# shellcheck disable=SC2030,SC2031 # bats runs setup/test/teardown in one subshell; cross-test record reads are intentional
 load helpers
 
 setup() {
@@ -9,6 +10,7 @@ setup() {
 	ONBOX_PORT=()
 	ONBOX_FRESH=""
 	ONBOX_INHERIT=""
+	ONBOX_ALL=""
 }
 
 @test "onbox defaults to an interactive shell with no command" {
@@ -138,4 +140,27 @@ setup() {
 	[[ "$ONBOX_FRESH" == yes ]]
 	[[ "$ONBOX_INHERIT" == onbox ]]
 	[[ "$ONBOX_COMMAND" == 'pwd' ]]
+}
+
+@test "onbox fetch is parsed as the fetch verb while -c fetch remains a command" {
+	load_lib options.sh
+	parse_onbox_options fetch
+	[[ "$ONBOX_VERB" == fetch ]]
+	[[ -z "$ONBOX_COMMAND" ]]
+	parse_onbox_options -c fetch
+	[[ "$ONBOX_COMMAND" == fetch ]]
+	[[ -z "$ONBOX_VERB" ]]
+}
+
+@test "onbox fetch --all sets the fetch verb and the --all flag" {
+	load_lib options.sh
+	parse_onbox_options fetch --all
+	[[ "$ONBOX_VERB" == fetch ]]
+	[[ "$ONBOX_ALL" == yes ]]
+}
+
+@test "the --all flag defaults to no" {
+	load_lib options.sh
+	parse_onbox_options
+	[[ "$ONBOX_ALL" == no ]]
 }

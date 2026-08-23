@@ -192,3 +192,19 @@ setup() {
 	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
 	array_has_none 'dotfiles.global' "${args[@]}"
 }
+
+@test "onbox plan adds the git mounts for a git-tracked project and omits them for a non-git project" {
+	load_onbox_plan
+	mkdir -p "$PROJECT/.git"
+	local args=()
+	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_contains "$PROJECT/.git:/host/git:ro" "${args[@]}"
+	array_contains 'talkbox-proj.onbox.gitdir:/working/talkbox-proj/.git' "${args[@]}"
+	local plain
+	plain="$BATS_TEST_TMPDIR/plain"
+	mkdir -p "$plain"
+	args=()
+	plan_onbox args "$plain" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_has_none '/host/git' "${args[@]}"
+	array_has_none '.gitdir' "${args[@]}"
+}
