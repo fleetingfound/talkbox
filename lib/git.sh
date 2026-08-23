@@ -4,6 +4,7 @@
 TALKBOX_ROOT="${TALKBOX_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 source "$TALKBOX_ROOT/lib/common.sh"
 source "$TALKBOX_ROOT/lib/naming.sh"
+source "$TALKBOX_ROOT/lib/merge.sh"
 
 git_tracked() {
 	local project="$1"
@@ -152,4 +153,85 @@ run_fetch() {
 	done
 	rm -rf "$tmp"
 	return "$rc"
+}
+
+remote_branches() {
+	local remote="$1"
+	git for-each-ref --format='%(refname:strip=3)' "refs/remotes/$remote/"
+}
+
+host_branches() {
+	git for-each-ref --format='%(refname:strip=2)' refs/heads/
+}
+
+current_branch() {
+	git symbolic-ref --short HEAD
+}
+
+resolve_branches() {
+	local -n _out="$1"
+	local all="$2" branch="$3" remote="${4:-}"
+	local -a listed=()
+	if [[ "$all" == yes ]]; then
+		if [[ -n "$remote" ]]; then
+			mapfile -t listed < <(remote_branches "$remote")
+		else
+			mapfile -t listed < <(host_branches)
+		fi
+		_out=("${listed[@]}")
+	else
+		if [[ -z "$branch" ]]; then
+			branch="$(current_branch)"
+		fi
+		_out=("$branch")
+	fi
+}
+
+require_git_history() {
+	local project="$1" container="$2"
+	if ! git_tracked "$project"; then
+		die "not a git repository: $project" 1
+	fi
+	if ! podman volume exists "$(gitdir_volume "$project" "$container")" >/dev/null 2>&1; then
+		die "no git history for $container; create the container first" 1
+	fi
+}
+
+run_merge() {
+	local project="$1" container="$2" all="$3" branch="$4"
+	require_git_history "$project" "$container"
+	local tmp bundle
+	tmp="$(mktemp -d "${TMPDIR:-/tmp}/talkbox-merge.XXXXXX")"
+	bundle="$tmp/$container.bundle"
+	local -a plan=()
+	plan_fetch plan "$project" "$container" "$bundle"
+	if ! execute_fetch_plan "${plan[@]}"; then
+		rm -rf "$tmp"
+		return 1
+	fi
+	rm -rf "$tmp"
+	local -a branches=() b rc=0
+	resolve_branches branches "$all" "$branch" "$container"
+	for b in "${branches[@]}"; do
+		custom_merge "$container" "$b" || rc=1
+	done
+	return "$rc"
+}
+
+# shellcheck disable=SC2016 # $@ and $b expand inside the container at run time
+sync_script() {
+	printf 'source /talkbox/lib/merge.sh\n'
+	printf 'git fetch host || exit 1\n'
+	printf 'for b in "$@"; do custom_merge host "$b" || exit 1; done\n'
+}
+
+run_sync() {
+	local project="$1" container="$2" all="$3" branch="$4"
+	require_git_history "$project" "$container"
+	local -a branches=()
+	resolve_branches branches "$all" "$branch"
+	if ((${#branches[@]} == 0)); then
+		return 0
+	fi
+	run_sync_in_container "$project" "$container" "$(sync_script)" "${branches[@]}"
 }

@@ -9,6 +9,7 @@ parse_onbox_options() {
 	ONBOX_INTERACTIVE="yes"
 	ONBOX_VERB=""
 	ONBOX_ALL="no"
+	ONBOX_BRANCH=""
 	ONBOX_READ=()
 	ONBOX_WRITE=()
 	ONBOX_PORT=()
@@ -48,11 +49,11 @@ parse_onbox_options() {
 		--all)
 			ONBOX_ALL="yes"
 			;;
-		fetch)
+		fetch | merge | sync)
 			if [[ "$after_command" == yes ]]; then
 				ONBOX_COMMAND="$1"
 			else
-				ONBOX_VERB="fetch"
+				ONBOX_VERB="$1"
 			fi
 			;;
 		--recontain)
@@ -71,7 +72,13 @@ parse_onbox_options() {
 			die "unknown option: $1" 2
 			;;
 		*)
-			ONBOX_COMMAND="$1"
+			if [[ "$after_command" == yes ]]; then
+				ONBOX_COMMAND="$1"
+			elif [[ "$ONBOX_VERB" == merge || "$ONBOX_VERB" == sync ]]; then
+				ONBOX_BRANCH="$1"
+			else
+				ONBOX_COMMAND="$1"
+			fi
 			;;
 		esac
 		shift

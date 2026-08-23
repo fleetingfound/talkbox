@@ -36,6 +36,7 @@ plan_onbox() {
 	if git_mounts_enabled "$project"; then
 		_plan_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
 		_plan_out+=("-v" "$(gitdir_volume "$project" onbox):/working/$base/.git")
+		_plan_out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro")
 	fi
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
@@ -120,6 +121,11 @@ ensure_base_image() {
 container_exists() {
 	local ctr="$1"
 	podman container exists "$ctr" 2>/dev/null
+}
+
+container_running() {
+	local ctr="$1"
+	[[ "$(podman inspect -f '{{.State.Running}}' "$ctr" 2>/dev/null)" == true ]]
 }
 
 image_in_use() {
@@ -292,6 +298,7 @@ plan_netbox() {
 	if git_mounts_enabled "$project"; then
 		_plan_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
 		_plan_out+=("-v" "$(gitdir_volume "$project" netbox):/working/$base/.git")
+		_plan_out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro")
 	fi
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
@@ -334,6 +341,7 @@ plan_offbox() {
 	if git_mounts_enabled "$project"; then
 		_plan_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
 		_plan_out+=("-v" "$(gitdir_volume "$project" offbox):/working/$base/.git")
+		_plan_out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro")
 	fi
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
@@ -730,4 +738,38 @@ run_offbox_rm_image() {
 	local -a plan=()
 	plan_offbox_rm_image plan "$project" no
 	execute_plan "${plan[@]}"
+}
+
+container_sync_cmd() {
+	local -n _cmd_out="$1"
+	local project="$2" container="$3" script="$4"
+	shift 4
+	local -a branches=("$@")
+	local ctr base
+	ctr="$(container_name_of "$container" "$project")"
+	base="$(project_base "$project")"
+	if container_running "$ctr"; then
+		_cmd_out+=("podman" "exec" "--workdir=/working/$base" "$ctr" "bash" "-c" "$script" "_")
+		_cmd_out+=("${branches[@]}")
+	else
+		_cmd_out+=("podman" "run" "--rm" "--network=none" "--userns=keep-id:uid=1000,gid=1000" "--workdir=/working/$base" "--entrypoint=/bin/bash")
+		_cmd_out+=("-v" "$(gitdir_volume "$project" "$container"):/working/$base/.git")
+		case "$container" in
+		onbox) _cmd_out+=("-v" "$project:/working/$base") ;;
+		netbox) _cmd_out+=("-v" "$(netbox_worktree_volume "$project"):/working/$base") ;;
+		offbox) _cmd_out+=("-v" "$(offbox_worktree_volume "$project"):/working/$base") ;;
+		esac
+		_cmd_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
+		_cmd_out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro")
+		_cmd_out+=("$(base_image_name)" "-c" "$script" "_")
+		_cmd_out+=("${branches[@]}")
+	fi
+}
+
+run_sync_in_container() {
+	local project="$1" container="$2" script="$3"
+	shift 3
+	local -a cmd=()
+	container_sync_cmd cmd "$project" "$container" "$script" "$@"
+	"${cmd[@]}"
 }

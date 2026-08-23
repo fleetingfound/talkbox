@@ -23,6 +23,12 @@ onbox_action() {
 	fetch)
 		run_fetch "$(pwd)" onbox "$ONBOX_ALL"
 		;;
+	merge)
+		run_merge "$(pwd)" onbox "$ONBOX_ALL" "$ONBOX_BRANCH"
+		;;
+	sync)
+		run_sync "$(pwd)" onbox "$ONBOX_ALL" "$ONBOX_BRANCH"
+		;;
 	recontain)
 		prepare_git_host "$(pwd)"
 		ensure_base_image
@@ -59,6 +65,12 @@ sandbox_action() {
 	case "$ONBOX_VERB" in
 	fetch)
 		run_fetch "$(pwd)" "$container" "$ONBOX_ALL"
+		;;
+	merge)
+		run_merge "$(pwd)" "$container" "$ONBOX_ALL" "$ONBOX_BRANCH"
+		;;
+	sync)
+		run_sync "$(pwd)" "$container" "$ONBOX_ALL" "$ONBOX_BRANCH"
 		;;
 	recontain)
 		prepare_git_host "$(pwd)"

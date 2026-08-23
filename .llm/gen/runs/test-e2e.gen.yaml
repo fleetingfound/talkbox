@@ -1,11 +1,5 @@
 target: test-e2e
-started: '2026-08-23T23:03:19Z'
-exit: 1
-totals: { total: 48, pass: 42, fail: 6, skip: 0 }
+started: '2026-08-23T23:48:25Z'
+exit: 0
+totals: { total: 48, pass: 48, fail: 0, skip: 0 }
 fail:
- - 'test/e2e/merge-sync.bats :: onbox fetch then onbox merge brings a container commit into the host worktree'
- - 'test/e2e/merge-sync.bats :: onbox merge <branchname> merges the named branch without switching'
- - 'test/e2e/merge-sync.bats :: onbox merge --all applies custom_merge across all onbox branches'
- - 'test/e2e/merge-sync.bats :: onbox merge leaves a dirty host worktree untouched and warns'
- - 'test/e2e/merge-sync.bats :: onbox merge refuses a non-descendant with a warning and leaves HEAD unchanged'
- - 'test/e2e/merge-sync.bats :: onbox sync brings a host commit into the onbox gitdir volume'
