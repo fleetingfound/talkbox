@@ -11,6 +11,7 @@ setup() {
 	ONBOX_FRESH=""
 	ONBOX_INHERIT=""
 	ONBOX_ALL=""
+	ONBOX_BRANCH=""
 }
 
 @test "onbox defaults to an interactive shell with no command" {
@@ -163,4 +164,49 @@ setup() {
 	load_lib options.sh
 	parse_onbox_options
 	[[ "$ONBOX_ALL" == no ]]
+}
+
+@test "onbox merge is parsed as the merge verb while -c merge remains a command" {
+	load_lib options.sh
+	parse_onbox_options merge
+	[[ "$ONBOX_VERB" == merge ]]
+	[[ -z "$ONBOX_COMMAND" ]]
+	parse_onbox_options -c merge
+	[[ "$ONBOX_COMMAND" == merge ]]
+	[[ -z "$ONBOX_VERB" ]]
+}
+
+@test "onbox merge <branchname> records the merge verb and the branch positional" {
+	load_lib options.sh
+	parse_onbox_options merge mybranch
+	[[ "$ONBOX_VERB" == merge ]]
+	[[ "$ONBOX_BRANCH" == mybranch ]]
+	[[ -z "$ONBOX_COMMAND" ]]
+}
+
+@test "onbox merge --all sets the merge verb and the --all flag" {
+	load_lib options.sh
+	parse_onbox_options merge --all
+	[[ "$ONBOX_VERB" == merge ]]
+	[[ "$ONBOX_ALL" == yes ]]
+	[[ -z "$ONBOX_COMMAND" ]]
+}
+
+@test "onbox sync is parsed as the sync verb while -c sync remains a command" {
+	load_lib options.sh
+	parse_onbox_options sync
+	[[ "$ONBOX_VERB" == sync ]]
+	[[ -z "$ONBOX_COMMAND" ]]
+	parse_onbox_options -c sync
+	[[ "$ONBOX_COMMAND" == sync ]]
+	[[ -z "$ONBOX_VERB" ]]
+}
+
+@test "onbox sync <branchname> --all records the sync verb, branch and --all flag" {
+	load_lib options.sh
+	parse_onbox_options sync mybranch --all
+	[[ "$ONBOX_VERB" == sync ]]
+	[[ "$ONBOX_BRANCH" == mybranch ]]
+	[[ "$ONBOX_ALL" == yes ]]
+	[[ -z "$ONBOX_COMMAND" ]]
 }

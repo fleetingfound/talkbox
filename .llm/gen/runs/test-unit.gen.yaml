@@ -1,5 +1,17 @@
 target: test-unit
-started: '2026-08-23T22:09:20Z'
-exit: 0
-totals: { total: 137, pass: 137, fail: 0, skip: 0 }
+started: '2026-08-23T23:02:43Z'
+exit: 1
+totals: { total: 149, pass: 137, fail: 12, skip: 0 }
 fail:
+ - 'test/unit/merge.bats :: custom_merge fast-forwards a clean current branch (Case 1)'
+ - 'test/unit/merge.bats :: custom_merge updates the branch when the worktree already matches the remote (Case 2)'
+ - 'test/unit/merge.bats :: custom_merge leaves a dirty worktree untouched and warns (Case 3)'
+ - 'test/unit/merge.bats :: custom_merge warns and makes no change when the remote branch is not a descendant'
+ - 'test/unit/merge.bats :: custom_merge warns and makes no change when the remote-tracking branch is absent'
+ - 'test/unit/merge.bats :: custom_merge creates a new branch without switching when the branch does not exist'
+ - 'test/unit/merge.bats :: custom_merge advances an existing non-current branch without switching'
+ - 'test/unit/options.bats :: onbox merge is parsed as the merge verb while -c merge remains a command'
+ - 'test/unit/options.bats :: onbox merge <branchname> records the merge verb and the branch positional'
+ - 'test/unit/options.bats :: onbox merge --all sets the merge verb and the --all flag'
+ - 'test/unit/options.bats :: onbox sync is parsed as the sync verb while -c sync remains a command'
+ - 'test/unit/options.bats :: onbox sync <branchname> --all records the sync verb, branch and --all flag'

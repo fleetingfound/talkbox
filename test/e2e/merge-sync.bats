@@ -1,0 +1,132 @@
+# shellcheck disable=SC2030,SC2031 # bats runs setup/test/teardown in one subshell; EXTRA_DIRS is read back in teardown
+load helpers
+
+setup() {
+	PROJECT="$(mk_project)"
+	TALKBOX="$(mk_talkbox)"
+	PROJECT_SLUG="$(project_slug_e2e "$PROJECT")"
+	ONBOX_CTR="$PROJECT_SLUG.onbox"
+	NETBOX_CTR="$PROJECT_SLUG.netbox"
+	OFFBOX_CTR="$PROJECT_SLUG.offbox"
+	PLAIN_CTR=""
+	EXTRA_DIRS=()
+	BRANCH="$(git -C "$PROJECT" symbolic-ref --short HEAD)"
+	GITDIR_VOL="$PROJECT_SLUG.onbox.gitdir"
+	printf 'tracked\n' >"$PROJECT/file.txt"
+	git -C "$PROJECT" add file.txt
+	git -C "$PROJECT" commit -q -m host-initial
+}
+
+teardown() {
+	sdrun podman rm -f -v "$ONBOX_CTR" "$NETBOX_CTR" "$OFFBOX_CTR" >/dev/null 2>&1 || true
+	if [[ -n "$PLAIN_CTR" ]]; then
+		sdrun podman rm -f -v "$PLAIN_CTR" >/dev/null 2>&1 || true
+	fi
+	sdrun podman rmi "$PROJECT_SLUG.netbox.root" "$PROJECT_SLUG.offbox.root" >/dev/null 2>&1 || true
+	local v
+	for v in $(sdrun podman volume ls -q --filter "name=$PROJECT_SLUG" 2>/dev/null); do
+		sdrun podman volume rm -f "$v" >/dev/null 2>&1 || true
+	done
+	rm -rf "$PROJECT" "$TALKBOX" "${EXTRA_DIRS[@]}"
+}
+
+volume_mountpoint() {
+	sdrun podman volume inspect --format '{{.Mountpoint}}' "$1" 2>/dev/null || true
+}
+
+container_commit() {
+	local message="$1"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git config user.email c@example.com && git config user.name container && git commit --allow-empty -m '"$message"
+	[[ "$status" -eq 0 ]]
+}
+
+@test "onbox fetch then onbox merge brings a container commit into the host worktree" {
+	container_commit container-merge-commit
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox fetch
+	[[ "$status" -eq 0 ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox merge
+	[[ "$status" -eq 0 ]]
+	run git -C "$PROJECT" log --oneline -1
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'container-merge-commit'* ]]
+}
+
+@test "onbox merge <branchname> merges the named branch without switching" {
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git config user.email c@example.com && git config user.name container && git checkout -q -b feature && git commit --allow-empty -m feature-commit'
+	[[ "$status" -eq 0 ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox fetch
+	[[ "$status" -eq 0 ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox merge feature
+	[[ "$status" -eq 0 ]]
+	run git -C "$PROJECT" log --oneline feature
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'feature-commit'* ]]
+	run git -C "$PROJECT" symbolic-ref --short HEAD
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == "$BRANCH" ]]
+}
+
+@test "onbox merge --all applies custom_merge across all onbox branches" {
+	container_commit branch-a-commit
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git config user.email c@example.com && git config user.name container && git checkout -q -b feature && git commit --allow-empty -m branch-b-commit'
+	[[ "$status" -eq 0 ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox fetch
+	[[ "$status" -eq 0 ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox merge --all
+	[[ "$status" -eq 0 ]]
+	run git -C "$PROJECT" log --oneline "$BRANCH"
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'branch-a-commit'* ]]
+	run git -C "$PROJECT" log --oneline feature
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'branch-b-commit'* ]]
+}
+
+@test "onbox merge leaves a dirty host worktree untouched and warns" {
+	container_commit container-dirty-commit
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox fetch
+	[[ "$status" -eq 0 ]]
+	printf 'dirty\n' >"$PROJECT/file.txt"
+	local host_head
+	host_head="$(git -C "$PROJECT" rev-parse HEAD)"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox merge
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$(git -C "$PROJECT" rev-parse HEAD)" == "$host_head" ]]
+	[[ "$(cat "$PROJECT/file.txt")" == 'dirty' ]]
+}
+
+@test "onbox merge refuses a non-descendant with a warning and leaves HEAD unchanged" {
+	container_commit container-side-commit
+	printf 'host-side\n' >"$PROJECT/host-side.txt"
+	git -C "$PROJECT" add host-side.txt
+	git -C "$PROJECT" commit -q -m host-side-commit
+	local host_head
+	host_head="$(git -C "$PROJECT" rev-parse HEAD)"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox fetch
+	[[ "$status" -eq 0 ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox merge
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$(git -C "$PROJECT" rev-parse HEAD)" == "$host_head" ]]
+	[[ -z "$(git -C "$PROJECT" status --porcelain)" ]]
+}
+
+@test "onbox sync brings a host commit into the onbox gitdir volume" {
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'true'
+	[[ "$status" -eq 0 ]]
+	printf 'host-work\n' >"$PROJECT/hostfile.txt"
+	git -C "$PROJECT" add hostfile.txt
+	git -C "$PROJECT" commit -q -m host-commit-sync
+	local host_head
+	host_head="$(git -C "$PROJECT" rev-parse HEAD)"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox sync
+	[[ "$status" -eq 0 ]]
+	local mp
+	mp="$(volume_mountpoint "$GITDIR_VOL")"
+	[[ -n "$mp" ]]
+	local vol_head
+	vol_head="$(cat "$mp/refs/heads/$BRANCH")"
+	[[ "$host_head" == "$vol_head" ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git log --oneline'
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'host-commit-sync'* ]]
+}
