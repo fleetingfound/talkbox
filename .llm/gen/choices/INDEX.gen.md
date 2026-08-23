@@ -7,6 +7,10 @@
 - [x] [Test Modularization](test-modularization.gen.md) - split of unit vs end-to-end test coverage.
 - [x] [Planner-vs-executor project-dotfiles existence handling](planner-dotfiles-existence.gen.md) - whether the project-dotfiles existence check lives in the planner or the executor.
 
+## Planner/executor divergence resolution
+
+- [x] [Planner/executor resolution strategy](planner-executor-resolution.gen.md) - whether to wire the executors to their `plan_*` counterparts, extend the plan model for the conditional run path, or delete the unused plan functions.
+
 ## Scaffold refactor choices (Phase 1c)
 
 - [x] [Scaffold refactor scope](scaffold-refactor-scope.gen.md) - which of the review's recommendations to address in the scaffold-refactor phase before Phase 2.
