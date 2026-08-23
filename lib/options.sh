@@ -8,14 +8,18 @@ parse_onbox_options() {
 	ONBOX_COMMAND=""
 	ONBOX_INTERACTIVE="yes"
 	ONBOX_VERB=""
+	ONBOX_ALL="no"
 	ONBOX_READ=()
 	ONBOX_WRITE=()
 	ONBOX_PORT=()
 	ONBOX_FRESH="no"
 	ONBOX_INHERIT=""
+	local after_command=no
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
-		-c | --command) ;;
+		-c | --command)
+			after_command=yes
+			;;
 		--interactive)
 			ONBOX_INTERACTIVE="yes"
 			;;
@@ -40,6 +44,16 @@ parse_onbox_options() {
 		--inherit)
 			shift
 			ONBOX_INHERIT="$1"
+			;;
+		--all)
+			ONBOX_ALL="yes"
+			;;
+		fetch)
+			if [[ "$after_command" == yes ]]; then
+				ONBOX_COMMAND="$1"
+			else
+				ONBOX_VERB="fetch"
+			fi
 			;;
 		--recontain)
 			ONBOX_VERB="recontain"

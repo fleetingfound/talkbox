@@ -9,6 +9,7 @@ source "$TALKBOX_ROOT/lib/naming.sh"
 source "$TALKBOX_ROOT/lib/options.sh"
 source "$TALKBOX_ROOT/lib/mounts.sh"
 source "$TALKBOX_ROOT/lib/ports.sh"
+source "$TALKBOX_ROOT/lib/git.sh"
 source "$TALKBOX_ROOT/lib/containers.sh"
 
 onbox_action() {
@@ -19,11 +20,16 @@ onbox_action() {
 	mount_args write_mounts write "$TALKBOX_ROOT/defaults/write.mounts" "$(pwd)" "$HOME" "${ONBOX_WRITE[@]}"
 	port_args ports "$TALKBOX_ROOT/defaults/ports" "${ONBOX_PORT[@]}"
 	case "$ONBOX_VERB" in
+	fetch)
+		run_fetch "$(pwd)" onbox "$ONBOX_ALL"
+		;;
 	recontain)
+		prepare_git_host "$(pwd)"
 		ensure_base_image
 		run_recontain "$(pwd)" "$ONBOX_INTERACTIVE" read_mounts write_mounts ports
 		;;
 	rebuild)
+		prepare_git_host "$(pwd)"
 		run_rebuild "$(pwd)" "$ONBOX_INTERACTIVE" read_mounts write_mounts ports
 		;;
 	rm-container)
@@ -33,6 +39,7 @@ onbox_action() {
 		run_rm_image "$(pwd)"
 		;;
 	*)
+		prepare_git_host "$(pwd)"
 		ensure_base_image
 		run_onbox "$(pwd)" "$ONBOX_COMMAND" "$ONBOX_INTERACTIVE" read_mounts write_mounts ports
 		;;
@@ -50,10 +57,15 @@ sandbox_action() {
 	mount_volume_args write_mounts "$container" "$TALKBOX_ROOT/defaults/write.mounts" "$(pwd)" "$HOME" "${ONBOX_WRITE[@]}"
 	port_args ports "$TALKBOX_ROOT/defaults/ports" "${ONBOX_PORT[@]}"
 	case "$ONBOX_VERB" in
+	fetch)
+		run_fetch "$(pwd)" "$container" "$ONBOX_ALL"
+		;;
 	recontain)
+		prepare_git_host "$(pwd)"
 		"run_${container}_recontain" "$(pwd)" "$ONBOX_INTERACTIVE" read_mounts write_mounts write_srcs write_dsts ports
 		;;
 	rebuild)
+		prepare_git_host "$(pwd)"
 		"run_${container}_rebuild" "$(pwd)" "$ONBOX_INTERACTIVE" read_mounts write_mounts write_srcs write_dsts ports
 		;;
 	rm-container)
@@ -63,6 +75,7 @@ sandbox_action() {
 		"run_${container}_rm_image" "$(pwd)"
 		;;
 	*)
+		prepare_git_host "$(pwd)"
 		"run_${container}" "$(pwd)" "$ONBOX_COMMAND" "$ONBOX_INTERACTIVE" read_mounts write_mounts write_srcs write_dsts ports
 		;;
 	esac

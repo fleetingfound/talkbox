@@ -73,3 +73,7 @@ netbox_root_image() {
 offbox_root_image() {
 	printf '%s\n' "$(project_slug "$1").offbox.root"
 }
+
+gitdir_volume() {
+	printf '%s\n' "$(project_slug "$1").$2.gitdir"
+}

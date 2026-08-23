@@ -4,6 +4,16 @@
 TALKBOX_ROOT="${TALKBOX_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 source "$TALKBOX_ROOT/lib/common.sh"
 source "$TALKBOX_ROOT/lib/naming.sh"
+source "$TALKBOX_ROOT/lib/git.sh"
+
+plan_gitdir_volume() {
+	local -n _plan_out="$1"
+	local project="$2" container="$3" vol
+	vol="$(gitdir_volume "$project" "$container")"
+	if git_mounts_enabled "$project" && ! volume_exists "$vol"; then
+		_plan_out+=("podman" "volume" "create" "$vol")
+	fi
+}
 
 plan_onbox() {
 	local -n _plan_out="$1"
@@ -23,6 +33,10 @@ plan_onbox() {
 	_plan_out+=("--cap-drop=NET_ADMIN")
 	_plan_out+=("--cap-drop=NET_RAW")
 	_plan_out+=("-v" "$project:/working/$base")
+	if git_mounts_enabled "$project"; then
+		_plan_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
+		_plan_out+=("-v" "$(gitdir_volume "$project" onbox):/working/$base/.git")
+	fi
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
 	fi
@@ -46,6 +60,7 @@ plan_onbox_run() {
 	local -n _read="$5" _write="$6" _ports="$7"
 	local -a create_args=()
 	plan_onbox create_args "$project" "$interactive" "$5" "$6" "$7"
+	plan_gitdir_volume _plan_out "$project" onbox
 	_plan_out+=("podman" "create")
 	_plan_out+=("${create_args[@]}")
 	_plan_out+=("podman" "start" "$(onbox_container_name "$project")")
@@ -66,6 +81,7 @@ plan_recontain() {
 	local -a create_args=()
 	plan_onbox create_args "$project" "$interactive" "$4" "$5" "$6"
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$(onbox_container_name "$project")")
+	plan_gitdir_volume _plan_out "$project" onbox
 	_plan_out+=("podman" "create")
 	_plan_out+=("${create_args[@]}")
 	_plan_out+=("podman" "start" "$(onbox_container_name "$project")")
@@ -79,6 +95,7 @@ plan_rebuild() {
 	plan_onbox create_args "$project" "$interactive" "$4" "$5" "$6"
 	_plan_out+=("podman" "build" "-t" "$(base_image_name)" "-f" "$TALKBOX_ROOT/image/Containerfile" "$TALKBOX_ROOT/image")
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$(onbox_container_name "$project")")
+	plan_gitdir_volume _plan_out "$project" onbox
 	_plan_out+=("podman" "create")
 	_plan_out+=("${create_args[@]}")
 	_plan_out+=("podman" "start" "$(onbox_container_name "$project")")
@@ -144,6 +161,9 @@ run_onbox() {
 	local ctr
 	ctr="$(onbox_container_name "$project")"
 	if ! container_exists "$ctr"; then
+		if git_mounts_enabled "$project"; then
+			volume_exists "$(gitdir_volume "$project" onbox)" || podman volume create "$(gitdir_volume "$project" onbox)" >/dev/null
+		fi
 		local -a create_args=()
 		plan_onbox create_args "$project" "$interactive" "$1" "$2" "$3"
 		podman create "${create_args[@]}"
@@ -289,6 +309,10 @@ plan_netbox() {
 	_plan_out+=("--cap-drop=NET_ADMIN")
 	_plan_out+=("--cap-drop=NET_RAW")
 	_plan_out+=("-v" "$(netbox_worktree_volume "$project"):/working/$base")
+	if git_mounts_enabled "$project"; then
+		_plan_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
+		_plan_out+=("-v" "$(gitdir_volume "$project" netbox):/working/$base/.git")
+	fi
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
 	fi
@@ -327,6 +351,10 @@ plan_offbox() {
 	_plan_out+=("--cap-drop=NET_ADMIN")
 	_plan_out+=("--cap-drop=NET_RAW")
 	_plan_out+=("-v" "$(offbox_worktree_volume "$project"):/working/$base")
+	if git_mounts_enabled "$project"; then
+		_plan_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
+		_plan_out+=("-v" "$(gitdir_volume "$project" offbox):/working/$base/.git")
+	fi
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
 	fi
@@ -351,6 +379,7 @@ plan_netbox_run() {
 	local image="$8"
 	local -a create_args=()
 	plan_netbox create_args "$project" "$interactive" "$5" "$6" "$7" "$image"
+	plan_gitdir_volume _plan_out "$project" netbox
 	_plan_out+=("podman" "create")
 	_plan_out+=("${create_args[@]}")
 	_plan_out+=("podman" "start" "$(netbox_container_name "$project")")
@@ -371,6 +400,7 @@ plan_offbox_run() {
 	local image="$8"
 	local -a create_args=()
 	plan_offbox create_args "$project" "$interactive" "$5" "$6" "$7" "$image"
+	plan_gitdir_volume _plan_out "$project" offbox
 	_plan_out+=("podman" "create")
 	_plan_out+=("${create_args[@]}")
 	_plan_out+=("podman" "start" "$(offbox_container_name "$project")")
@@ -399,6 +429,7 @@ plan_netbox_recontain() {
 		image="$(base_image_name)"
 	fi
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$ctr")
+	plan_gitdir_volume _plan_out "$project" netbox
 	local -a create_args=()
 	plan_netbox create_args "$project" "$interactive" "$4" "$5" "$6" "$image"
 	_plan_out+=("podman" "create")
@@ -421,6 +452,7 @@ plan_offbox_recontain() {
 		image="$(base_image_name)"
 	fi
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$ctr")
+	plan_gitdir_volume _plan_out "$project" offbox
 	local -a create_args=()
 	plan_offbox create_args "$project" "$interactive" "$4" "$5" "$6" "$image"
 	_plan_out+=("podman" "create")
@@ -444,6 +476,7 @@ plan_netbox_rebuild() {
 		image="$(base_image_name)"
 	fi
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$ctr")
+	plan_gitdir_volume _plan_out "$project" netbox
 	local -a create_args=()
 	plan_netbox create_args "$project" "$interactive" "$4" "$5" "$6" "$image"
 	_plan_out+=("podman" "create")
@@ -467,6 +500,7 @@ plan_offbox_rebuild() {
 		image="$(base_image_name)"
 	fi
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$ctr")
+	plan_gitdir_volume _plan_out "$project" offbox
 	local -a create_args=()
 	plan_offbox create_args "$project" "$interactive" "$4" "$5" "$6" "$image"
 	_plan_out+=("podman" "create")
@@ -565,6 +599,7 @@ create_netbox() {
 	fi
 	local -a plan=()
 	plan_netbox_populate plan "$project" "$3" "$4"
+	plan_gitdir_volume plan "$project" netbox
 	local -a create_args=()
 	plan_netbox create_args "$project" "$interactive" "$1" "$2" "$5" "$image"
 	plan+=("podman" "create")
@@ -587,6 +622,7 @@ create_offbox() {
 	fi
 	local -a plan=()
 	plan_offbox_populate plan "$project" "$source" "$3" "$4"
+	plan_gitdir_volume plan "$project" offbox
 	local -a create_args=()
 	plan_offbox create_args "$project" "$interactive" "$1" "$2" "$5" "$image"
 	plan+=("podman" "create")
@@ -659,6 +695,7 @@ run_netbox_recontain() {
 	fi
 	plan+=("podman" "rm" "-f" "--volumes" "$ctr")
 	plan_netbox_populate plan "$project" "$3" "$4"
+	plan_gitdir_volume plan "$project" netbox
 	local -a create_args=()
 	plan_netbox create_args "$project" "$interactive" "$1" "$2" "$5" "$image"
 	plan+=("podman" "create")
@@ -685,6 +722,7 @@ run_offbox_recontain() {
 	fi
 	plan+=("podman" "rm" "-f" "--volumes" "$ctr")
 	plan_offbox_populate plan "$project" "$source" "$3" "$4"
+	plan_gitdir_volume plan "$project" offbox
 	local -a create_args=()
 	plan_offbox create_args "$project" "$interactive" "$1" "$2" "$5" "$image"
 	plan+=("podman" "create")
@@ -711,6 +749,7 @@ run_netbox_rebuild() {
 	fi
 	plan+=("podman" "rm" "-f" "--volumes" "$ctr")
 	plan_netbox_populate plan "$project" "$3" "$4"
+	plan_gitdir_volume plan "$project" netbox
 	local -a create_args=()
 	plan_netbox create_args "$project" "$interactive" "$1" "$2" "$5" "$image"
 	plan+=("podman" "create")
@@ -737,6 +776,7 @@ run_offbox_rebuild() {
 	fi
 	plan+=("podman" "rm" "-f" "--volumes" "$ctr")
 	plan_offbox_populate plan "$project" "$source" "$3" "$4"
+	plan_gitdir_volume plan "$project" offbox
 	local -a create_args=()
 	plan_offbox create_args "$project" "$interactive" "$1" "$2" "$5" "$image"
 	plan+=("podman" "create")
