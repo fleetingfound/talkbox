@@ -47,6 +47,8 @@ setup() {
 	mkdir -p "$PROJECT"
 	READ_MOUNTS=()
 	WRITE_MOUNTS=()
+	SRCS=()
+	DSTS=()
 	PORTS=()
 }
 
@@ -95,50 +97,75 @@ setup() {
 	[[ -z "$(plan_subcommands args)" ]]
 }
 
-@test "netbox recontain plan commits the source and recreates the container" {
+@test "netbox recontain plan commits the source, populates and recreates the container" {
 	load_lifecycle_plan
 	local args=()
-	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS onbox
-	[[ "$(plan_subcommands args)" == $'commit\nrm\ncreate\nstart' ]]
+	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS onbox
+	[[ "$(plan_subcommands args)" == $'commit\nrm\nrun\ncreate\nstart' ]]
 	array_contains 'talkbox-proj.onbox' "${args[@]}"
 	array_contains 'talkbox-proj.netbox.root' "${args[@]}"
 	array_contains '--name=talkbox-proj.netbox' "${args[@]}"
+	array_contains 'talkbox-proj.netbox.worktree:/talkbox/target' "${args[@]}"
 }
 
-@test "offbox recontain plan commits the netbox source and recreates the container" {
+@test "offbox recontain plan commits the netbox source, populates and recreates the container" {
 	load_lifecycle_plan
 	local args=()
-	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS netbox
-	[[ "$(plan_subcommands args)" == $'commit\nrm\ncreate\nstart' ]]
+	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS netbox
+	[[ "$(plan_subcommands args)" == $'commit\nrm\nrun\ncreate\nstart' ]]
 	array_contains 'talkbox-proj.netbox' "${args[@]}"
 	array_contains 'talkbox-proj.offbox.root' "${args[@]}"
 	array_contains '--name=talkbox-proj.offbox' "${args[@]}"
+	array_contains 'talkbox-proj.offbox.worktree:/talkbox/target' "${args[@]}"
 }
 
 @test "netbox recontain plan skips the commit when the source is the base image" {
 	load_lifecycle_plan
 	local args=()
-	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS base
-	[[ "$(plan_subcommands args)" == $'rm\ncreate\nstart' ]]
+	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS base
+	[[ "$(plan_subcommands args)" == $'rm\nrun\ncreate\nstart' ]]
 	array_has_none 'podman commit' "${args[@]}"
+	array_contains 'talkbox-proj.netbox.worktree:/talkbox/target' "${args[@]}"
 }
 
-@test "netbox rebuild plan rebuilds the base image, commits and recreates" {
+@test "netbox recontain plan populates the write volumes when present" {
+	load_lifecycle_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local -a srcs=('/host/data') dsts=('/talkbox/wdata') args=()
+	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS onbox
+	[[ "$(plan_subcommands args)" == $'commit\nrm\nrun\nrun\ncreate\nstart' ]]
+	array_contains 'talkbox-proj.netbox.worktree:/talkbox/target' "${args[@]}"
+	array_contains 'talkbox-proj.netbox.write.talkbox-wdata:/talkbox/target' "${args[@]}"
+}
+
+@test "offbox recontain plan populates the write volumes when present" {
+	load_lifecycle_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local -a srcs=('/host/data') dsts=('/talkbox/wdata') args=()
+	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS onbox
+	[[ "$(plan_subcommands args)" == $'commit\nrm\nrun\nrun\ncreate\nstart' ]]
+	array_contains 'talkbox-proj.offbox.worktree:/talkbox/target' "${args[@]}"
+	array_contains 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/target' "${args[@]}"
+}
+
+@test "netbox rebuild plan rebuilds the base image, commits, populates and recreates" {
 	load_lifecycle_plan
 	local args=()
-	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS onbox
-	[[ "$(plan_subcommands args)" == $'build\ncommit\nrm\ncreate\nstart' ]]
+	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS onbox
+	[[ "$(plan_subcommands args)" == $'build\ncommit\nrm\nrun\ncreate\nstart' ]]
 	array_contains 'talkbox/base:latest' "${args[@]}"
 	array_contains 'talkbox-proj.netbox.root' "${args[@]}"
+	array_contains 'talkbox-proj.netbox.worktree:/talkbox/target' "${args[@]}"
 }
 
-@test "offbox rebuild plan rebuilds the base image, commits and recreates" {
+@test "offbox rebuild plan rebuilds the base image, commits, populates and recreates" {
 	load_lifecycle_plan
 	local args=()
-	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS onbox
-	[[ "$(plan_subcommands args)" == $'build\ncommit\nrm\ncreate\nstart' ]]
+	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS onbox
+	[[ "$(plan_subcommands args)" == $'build\ncommit\nrm\nrun\ncreate\nstart' ]]
 	array_contains 'talkbox/base:latest' "${args[@]}"
 	array_contains 'talkbox-proj.offbox.root' "${args[@]}"
+	array_contains 'talkbox-proj.offbox.worktree:/talkbox/target' "${args[@]}"
 }
 
 @test "netbox rm-container plan removes the container and its root image" {

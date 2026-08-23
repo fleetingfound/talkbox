@@ -169,21 +169,6 @@ setup() {
 	fi
 }
 
-@test "onbox run plan creates and starts the persistent container for an interactive shell" {
-	load_onbox_plan
-	local args=()
-	plan_onbox_run args "$PROJECT" '' yes READ_MOUNTS WRITE_MOUNTS PORTS
-	[[ "$(plan_subcommands args)" == $'create\nstart' ]]
-}
-
-@test "onbox run plan execs a command after creating and starting the container" {
-	load_onbox_plan
-	local args=()
-	plan_onbox_run args "$PROJECT" 'pwd' no READ_MOUNTS WRITE_MOUNTS PORTS
-	[[ "$(plan_subcommands args)" == $'create\nstart\nexec' ]]
-	[[ "${args[${#args[@]} - 1]}" == 'pwd' ]]
-}
-
 @test "onbox plan omits the global dotfiles bind-mount when defaults/dotfiles is absent" {
 	load_onbox_plan
 	TALKBOX_ROOT="$BATS_TEST_TMPDIR/talkbox-root-no-dotfiles"

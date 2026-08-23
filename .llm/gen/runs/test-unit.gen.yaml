@@ -1,5 +1,12 @@
 target: test-unit
-started: '2026-08-23T20:57:53Z'
-exit: 0
-totals: { total: 139, pass: 139, fail: 0, skip: 0 }
+started: '2026-08-23T21:53:06Z'
+exit: 1
+totals: { total: 137, pass: 130, fail: 7, skip: 0 }
 fail:
+ - 'test/unit/lifecycle.bats :: netbox recontain plan commits the source, populates and recreates the container'
+ - 'test/unit/lifecycle.bats :: offbox recontain plan commits the netbox source, populates and recreates the container'
+ - 'test/unit/lifecycle.bats :: netbox recontain plan skips the commit when the source is the base image'
+ - 'test/unit/lifecycle.bats :: netbox recontain plan populates the write volumes when present'
+ - 'test/unit/lifecycle.bats :: offbox recontain plan populates the write volumes when present'
+ - 'test/unit/lifecycle.bats :: netbox rebuild plan rebuilds the base image, commits, populates and recreates'
+ - 'test/unit/lifecycle.bats :: offbox rebuild plan rebuilds the base image, commits, populates and recreates'

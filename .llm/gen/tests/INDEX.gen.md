@@ -8,3 +8,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 2: mounts, ports and onbox lifecycle management](phase-2-mounts-ports-lifecycle.gen.md)
 - [Phase 3: netbox and offbox containers](phase-3-netbox-offbox.gen.md)
 - [Phase 4: git integration (onbox/netbox/offbox) and fetch](phase-4-git-integration-fetch.gen.md)
+- [Phase 4a: planner/executor lifecycle symmetry and run-plan cleanup](phase-4a-planner-executor-symmetry.gen.md)

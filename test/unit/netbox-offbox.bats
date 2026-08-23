@@ -210,21 +210,6 @@ setup() {
 	array_has_none 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/wdata:ro' "${args[@]}"
 }
 
-@test "netbox run plan creates, starts and execs into the container" {
-	load_netbox_plan
-	local args=()
-	plan_netbox_run args "$PROJECT" 'pwd' no READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	[[ "$(plan_subcommands args)" == $'create\nstart\nexec' ]]
-	[[ "${args[${#args[@]} - 1]}" == 'pwd' ]]
-}
-
-@test "offbox run plan creates and starts the container for an interactive shell" {
-	load_netbox_plan
-	local args=()
-	plan_offbox_run args "$PROJECT" '' yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	[[ "$(plan_subcommands args)" == $'create\nstart' ]]
-}
-
 @test "netbox plan adds the git mounts and the populate leaves the gitdir volume empty" {
 	load_netbox_plan
 	mkdir -p "$PROJECT/.git"

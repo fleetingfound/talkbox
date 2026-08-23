@@ -1,0 +1,23 @@
+# Tests: Phase 4a planner/executor lifecycle symmetry and run-plan cleanup
+
+Linked plan: [phase-4a-planner-executor-symmetry.gen.md](../plans/phase-4a-planner-executor-symmetry.gen.md)
+
+Summary: this phase rewrites the netbox/offbox lifecycle-plan unit tests so they pin the real executor sequence (`commit → rm → run(populate) → create → start`, or `build → commit → rm → run → create → start` for rebuild) by asserting the volume-population `run` step that `plan_netbox_recontain`/`plan_offbox_recontain`/`plan_netbox_rebuild`/`plan_offbox_rebuild` must gain, and removes the unit tests for the dead normal-run plan functions (`plan_onbox_run`, `plan_netbox_run`, `plan_offbox_run`) that the plan deletes.
+
+## New tests
+
+- `test/unit/lifecycle.bats` - `netbox recontain plan populates the write volumes when present` and `offbox recontain plan populates the write volumes when present`: assert that a recontain plan with a non-empty write-mount source/dest pair emits two `run` subcommands (`commit → rm → run → run → create → start`), with the second targeting the write volume `<slug>.<container>.write.<dest-slug>:/talkbox/target` alongside the worktree volume. Pins the plan's "Assert the populate `run` targets the worktree volume (and write volumes when present)" and the new source/dest array nameref parameters the four lifecycle plan functions gain.
+
+## Tests edited
+
+- `test/unit/lifecycle.bats` - `setup()` now also declares empty `SRCS`/`DSTS` arrays next to `READ_MOUNTS`/`WRITE_MOUNTS`/`PORTS`, because "these four plan functions gain the source/dest array nameref parameters currently held only by the executors (and by `create_netbox`/`create_offbox`)", so the recontain/rebuild plans are now invoked with the `read write srcs dsts ports source` parameter order.
+- `test/unit/lifecycle.bats` - `netbox recontain plan commits the source, populates and recreates the container` (was "commits the source and recreates the container") and `offbox recontain plan commits the netbox source, populates and recreates the container` (was "commits the netbox source and recreates the container"): the asserted sequence becomes `commit → rm → run → create → start` and a worktree-volume populate assertion (`talkbox-proj.netbox.worktree:/talkbox/target` / `talkbox-proj.offbox.worktree:/talkbox/target`) is added. Evidence: plan "update the netbox/offbox recontain/rebuild assertions to expect the `run` subcommand (from the populate step) in the sequence, e.g. `commit → rm → run → create → start` (recontain with non-base source)".
+- `test/unit/lifecycle.bats` - `netbox recontain plan skips the commit when the source is the base image`: sequence updated from `rm → create → start` to `rm → run → create → start` with a worktree-populate assertion. Evidence: plan "The base-source recontain case becomes `rm → run → create → start`."
+- `test/unit/lifecycle.bats` - `netbox rebuild plan rebuilds the base image, commits, populates and recreates` and `offbox rebuild plan rebuilds the base image, commits, populates and recreates` (both were "...commits and recreates"): sequence updated from `build → commit → rm → create → start` to `build → commit → rm → run → create → start` with worktree-populate assertions. Evidence: plan "`build → commit → rm → run → create → start` (rebuild)".
+
+## Tests removed
+
+- `test/unit/containers.bats` - `onbox run plan creates and starts the persistent container for an interactive shell` and `onbox run plan execs a command after creating and starting the container`. Evidence: the plan deletes the function and the tests together — "`plan_onbox_run`, `plan_netbox_run`, `plan_offbox_run` are deleted from `lib/containers.sh`" and "**containers.bats** — remove the two `plan_onbox_run` tests". These tests pinned a flat `create → start → exec` sequence for a function no production path calls; per the linked choice doc, the run executors' conditional create-if-not-exists logic "does not fit the flat-plan + `execute_plan` model", and the only thing the dead tests pin is trivial ordering that is "already unit-pinned through the sub-planners" and "behaviour-pinned via e2e".
+- `test/unit/netbox-offbox.bats` - `netbox run plan creates, starts and execs into the container` and `offbox run plan creates and starts the container for an interactive shell`. Evidence: the plan's "**netbox-offbox.bats** — remove the two `plan_netbox_run`/`plan_offbox_run` tests", together with the `plan_netbox_run`/`plan_offbox_run` deletion quoted above.
+
+No end-to-end tests were added or changed: the plan specifies "No new e2e tests. The existing `test/e2e/lifecycle.bats` coverage ... must continue to pass unchanged, confirming the external behaviour is preserved", and `make test-e2e` continues to pass (42/42).
