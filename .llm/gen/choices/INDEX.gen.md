@@ -19,3 +19,8 @@
 
 - [x] [Scaffold refactor scope](scaffold-refactor-scope.gen.md) - which of the review's recommendations to address in the scaffold-refactor phase before Phase 2.
 - [x] [Planner array-population mechanism](planner-array-mechanism.gen.md) - nameref-populating planner vs NUL-delimited stdout for the array-based planner interface.
+
+## Git transport review choices (Phase 5 follow-up)
+
+- [x] [Case 1 untracked-files handling](case1-untracked-files.gen.md) - whether `custom_merge_current` Case 1 should allow untracked files or keep treating them as dirty.
+- [x] [merge/sync failure behaviour on --all](merge-sync-failure-behaviour.gen.md) - whether `sync --all` should continue on branch failure like `merge --all`, or whether both should stop on first failure.
