@@ -20,6 +20,10 @@
 - [x] [Scaffold refactor scope](scaffold-refactor-scope.gen.md) - which of the review's recommendations to address in the scaffold-refactor phase before Phase 2.
 - [x] [Planner array-population mechanism](planner-array-mechanism.gen.md) - nameref-populating planner vs NUL-delimited stdout for the array-based planner interface.
 
+## Test-quality fixes
+
+- [x] [E2e --port TOCTOU fix](e2e-port-toctou-fix.gen.md) - how to eliminate the probe-then-rebind race in `free_host_port` (Python port-0 server, FD passing, retry loop, socat, or banner parsing).
+
 ## Git transport review choices (Phase 5 follow-up)
 
 - [x] [Case 1 untracked-files handling](case1-untracked-files.gen.md) - whether `custom_merge_current` Case 1 should allow untracked files or keep treating them as dirty.
