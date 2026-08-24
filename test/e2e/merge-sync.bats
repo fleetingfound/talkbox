@@ -182,8 +182,8 @@ container_commit() {
 @test "onbox sync brings a host commit into the onbox gitdir volume" {
 	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'true'
 	[[ "$status" -eq 0 ]]
-	printf 'host-work\n' >"$PROJECT/hostfile.txt"
-	git -C "$PROJECT" add hostfile.txt
+	printf 'host-work\n' >"$PROJECT/file.txt"
+	git -C "$PROJECT" add file.txt
 	git -C "$PROJECT" commit -q -m host-commit-sync
 	local host_head
 	host_head="$(git -C "$PROJECT" rev-parse HEAD)"
