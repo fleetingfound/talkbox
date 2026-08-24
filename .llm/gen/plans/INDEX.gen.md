@@ -11,6 +11,6 @@ Implementation plan for `SPEC.md`, in recommended order. Each phase builds on th
 - [x] [Phase 4: git integration (onbox/netbox/offbox) and fetch](phase-4-git-integration-fetch.gen.md) #flow/redgreen #model/default
 - [x] [Phase 4a: Planner/executor lifecycle symmetry + run-plan cleanup](phase-4a-planner-executor-symmetry.gen.md) #flow/redgreen #model/default
 - [x] [Phase 5: git merge and sync](phase-5-merge-sync.gen.md) #flow/redgreen #model/default
-- [ ] [Phase 5a: git transport error diagnostics](phase-5a-error-diagnostics.gen.md) #flow/redgreen #model/default
+- [x] [Phase 5a: git transport error diagnostics](phase-5a-error-diagnostics.gen.md) #flow/redgreen #model/default
 - [ ] [Phase 5b: git transport behavioural alignment](phase-5b-behavioural-alignment.gen.md) #flow/redgreen #model/default
 - [ ] [Phase 5c: git transport coverage gaps](phase-5c-coverage-gaps.gen.md) #flow/pin #model/default

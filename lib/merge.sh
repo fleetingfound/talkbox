@@ -35,6 +35,10 @@ custom_merge() {
 	if [[ "$current" == "$branchname" ]]; then
 		custom_merge_current "$remote" "$branchname"
 	else
+		if ! ref_exists "refs/remotes/$remote/$branchname"; then
+			warn "refusing to merge $branchname from $remote: the remote branch does not exist"
+			return 1
+		fi
 		git branch -f "$branchname" "refs/remotes/$remote/$branchname"
 	fi
 }

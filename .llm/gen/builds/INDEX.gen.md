@@ -9,3 +9,4 @@
 - [Phase 4: git integration (onbox/netbox/offbox) and fetch](.llm/gen/builds/phase-4-git-integration-fetch.gen.md)
 - [Phase 4a: Planner/executor lifecycle symmetry + run-plan cleanup](.llm/gen/builds/phase-4a-planner-executor-symmetry.gen.md)
 - [Phase 5: git merge and sync](.llm/gen/builds/phase-5-merge-sync.gen.md)
+- [Phase 5a: git transport error diagnostics](.llm/gen/builds/phase-5a-error-diagnostics.gen.md)

@@ -1,7 +1,5 @@
 target: test-unit
-started: '2026-08-24T09:38:19Z'
-exit: 1
-totals: { total: 151, pass: 149, fail: 2, skip: 0 }
+started: '2026-08-24T09:53:09Z'
+exit: 0
+totals: { total: 151, pass: 151, fail: 0, skip: 0 }
 fail:
- - 'test/unit/git.bats :: current_branch on a detached HEAD produces a talkbox error'
- - 'test/unit/merge.bats :: custom_merge warns and creates nothing when neither local nor remote branch exists'

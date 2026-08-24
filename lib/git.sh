@@ -165,7 +165,8 @@ host_branches() {
 }
 
 current_branch() {
-	git symbolic-ref --short HEAD
+	git symbolic-ref --short HEAD 2>/dev/null ||
+		die "cannot determine the current branch: HEAD is detached" 1
 }
 
 resolve_branches() {
@@ -188,12 +189,17 @@ resolve_branches() {
 }
 
 require_git_history() {
-	local project="$1" container="$2"
+	local project="$1" container="$2" vol mountpoint
 	if ! git_tracked "$project"; then
 		die "not a git repository: $project" 1
 	fi
-	if ! podman volume exists "$(gitdir_volume "$project" "$container")" >/dev/null 2>&1; then
+	vol="$(gitdir_volume "$project" "$container")"
+	if ! podman volume exists "$vol" >/dev/null 2>&1; then
 		die "no git history for $container; create the container first" 1
+	fi
+	mountpoint="$(podman volume inspect --format '{{.Mountpoint}}' "$vol" 2>/dev/null)"
+	if [[ -z "$mountpoint" || ! -e "$mountpoint/HEAD" ]]; then
+		die "no git history in the $container gitdir volume; start the container first" 1
 	fi
 }
 
