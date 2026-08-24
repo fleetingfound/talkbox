@@ -11,7 +11,7 @@ This enables the use of coding agents while preventing unwanted edits and protec
 
 Three commands are provided:
 
-- `openbox` creates a container which **allows** internet access and direct edits to `<project>/` on the host.
+- `onbox` creates a container which **allows** internet access and direct edits to `<project>/` on the host.
 - `netbox` creates a container which **allows** internet access and **disables** direct edits to the host.
 - `offbox` creates a container which **disables** internet access and edits to the host, while still allowing explicitly specified ports on the local host to be accessed.
 
@@ -23,16 +23,16 @@ The project assumes that Git will be used to review changes being made by the ag
 
 This project enables two possible Git workflows:
 
-- **Git Workflow 1:** The `openbox` container is used to edit the working tree and all changes to Git history are made on the host.
-- **Git Workflow 2:** Any of the `openbox`, `netbox` or `offbox` containers are used to edit git history which is then reviewed and synchronized from the host side using commands such as: `openbox merge`, `openbox sync`, `netbox merge`, `netbox sync`, `offbox merge`, `offbox sync`.
+- **Git Workflow 1:** The `onbox` container is used to edit the working tree and all changes to Git history are made on the host.
+- **Git Workflow 2:** Any of the `onbox`, `netbox` or `offbox` containers are used to edit git history which is then reviewed and synchronized from the host side using commands such as: `onbox merge`, `onbox sync`, `netbox merge`, `netbox sync`, `offbox merge`, `offbox sync`.
 
 Changes to the git history within a container are transferred to the host only via git bundles, preventing content such as git configs and hooks being inadvertently transferred from the container to the host.
 
-A host folder which is not tracked by git may be edited with the `openbox` image, in which case git-related `talkbox` commands will not be available.
+A host folder which is not tracked by git may be edited with the `onbox` image, in which case git-related `talkbox` commands will not be available.
 
 The intention of `offbox` is to enable the use of local coding agents and untrusted code with sensitive data.
 
-It is possible to start with `openbox` or `netbox` and then switch to `offbox` in the same repository, in which case installed packages will persist because of a cloned home volume. This enables an `offbox` environment to be prepared with internet access using `openbox` or `netbox`.
+It is possible to start with `onbox` or `netbox` and then switch to `offbox` in the same repository, in which case installed packages will persist because of a cloned home volume. This enables an `offbox` environment to be prepared with internet access using `onbox` or `netbox`.
 
 ## References
 
