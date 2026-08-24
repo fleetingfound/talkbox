@@ -46,6 +46,45 @@ push_descendant() {
 	[[ -z "$(git -C "$WORK" status --porcelain)" ]]
 }
 
+@test "custom_merge fast-forwards a current branch with untracked files present (Case 1)" {
+	load_lib git.sh
+	push_descendant "$BRANCH" two
+	local remote_sha
+	remote_sha="$(git -C "$WORK" rev-parse "refs/remotes/origin/$BRANCH")"
+	printf 'untracked\n' >"$WORK/untracked.txt"
+	cd "$WORK"
+	run custom_merge origin "$BRANCH"
+	[[ "$status" -eq 0 ]]
+	[[ "$(git -C "$WORK" rev-parse HEAD)" == "$remote_sha" ]]
+	[[ "$(git -C "$WORK" rev-parse "$BRANCH")" == "$remote_sha" ]]
+	[[ "$(cat "$WORK/file.txt")" == "two" ]]
+	[[ -e "$WORK/untracked.txt" ]]
+	[[ "$output" != *'talkbox:'* ]]
+}
+
+@test "custom_merge lets git refuse to overwrite a conflicting untracked file (Case 1)" {
+	load_lib git.sh
+	git -C "$WORK" switch -q -c advance-new
+	printf 'new\n' >"$WORK/new.txt"
+	git -C "$WORK" add new.txt
+	git -C "$WORK" commit -q -m "add new.txt"
+	git -C "$WORK" push -q origin "HEAD:$BRANCH"
+	git -C "$WORK" switch -q -
+	git -C "$WORK" branch -q -D advance-new
+	git -C "$WORK" fetch -q origin
+	local remote_sha head_before
+	remote_sha="$(git -C "$WORK" rev-parse "refs/remotes/origin/$BRANCH")"
+	head_before="$(git -C "$WORK" rev-parse HEAD)"
+	printf 'untracked\n' >"$WORK/new.txt"
+	cd "$WORK"
+	run custom_merge origin "$BRANCH"
+	[[ "$status" -ne 0 ]]
+	[[ "$(git -C "$WORK" rev-parse HEAD)" == "$head_before" ]]
+	[[ "$(cat "$WORK/new.txt")" == "untracked" ]]
+	[[ "$output" == *'would be overwritten'* ]]
+	[[ "$output" != *'talkbox:'* ]]
+}
+
 @test "custom_merge updates the branch when the worktree already matches the remote (Case 2)" {
 	load_lib git.sh
 	push_descendant "$BRANCH" two

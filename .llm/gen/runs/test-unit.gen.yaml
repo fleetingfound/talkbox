@@ -1,5 +1,7 @@
 target: test-unit
-started: '2026-08-24T09:53:09Z'
-exit: 0
-totals: { total: 151, pass: 151, fail: 0, skip: 0 }
+started: '2026-08-24T10:19:08Z'
+exit: 1
+totals: { total: 153, pass: 151, fail: 2, skip: 0 }
 fail:
+ - 'test/unit/merge.bats :: custom_merge fast-forwards a current branch with untracked files present (Case 1)'
+ - 'test/unit/merge.bats :: custom_merge lets git refuse to overwrite a conflicting untracked file (Case 1)'

@@ -11,3 +11,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 4a: planner/executor lifecycle symmetry and run-plan cleanup](phase-4a-planner-executor-symmetry.gen.md)
 - [Phase 5: git merge and sync](phase-5-merge-sync.gen.md)
 - [Phase 5a: git transport error diagnostics](phase-5a-error-diagnostics.gen.md)
+- [Phase 5b: git transport behavioural alignment](phase-5b-behavioural-alignment.gen.md)

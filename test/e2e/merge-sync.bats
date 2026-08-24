@@ -82,6 +82,48 @@ container_commit() {
 	[[ "$output" == *'branch-b-commit'* ]]
 }
 
+@test "onbox merge fast-forwards with an untracked file in the host worktree" {
+	container_commit container-untracked-merge
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox fetch
+	[[ "$status" -eq 0 ]]
+	printf 'untracked\n' >"$PROJECT/untracked.txt"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox merge
+	[[ "$status" -eq 0 ]]
+	run git -C "$PROJECT" log --oneline -1
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'container-untracked-merge'* ]]
+	[[ -e "$PROJECT/untracked.txt" ]]
+	[[ "$(cat "$PROJECT/untracked.txt")" == 'untracked' ]]
+}
+
+@test "onbox merge --all stops at the first failing branch and skips the rest" {
+	git -C "$PROJECT" checkout -q -b feature
+	printf 'host-feature\n' >"$PROJECT/feature.txt"
+	git -C "$PROJECT" add feature.txt
+	git -C "$PROJECT" commit -q -m host-feature
+	git -C "$PROJECT" checkout -q "$BRANCH"
+	git -C "$PROJECT" branch -q later
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive \
+		"git config user.email c@example.com && git config user.name container && git checkout -q -b feature && git commit --allow-empty -m container-feature && git checkout -q \"$BRANCH\" && git checkout -q -b later && git commit --allow-empty -m container-later && git checkout -q \"$BRANCH\" && git commit --allow-empty -m container-current"
+	[[ "$status" -eq 0 ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox fetch
+	[[ "$status" -eq 0 ]]
+	local feature_before later_before current_before remote_later remote_current
+	feature_before="$(git -C "$PROJECT" rev-parse refs/heads/feature)"
+	later_before="$(git -C "$PROJECT" rev-parse refs/heads/later)"
+	current_before="$(git -C "$PROJECT" rev-parse HEAD)"
+	remote_later="$(git -C "$PROJECT" rev-parse "refs/remotes/onbox/later")"
+	remote_current="$(git -C "$PROJECT" rev-parse "refs/remotes/onbox/$BRANCH")"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox merge --all
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$(git -C "$PROJECT" rev-parse refs/heads/feature)" == "$feature_before" ]]
+	[[ "$(git -C "$PROJECT" rev-parse refs/heads/later)" == "$later_before" ]]
+	[[ "$(git -C "$PROJECT" rev-parse HEAD)" == "$current_before" ]]
+	[[ "$remote_later" != "$later_before" ]]
+	[[ "$remote_current" != "$current_before" ]]
+}
+
 @test "onbox merge leaves a dirty host worktree untouched and warns" {
 	container_commit container-dirty-commit
 	run run_talkbox "$PROJECT" "$TALKBOX" onbox fetch
