@@ -67,14 +67,23 @@ offbox_ctr_name() {
 	printf '%s\n' "$(project_slug_e2e "$1").offbox"
 }
 
-free_host_port() {
-	python3 - <<'PY'
-import socket
-s = socket.socket()
-s.bind(('127.0.0.1', 0))
-print(s.getsockname()[1])
-s.close()
-PY
+start_host_http_server() {
+	# $1 directory to serve, $2 nameref for PID, $3 nameref for port
+	local dir="$1"
+	local -n pid_ref="$2"
+	local -n port_ref="$3"
+	local out p n
+	out="$(mktemp)"
+	python3 "$PROJECT_ROOT/test/e2e/host_http_server.py" "$dir" >"$out" 2>&1 &
+	pid_ref=$!
+	p=""
+	for ((n = 0; n < 50; n++)); do
+		p="$(head -n 1 "$out" 2>/dev/null)"
+		[[ -n "$p" ]] && break
+		sleep 0.1
+	done
+	rm -f "$out"
+	port_ref="$p"
 }
 
 run_onbox_noninteractive() {

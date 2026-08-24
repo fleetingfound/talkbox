@@ -69,11 +69,9 @@ EXPECT
 @test "onbox --port makes a host port reachable inside the container" {
 	command -v python3 >/dev/null 2>&1 || skip "python3 is required for the port e2e test"
 	local port www srv n
-	port="$(free_host_port)"
 	www="$(mktemp -d)"
 	printf 'port-marker\n' >"$www/marker"
-	python3 -m http.server "$port" --bind 127.0.0.1 --directory "$www" >/dev/null 2>&1 &
-	srv=$!
+	start_host_http_server "$www" srv port
 	HOST_SRV_PID=$srv
 	for ((n = 0; n < 20; n++)); do
 		if curl -fsS --max-time 2 "http://127.0.0.1:$port/marker" >/dev/null 2>&1; then

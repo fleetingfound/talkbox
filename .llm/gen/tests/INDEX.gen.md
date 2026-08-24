@@ -13,3 +13,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 5a: git transport error diagnostics](phase-5a-error-diagnostics.gen.md)
 - [Phase 5b: git transport behavioural alignment](phase-5b-behavioural-alignment.gen.md)
 - [Phase 5c: git transport coverage gaps](phase-5c-coverage-gaps.gen.md)
+- [Phase 6a: e2e `--port` TOCTOU fix](phase-6a-e2e-port-toctou-fix.gen.md)

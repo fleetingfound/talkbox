@@ -25,5 +25,6 @@ The remaining harness files live under `test/`:
 - [test/lib.bash](test/lib.bash) - helper functions that parse bats TAP output into totals and failing test names, escape YAML single quotes, and write the YAML run record.
 - [test/unit/smoke.bats](test/unit/smoke.bats) - unit smoke tests which verify harness basics such as the timeout environment variables, per-test temporary directories and the bats runner.
 - [test/e2e/smoke.bats](test/e2e/smoke.bats) - end-to-end smoke tests which verify the harness from the outside, e.g. that `make` exposes the four test targets and that the runner writes run records.
+- [test/e2e/host_http_server.py](test/e2e/host_http_server.py) - e2e `--port` test server which binds a socket to port 0, prints the kernel-assigned port as its sole stdout line, then serves a given directory over HTTP using that already-bound socket (eliminating the probe-then-rebind race).
 - [test/canary/false.bats](test/canary/false.bats) - canary tests which intentionally assert something false and are expected to fail under `make test-canary`.
 - [test/timeout/hang.bats](test/timeout/hang.bats) - timeout canary test which runs a non-terminating command and is expected to fail under `make test-timeout`.
