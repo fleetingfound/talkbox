@@ -60,7 +60,7 @@ worktree_matches_tree() {
 custom_merge_current() {
 	local remote="$1" branchname="$2" remote_ref
 	remote_ref="refs/remotes/$remote/$branchname"
-	if [[ -z "$(git status --porcelain)" ]]; then
+	if git diff --cached --quiet && git diff --quiet; then
 		git merge --ff-only "$remote_ref"
 	elif git diff --cached --quiet && worktree_matches_tree "$remote_ref"; then
 		git reset --mixed "$remote_ref"

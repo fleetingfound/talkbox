@@ -10,3 +10,4 @@
 - [Phase 4a: Planner/executor lifecycle symmetry + run-plan cleanup](.llm/gen/builds/phase-4a-planner-executor-symmetry.gen.md)
 - [Phase 5: git merge and sync](.llm/gen/builds/phase-5-merge-sync.gen.md)
 - [Phase 5a: git transport error diagnostics](.llm/gen/builds/phase-5a-error-diagnostics.gen.md)
+- [Phase 5b: git transport behavioural alignment](.llm/gen/builds/phase-5b-behavioural-alignment.gen.md)

@@ -216,12 +216,11 @@ run_merge() {
 		return 1
 	fi
 	rm -rf "$tmp"
-	local -a branches=() b rc=0
+	local -a branches=() b
 	resolve_branches branches "$all" "$branch" "$container"
 	for b in "${branches[@]}"; do
-		custom_merge "$container" "$b" || rc=1
+		custom_merge "$container" "$b" || return 1
 	done
-	return "$rc"
 }
 
 # shellcheck disable=SC2016 # $@ and $b expand inside the container at run time

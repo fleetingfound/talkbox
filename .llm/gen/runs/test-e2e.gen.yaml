@@ -1,7 +1,6 @@
 target: test-e2e
-started: '2026-08-24T10:24:25Z'
+started: '2026-08-24T10:36:11Z'
 exit: 1
-totals: { total: 53, pass: 51, fail: 2, skip: 0 }
+totals: { total: 53, pass: 52, fail: 1, skip: 0 }
 fail:
- - 'test/e2e/merge-sync.bats :: onbox merge fast-forwards with an untracked file in the host worktree'
- - 'test/e2e/merge-sync.bats :: onbox merge --all stops at the first failing branch and skips the rest'
+ - 'test/e2e/merge-sync.bats :: onbox sync brings a host commit into the onbox gitdir volume'
