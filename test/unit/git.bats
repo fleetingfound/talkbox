@@ -84,6 +84,22 @@ $PROJECT/.git/modules/sub2" ]]
 	[[ -z "$(list_submodule_git_dirs "$PROJECT")" ]]
 }
 
+@test "current_branch on a detached HEAD produces a talkbox error" {
+	load_lib git.sh
+	git -C "$PROJECT" init -q
+	git -C "$PROJECT" config user.email test@example.com
+	git -C "$PROJECT" config user.name talkbox-test
+	printf 'x\n' >"$PROJECT/f.txt"
+	git -C "$PROJECT" add f.txt
+	git -C "$PROJECT" commit -q -m initial
+	git -C "$PROJECT" checkout -q --detach
+	cd "$PROJECT"
+	run current_branch
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$output" != *'fatal:'* ]]
+}
+
 @test "plan_fetch builds a no-network gitdir bundle command against the container gitdir volume" {
 	load_lib git.sh
 	load_lib naming.sh

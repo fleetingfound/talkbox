@@ -110,6 +110,33 @@ container_commit() {
 	[[ -z "$(git -C "$PROJECT" status --porcelain)" ]]
 }
 
+@test "onbox merge <nonexistent-branch> warns with a talkbox message and exits non-zero" {
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'true'
+	[[ "$status" -eq 0 ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox merge nosuchbranch
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$output" != *'fatal:'* ]]
+}
+
+@test "onbox merge with a detached host HEAD errors with a talkbox message and exits non-zero" {
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'true'
+	[[ "$status" -eq 0 ]]
+	git -C "$PROJECT" checkout -q --detach
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox merge
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$output" != *'fatal:'* ]]
+}
+
+@test "onbox merge on an uninitialised gitdir volume errors with a talkbox message" {
+	sdrun podman volume create "$PROJECT_SLUG.onbox.gitdir" >/dev/null
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox merge
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$output" != *'fatal:'* ]]
+}
+
 @test "onbox sync brings a host commit into the onbox gitdir volume" {
 	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'true'
 	[[ "$status" -eq 0 ]]

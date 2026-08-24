@@ -128,3 +128,18 @@ push_descendant() {
 	[[ "$(git -C "$WORK" rev-parse "refs/heads/feature")" == "$feature_after" ]]
 	[[ "$(git -C "$WORK" symbolic-ref --short HEAD)" == "$current" ]]
 }
+
+@test "custom_merge warns and creates nothing when neither local nor remote branch exists" {
+	load_lib git.sh
+	local current
+	current="$(git -C "$WORK" symbolic-ref --short HEAD)"
+	cd "$WORK"
+	run custom_merge origin nosuchbranch
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$output" != *'fatal:'* ]]
+	if git -C "$WORK" show-ref --verify --quiet refs/heads/nosuchbranch; then
+		return 1
+	fi
+	[[ "$(git -C "$WORK" symbolic-ref --short HEAD)" == "$current" ]]
+}
