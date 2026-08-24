@@ -34,6 +34,12 @@ volume_mountpoint() {
 	sdrun podman volume inspect --format '{{.Mountpoint}}' "$1" 2>/dev/null || true
 }
 
+container_stopped() {
+	local state
+	state="$(sdrun podman inspect -f '{{.State.Running}}' "$1" 2>/dev/null | grep -x 'false' || true)"
+	[[ "$state" == 'false' ]]
+}
+
 container_commit() {
 	local message="$1"
 	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git config user.email c@example.com && git config user.name container && git commit --allow-empty -m '"$message"
@@ -198,4 +204,78 @@ container_commit() {
 	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git log --oneline'
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'host-commit-sync'* ]]
+}
+
+@test "onbox sync --all syncs all host branches into the onbox gitdir volume" {
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'true'
+	[[ "$status" -eq 0 ]]
+	git -C "$PROJECT" checkout -q -b feature
+	printf 'feature\n' >"$PROJECT/feature.txt"
+	git -C "$PROJECT" add feature.txt
+	git -C "$PROJECT" commit -q -m host-feature-sync
+	git -C "$PROJECT" checkout -q "$BRANCH"
+	git -C "$PROJECT" commit -q --allow-empty -m host-current-sync
+	local host_current host_feature
+	host_current="$(git -C "$PROJECT" rev-parse HEAD)"
+	host_feature="$(git -C "$PROJECT" rev-parse feature)"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox sync --all
+	[[ "$status" -eq 0 ]]
+	local mp
+	mp="$(volume_mountpoint "$GITDIR_VOL")"
+	[[ -n "$mp" ]]
+	[[ "$(cat "$mp/refs/heads/$BRANCH")" == "$host_current" ]]
+	[[ "$(cat "$mp/refs/heads/feature")" == "$host_feature" ]]
+}
+
+@test "onbox sync <branchname> syncs the named host branch into the onbox gitdir volume" {
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'true'
+	[[ "$status" -eq 0 ]]
+	git -C "$PROJECT" checkout -q -b feature
+	printf 'feature\n' >"$PROJECT/feature.txt"
+	git -C "$PROJECT" add feature.txt
+	git -C "$PROJECT" commit -q -m host-feature-sync
+	git -C "$PROJECT" checkout -q "$BRANCH"
+	local host_feature
+	host_feature="$(git -C "$PROJECT" rev-parse feature)"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox sync feature
+	[[ "$status" -eq 0 ]]
+	local mp
+	mp="$(volume_mountpoint "$GITDIR_VOL")"
+	[[ -n "$mp" ]]
+	[[ "$(cat "$mp/refs/heads/feature")" == "$host_feature" ]]
+	run git -C "$PROJECT" symbolic-ref --short HEAD
+	[[ "$output" == "$BRANCH" ]]
+}
+
+@test "onbox sync uses the temporary-container path when the onbox container is stopped" {
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'true'
+	[[ "$status" -eq 0 ]]
+	container_stopped "$ONBOX_CTR"
+	printf 'host-work\n' >"$PROJECT/file.txt"
+	git -C "$PROJECT" add file.txt
+	git -C "$PROJECT" commit -q -m host-commit-stopped-sync
+	local host_head
+	host_head="$(git -C "$PROJECT" rev-parse HEAD)"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox sync
+	[[ "$status" -eq 0 ]]
+	local mp
+	mp="$(volume_mountpoint "$GITDIR_VOL")"
+	[[ -n "$mp" ]]
+	[[ "$(cat "$mp/refs/heads/$BRANCH")" == "$host_head" ]]
+	container_stopped "$ONBOX_CTR"
+}
+
+@test "onbox merge --all creates new local branches for container-only branches" {
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive \
+		"git config user.email c@example.com && git config user.name container && git checkout -q -b container-only && git commit --allow-empty -m container-only-commit && git checkout -q \"$BRANCH\""
+	[[ "$status" -eq 0 ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox fetch
+	[[ "$status" -eq 0 ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox merge --all
+	[[ "$status" -eq 0 ]]
+	run git -C "$PROJECT" log --oneline container-only
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'container-only-commit'* ]]
+	run git -C "$PROJECT" symbolic-ref --short HEAD
+	[[ "$output" == "$BRANCH" ]]
 }
