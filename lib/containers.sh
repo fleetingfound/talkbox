@@ -539,7 +539,7 @@ create_netbox() {
 	shift 2
 	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
 	local source image
-	source="$(inherit_source netbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$(netbox_container_name "$project")")" "$(exists_yn "$(offbox_container_name "$project")")" "$ONBOX_FRESH" "$ONBOX_INHERIT")"
+	source="$(inherit_source netbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$(netbox_container_name "$project")")" "$(exists_yn "$(offbox_container_name "$project")")" "$TALKBOX_FRESH" "$TALKBOX_INHERIT")"
 	if [[ "$source" != base ]]; then
 		podman commit "$(container_name_of "$source" "$project")" "$(netbox_root_image "$project")"
 		image="$(netbox_root_image "$project")"
@@ -562,7 +562,7 @@ create_offbox() {
 	shift 2
 	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
 	local source image
-	source="$(inherit_source offbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$(netbox_container_name "$project")")" "$(exists_yn "$(offbox_container_name "$project")")" "$ONBOX_FRESH" "$ONBOX_INHERIT")"
+	source="$(inherit_source offbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$(netbox_container_name "$project")")" "$(exists_yn "$(offbox_container_name "$project")")" "$TALKBOX_FRESH" "$TALKBOX_INHERIT")"
 	if [[ "$source" != base ]]; then
 		podman commit "$(container_name_of "$source" "$project")" "$(offbox_root_image "$project")"
 		image="$(offbox_root_image "$project")"
@@ -634,7 +634,7 @@ run_netbox_recontain() {
 	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
 	local ctr source
 	ctr="$(netbox_container_name "$project")"
-	source="$(inherit_source netbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$ctr")" "$(exists_yn "$(offbox_container_name "$project")")" "$ONBOX_FRESH" "$ONBOX_INHERIT")"
+	source="$(inherit_source netbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$ctr")" "$(exists_yn "$(offbox_container_name "$project")")" "$TALKBOX_FRESH" "$TALKBOX_INHERIT")"
 	if [[ "$source" == base ]]; then
 		ensure_base_image
 	fi
@@ -650,7 +650,7 @@ run_offbox_recontain() {
 	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
 	local ctr source
 	ctr="$(offbox_container_name "$project")"
-	source="$(inherit_source offbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$(netbox_container_name "$project")")" "$(exists_yn "$ctr")" "$ONBOX_FRESH" "$ONBOX_INHERIT")"
+	source="$(inherit_source offbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$(netbox_container_name "$project")")" "$(exists_yn "$ctr")" "$TALKBOX_FRESH" "$TALKBOX_INHERIT")"
 	if [[ "$source" == base ]]; then
 		ensure_base_image
 	fi
@@ -666,7 +666,7 @@ run_netbox_rebuild() {
 	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
 	local ctr source
 	ctr="$(netbox_container_name "$project")"
-	source="$(inherit_source netbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$ctr")" "$(exists_yn "$(offbox_container_name "$project")")" "$ONBOX_FRESH" "$ONBOX_INHERIT")"
+	source="$(inherit_source netbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$ctr")" "$(exists_yn "$(offbox_container_name "$project")")" "$TALKBOX_FRESH" "$TALKBOX_INHERIT")"
 	local -a plan=()
 	plan_netbox_rebuild plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$source"
 	execute_plan "${plan[@]}"
@@ -679,7 +679,7 @@ run_offbox_rebuild() {
 	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
 	local ctr source
 	ctr="$(offbox_container_name "$project")"
-	source="$(inherit_source offbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$(netbox_container_name "$project")")" "$(exists_yn "$ctr")" "$ONBOX_FRESH" "$ONBOX_INHERIT")"
+	source="$(inherit_source offbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$(netbox_container_name "$project")")" "$(exists_yn "$ctr")" "$TALKBOX_FRESH" "$TALKBOX_INHERIT")"
 	local -a plan=()
 	plan_offbox_rebuild plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$source"
 	execute_plan "${plan[@]}"

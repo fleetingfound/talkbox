@@ -4,17 +4,17 @@ TALKBOX_ROOT="${TALKBOX_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 source "$TALKBOX_ROOT/lib/common.sh"
 
 # shellcheck disable=SC2034
-parse_onbox_options() {
-	ONBOX_COMMAND=""
-	ONBOX_INTERACTIVE="yes"
-	ONBOX_VERB=""
-	ONBOX_ALL="no"
-	ONBOX_BRANCH=""
-	ONBOX_READ=()
-	ONBOX_WRITE=()
-	ONBOX_PORT=()
-	ONBOX_FRESH="no"
-	ONBOX_INHERIT=""
+parse_talkbox_options() {
+	TALKBOX_COMMAND=""
+	TALKBOX_INTERACTIVE="yes"
+	TALKBOX_VERB=""
+	TALKBOX_ALL="no"
+	TALKBOX_BRANCH=""
+	TALKBOX_READ=()
+	TALKBOX_WRITE=()
+	TALKBOX_PORT=()
+	TALKBOX_FRESH="no"
+	TALKBOX_INHERIT=""
 	local after_command=no
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
@@ -22,62 +22,62 @@ parse_onbox_options() {
 			after_command=yes
 			;;
 		--interactive)
-			ONBOX_INTERACTIVE="yes"
+			TALKBOX_INTERACTIVE="yes"
 			;;
 		--noninteractive)
-			ONBOX_INTERACTIVE="no"
+			TALKBOX_INTERACTIVE="no"
 			;;
 		--read)
 			shift
-			ONBOX_READ+=("$1")
+			TALKBOX_READ+=("$1")
 			;;
 		--write)
 			shift
-			ONBOX_WRITE+=("$1")
+			TALKBOX_WRITE+=("$1")
 			;;
 		--port)
 			shift
-			ONBOX_PORT+=("$1")
+			TALKBOX_PORT+=("$1")
 			;;
 		--fresh)
-			ONBOX_FRESH="yes"
+			TALKBOX_FRESH="yes"
 			;;
 		--inherit)
 			shift
-			ONBOX_INHERIT="$1"
+			TALKBOX_INHERIT="$1"
 			;;
 		--all)
-			ONBOX_ALL="yes"
+			TALKBOX_ALL="yes"
 			;;
 		fetch | merge | sync)
 			if [[ "$after_command" == yes ]]; then
-				ONBOX_COMMAND="$1"
+				TALKBOX_COMMAND="$1"
 			else
-				ONBOX_VERB="$1"
+				TALKBOX_VERB="$1"
 			fi
 			;;
 		--recontain)
-			ONBOX_VERB="recontain"
+			TALKBOX_VERB="recontain"
 			;;
 		--rebuild)
-			ONBOX_VERB="rebuild"
+			TALKBOX_VERB="rebuild"
 			;;
 		--rm-container)
-			ONBOX_VERB="rm-container"
+			TALKBOX_VERB="rm-container"
 			;;
 		--rm-image)
-			ONBOX_VERB="rm-image"
+			TALKBOX_VERB="rm-image"
 			;;
 		-*)
 			die "unknown option: $1" 2
 			;;
 		*)
 			if [[ "$after_command" == yes ]]; then
-				ONBOX_COMMAND="$1"
-			elif [[ "$ONBOX_VERB" == merge || "$ONBOX_VERB" == sync ]]; then
-				ONBOX_BRANCH="$1"
+				TALKBOX_COMMAND="$1"
+			elif [[ "$TALKBOX_VERB" == merge || "$TALKBOX_VERB" == sync ]]; then
+				TALKBOX_BRANCH="$1"
 			else
-				ONBOX_COMMAND="$1"
+				TALKBOX_COMMAND="$1"
 			fi
 			;;
 		esac

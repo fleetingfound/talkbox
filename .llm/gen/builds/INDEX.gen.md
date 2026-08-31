@@ -11,3 +11,4 @@
 - [Phase 5: git merge and sync](.llm/gen/builds/phase-5-merge-sync.gen.md)
 - [Phase 5a: git transport error diagnostics](.llm/gen/builds/phase-5a-error-diagnostics.gen.md)
 - [Phase 5b: git transport behavioural alignment](.llm/gen/builds/phase-5b-behavioural-alignment.gen.md)
+- [Phase 6b: Rename `parse_onbox_options` to `parse_talkbox_options`](.llm/gen/builds/phase-6b-rename-parse-talkbox-options.gen.md)

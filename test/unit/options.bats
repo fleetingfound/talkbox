@@ -2,211 +2,211 @@
 load helpers
 
 setup() {
-	ONBOX_COMMAND=""
-	ONBOX_INTERACTIVE=""
-	ONBOX_VERB=""
-	ONBOX_READ=()
-	ONBOX_WRITE=()
-	ONBOX_PORT=()
-	ONBOX_FRESH=""
-	ONBOX_INHERIT=""
-	ONBOX_ALL=""
-	ONBOX_BRANCH=""
+	TALKBOX_COMMAND=""
+	TALKBOX_INTERACTIVE=""
+	TALKBOX_VERB=""
+	TALKBOX_READ=()
+	TALKBOX_WRITE=()
+	TALKBOX_PORT=()
+	TALKBOX_FRESH=""
+	TALKBOX_INHERIT=""
+	TALKBOX_ALL=""
+	TALKBOX_BRANCH=""
 }
 
 @test "onbox defaults to an interactive shell with no command" {
 	load_lib options.sh
-	parse_onbox_options
-	[[ -z "$ONBOX_COMMAND" ]]
-	[[ "$ONBOX_INTERACTIVE" == yes ]]
+	parse_talkbox_options
+	[[ -z "$TALKBOX_COMMAND" ]]
+	[[ "$TALKBOX_INTERACTIVE" == yes ]]
 }
 
 @test "-c <command> sets the command and keeps the interactive default" {
 	load_lib options.sh
-	parse_onbox_options -c 'echo hello'
-	[[ "$ONBOX_COMMAND" == 'echo hello' ]]
-	[[ "$ONBOX_INTERACTIVE" == yes ]]
+	parse_talkbox_options -c 'echo hello'
+	[[ "$TALKBOX_COMMAND" == 'echo hello' ]]
+	[[ "$TALKBOX_INTERACTIVE" == yes ]]
 }
 
 @test "--command <command> sets the command" {
 	load_lib options.sh
-	parse_onbox_options --command 'pwd'
-	[[ "$ONBOX_COMMAND" == 'pwd' ]]
-	[[ "$ONBOX_INTERACTIVE" == yes ]]
+	parse_talkbox_options --command 'pwd'
+	[[ "$TALKBOX_COMMAND" == 'pwd' ]]
+	[[ "$TALKBOX_INTERACTIVE" == yes ]]
 }
 
 @test "-c --interactive <command> runs the command interactively" {
 	load_lib options.sh
-	parse_onbox_options -c --interactive 'ls -la'
-	[[ "$ONBOX_COMMAND" == 'ls -la' ]]
-	[[ "$ONBOX_INTERACTIVE" == yes ]]
+	parse_talkbox_options -c --interactive 'ls -la'
+	[[ "$TALKBOX_COMMAND" == 'ls -la' ]]
+	[[ "$TALKBOX_INTERACTIVE" == yes ]]
 }
 
 @test "-c --noninteractive <command> runs the command noninteractively" {
 	load_lib options.sh
-	parse_onbox_options -c --noninteractive 'make test-unit'
-	[[ "$ONBOX_COMMAND" == 'make test-unit' ]]
-	[[ "$ONBOX_INTERACTIVE" == no ]]
+	parse_talkbox_options -c --noninteractive 'make test-unit'
+	[[ "$TALKBOX_COMMAND" == 'make test-unit' ]]
+	[[ "$TALKBOX_INTERACTIVE" == no ]]
 }
 
 @test "--noninteractive is recognised before the command" {
 	load_lib options.sh
-	parse_onbox_options --noninteractive -c 'true'
-	[[ "$ONBOX_COMMAND" == 'true' ]]
-	[[ "$ONBOX_INTERACTIVE" == no ]]
+	parse_talkbox_options --noninteractive -c 'true'
+	[[ "$TALKBOX_COMMAND" == 'true' ]]
+	[[ "$TALKBOX_INTERACTIVE" == no ]]
 }
 
 @test "unknown options are rejected with exit code 2 and a message" {
 	load_lib options.sh
-	run parse_onbox_options --bogus
+	run parse_talkbox_options --bogus
 	[[ "$status" -eq 2 ]]
 	[[ "$output" == *"talkbox: unknown option: --bogus"* ]]
 }
 
 @test "--read records repeatable read specs" {
 	load_lib options.sh
-	parse_onbox_options --read '/a:/b' --read '/c'
-	[[ "${#ONBOX_READ[@]}" -eq 2 ]]
-	[[ "${ONBOX_READ[0]}" == '/a:/b' ]]
-	[[ "${ONBOX_READ[1]}" == '/c' ]]
+	parse_talkbox_options --read '/a:/b' --read '/c'
+	[[ "${#TALKBOX_READ[@]}" -eq 2 ]]
+	[[ "${TALKBOX_READ[0]}" == '/a:/b' ]]
+	[[ "${TALKBOX_READ[1]}" == '/c' ]]
 }
 
 @test "--write records repeatable write specs" {
 	load_lib options.sh
-	parse_onbox_options --write '/w1' --write '/w2:/x'
-	[[ "${#ONBOX_WRITE[@]}" -eq 2 ]]
-	[[ "${ONBOX_WRITE[0]}" == '/w1' ]]
-	[[ "${ONBOX_WRITE[1]}" == '/w2:/x' ]]
+	parse_talkbox_options --write '/w1' --write '/w2:/x'
+	[[ "${#TALKBOX_WRITE[@]}" -eq 2 ]]
+	[[ "${TALKBOX_WRITE[0]}" == '/w1' ]]
+	[[ "${TALKBOX_WRITE[1]}" == '/w2:/x' ]]
 }
 
 @test "--port records repeatable ports" {
 	load_lib options.sh
-	parse_onbox_options --port 8080 --port 9090
-	[[ "${#ONBOX_PORT[@]}" -eq 2 ]]
-	[[ "${ONBOX_PORT[0]}" == '8080' ]]
-	[[ "${ONBOX_PORT[1]}" == '9090' ]]
+	parse_talkbox_options --port 8080 --port 9090
+	[[ "${#TALKBOX_PORT[@]}" -eq 2 ]]
+	[[ "${TALKBOX_PORT[0]}" == '8080' ]]
+	[[ "${TALKBOX_PORT[1]}" == '9090' ]]
 }
 
 @test "lifecycle verbs are recognised" {
 	load_lib options.sh
-	parse_onbox_options --recontain
-	[[ "$ONBOX_VERB" == recontain ]]
-	parse_onbox_options --rebuild
-	[[ "$ONBOX_VERB" == rebuild ]]
-	parse_onbox_options --rm-container
-	[[ "$ONBOX_VERB" == 'rm-container' ]]
-	parse_onbox_options --rm-image
-	[[ "$ONBOX_VERB" == 'rm-image' ]]
+	parse_talkbox_options --recontain
+	[[ "$TALKBOX_VERB" == recontain ]]
+	parse_talkbox_options --rebuild
+	[[ "$TALKBOX_VERB" == rebuild ]]
+	parse_talkbox_options --rm-container
+	[[ "$TALKBOX_VERB" == 'rm-container' ]]
+	parse_talkbox_options --rm-image
+	[[ "$TALKBOX_VERB" == 'rm-image' ]]
 }
 
 @test "the default verb is empty" {
 	load_lib options.sh
-	ONBOX_VERB="sentinel"
-	parse_onbox_options
-	[[ -z "$ONBOX_VERB" ]]
+	TALKBOX_VERB="sentinel"
+	parse_talkbox_options
+	[[ -z "$TALKBOX_VERB" ]]
 }
 
 @test "--read value is not treated as the command" {
 	load_lib options.sh
-	parse_onbox_options --read '/a:/b' -c 'pwd'
-	[[ "${#ONBOX_READ[@]}" -eq 1 ]]
-	[[ "${ONBOX_READ[0]}" == '/a:/b' ]]
-	[[ "$ONBOX_COMMAND" == 'pwd' ]]
+	parse_talkbox_options --read '/a:/b' -c 'pwd'
+	[[ "${#TALKBOX_READ[@]}" -eq 1 ]]
+	[[ "${TALKBOX_READ[0]}" == '/a:/b' ]]
+	[[ "$TALKBOX_COMMAND" == 'pwd' ]]
 }
 
 @test "--fresh is recognised" {
 	load_lib options.sh
-	parse_onbox_options --fresh
-	[[ "$ONBOX_FRESH" == yes ]]
+	parse_talkbox_options --fresh
+	[[ "$TALKBOX_FRESH" == yes ]]
 }
 
 @test "--inherit <source> records the explicit inheritance source" {
 	load_lib options.sh
-	parse_onbox_options --inherit offbox
-	[[ "$ONBOX_INHERIT" == offbox ]]
-	parse_onbox_options --inherit netbox
-	[[ "$ONBOX_INHERIT" == netbox ]]
+	parse_talkbox_options --inherit offbox
+	[[ "$TALKBOX_INHERIT" == offbox ]]
+	parse_talkbox_options --inherit netbox
+	[[ "$TALKBOX_INHERIT" == netbox ]]
 }
 
 @test "the default is not fresh and has no explicit inherit source" {
 	load_lib options.sh
-	parse_onbox_options
-	[[ "$ONBOX_FRESH" == no ]]
-	[[ -z "$ONBOX_INHERIT" ]]
+	parse_talkbox_options
+	[[ "$TALKBOX_FRESH" == no ]]
+	[[ -z "$TALKBOX_INHERIT" ]]
 }
 
 @test "--fresh and --inherit are not treated as the command" {
 	load_lib options.sh
-	parse_onbox_options --fresh --inherit onbox -c 'pwd'
-	[[ "$ONBOX_FRESH" == yes ]]
-	[[ "$ONBOX_INHERIT" == onbox ]]
-	[[ "$ONBOX_COMMAND" == 'pwd' ]]
+	parse_talkbox_options --fresh --inherit onbox -c 'pwd'
+	[[ "$TALKBOX_FRESH" == yes ]]
+	[[ "$TALKBOX_INHERIT" == onbox ]]
+	[[ "$TALKBOX_COMMAND" == 'pwd' ]]
 }
 
 @test "onbox fetch is parsed as the fetch verb while -c fetch remains a command" {
 	load_lib options.sh
-	parse_onbox_options fetch
-	[[ "$ONBOX_VERB" == fetch ]]
-	[[ -z "$ONBOX_COMMAND" ]]
-	parse_onbox_options -c fetch
-	[[ "$ONBOX_COMMAND" == fetch ]]
-	[[ -z "$ONBOX_VERB" ]]
+	parse_talkbox_options fetch
+	[[ "$TALKBOX_VERB" == fetch ]]
+	[[ -z "$TALKBOX_COMMAND" ]]
+	parse_talkbox_options -c fetch
+	[[ "$TALKBOX_COMMAND" == fetch ]]
+	[[ -z "$TALKBOX_VERB" ]]
 }
 
 @test "onbox fetch --all sets the fetch verb and the --all flag" {
 	load_lib options.sh
-	parse_onbox_options fetch --all
-	[[ "$ONBOX_VERB" == fetch ]]
-	[[ "$ONBOX_ALL" == yes ]]
+	parse_talkbox_options fetch --all
+	[[ "$TALKBOX_VERB" == fetch ]]
+	[[ "$TALKBOX_ALL" == yes ]]
 }
 
 @test "the --all flag defaults to no" {
 	load_lib options.sh
-	parse_onbox_options
-	[[ "$ONBOX_ALL" == no ]]
+	parse_talkbox_options
+	[[ "$TALKBOX_ALL" == no ]]
 }
 
 @test "onbox merge is parsed as the merge verb while -c merge remains a command" {
 	load_lib options.sh
-	parse_onbox_options merge
-	[[ "$ONBOX_VERB" == merge ]]
-	[[ -z "$ONBOX_COMMAND" ]]
-	parse_onbox_options -c merge
-	[[ "$ONBOX_COMMAND" == merge ]]
-	[[ -z "$ONBOX_VERB" ]]
+	parse_talkbox_options merge
+	[[ "$TALKBOX_VERB" == merge ]]
+	[[ -z "$TALKBOX_COMMAND" ]]
+	parse_talkbox_options -c merge
+	[[ "$TALKBOX_COMMAND" == merge ]]
+	[[ -z "$TALKBOX_VERB" ]]
 }
 
 @test "onbox merge <branchname> records the merge verb and the branch positional" {
 	load_lib options.sh
-	parse_onbox_options merge mybranch
-	[[ "$ONBOX_VERB" == merge ]]
-	[[ "$ONBOX_BRANCH" == mybranch ]]
-	[[ -z "$ONBOX_COMMAND" ]]
+	parse_talkbox_options merge mybranch
+	[[ "$TALKBOX_VERB" == merge ]]
+	[[ "$TALKBOX_BRANCH" == mybranch ]]
+	[[ -z "$TALKBOX_COMMAND" ]]
 }
 
 @test "onbox merge --all sets the merge verb and the --all flag" {
 	load_lib options.sh
-	parse_onbox_options merge --all
-	[[ "$ONBOX_VERB" == merge ]]
-	[[ "$ONBOX_ALL" == yes ]]
-	[[ -z "$ONBOX_COMMAND" ]]
+	parse_talkbox_options merge --all
+	[[ "$TALKBOX_VERB" == merge ]]
+	[[ "$TALKBOX_ALL" == yes ]]
+	[[ -z "$TALKBOX_COMMAND" ]]
 }
 
 @test "onbox sync is parsed as the sync verb while -c sync remains a command" {
 	load_lib options.sh
-	parse_onbox_options sync
-	[[ "$ONBOX_VERB" == sync ]]
-	[[ -z "$ONBOX_COMMAND" ]]
-	parse_onbox_options -c sync
-	[[ "$ONBOX_COMMAND" == sync ]]
-	[[ -z "$ONBOX_VERB" ]]
+	parse_talkbox_options sync
+	[[ "$TALKBOX_VERB" == sync ]]
+	[[ -z "$TALKBOX_COMMAND" ]]
+	parse_talkbox_options -c sync
+	[[ "$TALKBOX_COMMAND" == sync ]]
+	[[ -z "$TALKBOX_VERB" ]]
 }
 
 @test "onbox sync <branchname> --all records the sync verb, branch and --all flag" {
 	load_lib options.sh
-	parse_onbox_options sync mybranch --all
-	[[ "$ONBOX_VERB" == sync ]]
-	[[ "$ONBOX_BRANCH" == mybranch ]]
-	[[ "$ONBOX_ALL" == yes ]]
-	[[ -z "$ONBOX_COMMAND" ]]
+	parse_talkbox_options sync mybranch --all
+	[[ "$TALKBOX_VERB" == sync ]]
+	[[ "$TALKBOX_BRANCH" == mybranch ]]
+	[[ "$TALKBOX_ALL" == yes ]]
+	[[ -z "$TALKBOX_COMMAND" ]]
 }
