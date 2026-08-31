@@ -344,6 +344,15 @@ The command `onbox sync --all` applies `custom_merge host <branchname>` to all `
 
 Analogously, `netbox sync` is used to sync changes back to the `netbox` container and `offbox sync` is used to sync changes back to the `offbox` container.
 
+## gpu support
+
+When the flag `--gpu` is given to any of the commands `openbox`, `netbox` or `offbox`, then any available Nvidia GPUs from the host are made available in the container when it is created by passing the following options to `podman`:
+
+```
+--device nvidia.com/gpu=all
+--group-add keep-groups
+```
+
 ## implementation
 
 The core shell script by which `onbox`, `netbox` and `offbox` are defined is `talkbox.sh`. Additional logic used by `talkbox.sh` may be provided as shell scripts in `lib/`. This includes:
@@ -381,6 +390,8 @@ Any test which invokes `podman`, including those which call `talkbox.sh`, `onbox
 All tests which create a `podman` container should use a temporary git repository or non-git folder as a stand-in for `<project>`.
 
 Most end-to-end tests should be implemented with `-c --noninteractive` to ensure that the container is run non-interactively. However, some tests should test `talkbox.sh` running interactively. Tests for interactive cases should drive the session through `expect`, running scripts that terminate with `exit`.
+
+Do not write tests for GPU usage, since a GPU may not be available on all systems where tests are run.
 
 ## references
 
