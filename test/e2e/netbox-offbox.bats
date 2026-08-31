@@ -130,19 +130,34 @@ teardown() {
 	rm -rf "$shimdir" "$log"
 }
 
-@test "netbox --rm-container removes the container and its root image" {
+@test "netbox --rm-container removes the container, its root image and named volumes" {
+	local data
+	data="$(mktemp -d)"
 	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'true'
 	[[ "$status" -eq 0 ]]
-	run run_talkbox "$PROJECT" "$TALKBOX" netbox -c --noninteractive 'true'
+	run run_talkbox "$PROJECT" "$TALKBOX" netbox --write "$data:/talkbox/wdata" -c --noninteractive 'true'
 	[[ "$status" -eq 0 ]]
 	run sdrun podman image exists "$NETBOX_ROOT"
 	[[ "$status" -eq 0 ]]
-	run run_talkbox "$PROJECT" "$TALKBOX" netbox --rm-container
+	run sdrun podman volume exists "$PROJECT_SLUG.netbox.worktree"
+	[[ "$status" -eq 0 ]]
+	run sdrun podman volume exists "$PROJECT_SLUG.netbox.gitdir"
+	[[ "$status" -eq 0 ]]
+	run sdrun podman volume exists "$PROJECT_SLUG.netbox.write.talkbox-wdata"
+	[[ "$status" -eq 0 ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" netbox --rm-container --write "$data:/talkbox/wdata"
 	[[ "$status" -eq 0 ]]
 	run sdrun podman image exists "$NETBOX_ROOT"
 	[[ "$status" -ne 0 ]]
 	run sdrun podman container exists "$NETBOX_CTR"
 	[[ "$status" -ne 0 ]]
+	run sdrun podman volume exists "$PROJECT_SLUG.netbox.worktree"
+	[[ "$status" -ne 0 ]]
+	run sdrun podman volume exists "$PROJECT_SLUG.netbox.gitdir"
+	[[ "$status" -ne 0 ]]
+	run sdrun podman volume exists "$PROJECT_SLUG.netbox.write.talkbox-wdata"
+	[[ "$status" -ne 0 ]]
+	rm -rf "$data"
 }
 
 @test "netbox --rm-image removes the base image" {

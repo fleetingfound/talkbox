@@ -1,5 +1,8 @@
 target: test-e2e
-started: '2026-08-31T10:06:44Z'
-exit: 0
-totals: { total: 60, pass: 60, fail: 0, skip: 0 }
+started: '2026-08-31T20:50:39Z'
+exit: 1
+totals: { total: 60, pass: 57, fail: 3, skip: 0 }
 fail:
+ - 'test/e2e/lifecycle.bats :: onbox --rm-container removes the persistent container and its gitdir named volume'
+ - 'test/e2e/lifecycle.bats :: onbox --recontain recreates the container and starts it'
+ - 'test/e2e/netbox-offbox.bats :: netbox --rm-container removes the container, its root image and named volumes'

@@ -4,7 +4,8 @@ setup() {
 	PROJECT="$(mk_project)"
 	TALKBOX="$(mk_talkbox)"
 	PROJECT_BASE="$(basename "$PROJECT")"
-	CTR="$(onbox_ctr_name "$PROJECT")"
+	PROJECT_SLUG="$(project_slug_e2e "$PROJECT")"
+	CTR="$PROJECT_SLUG.onbox"
 	HOST_SRV_PID=""
 }
 
@@ -13,6 +14,10 @@ teardown() {
 		kill "$HOST_SRV_PID" 2>/dev/null || true
 	fi
 	sdrun podman rm -f -v "$CTR" >/dev/null 2>&1 || true
+	local v
+	for v in $(sdrun podman volume ls -q --filter "name=$PROJECT_SLUG" 2>/dev/null); do
+		sdrun podman volume rm -f "$v" >/dev/null 2>&1 || true
+	done
 	rm -rf "$PROJECT" "$TALKBOX"
 }
 
@@ -88,25 +93,31 @@ EXPECT
 	rm -rf "$www"
 }
 
-@test "onbox --rm-container removes the persistent container" {
+@test "onbox --rm-container removes the persistent container and its gitdir named volume" {
 	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'true'
 	[[ "$status" -eq 0 ]]
 	run sdrun podman container exists "$CTR"
+	[[ "$status" -eq 0 ]]
+	run sdrun podman volume exists "$PROJECT_SLUG.onbox.gitdir"
 	[[ "$status" -eq 0 ]]
 	# shellcheck disable=SC2016 # $0/$1 expand inside the wrapped bash -c
 	run sdrun bash -c 'cd "$1" && "$0/talkbox.sh" onbox --rm-container' "$TALKBOX" "$PROJECT"
 	[[ "$status" -eq 0 ]]
 	run sdrun podman container exists "$CTR"
 	[[ "$status" -ne 0 ]]
+	run sdrun podman volume exists "$PROJECT_SLUG.onbox.gitdir"
+	[[ "$status" -ne 0 ]]
 }
 
 @test "onbox --recontain recreates the container and starts it" {
-	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'echo stale > /tmp/talkbox-recontain-probe'
+	git -C "$PROJECT" commit -q --allow-empty -m host-initial
+	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'echo stale > /tmp/talkbox-recontain-probe && git config user.email c@example.com && git config user.name container && git commit --allow-empty -m container-commit && git log --oneline | grep -q container-commit && echo PRESENT'
 	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'PRESENT'* ]]
 	# shellcheck disable=SC2016 # $0/$1 expand inside the wrapped bash -c
 	run sdrun bash -c 'cd "$1" && "$0/talkbox.sh" onbox --recontain' "$TALKBOX" "$PROJECT"
 	[[ "$status" -eq 0 ]]
-	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'test ! -e /tmp/talkbox-recontain-probe && echo FRESH'
+	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'test ! -e /tmp/talkbox-recontain-probe && (git log --oneline | grep -q container-commit && echo STALE || echo FRESH)'
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'FRESH'* ]]
 }
