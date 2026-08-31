@@ -17,6 +17,32 @@ plan_gitdir_volume() {
 	fi
 }
 
+plan_volume_rm() {
+	local -n _plan_out="$1"
+	local vol="$2"
+	if volume_exists "$vol"; then
+		_plan_out+=("podman" "volume" "rm" "-f" "$vol")
+	fi
+}
+
+plan_container_volumes_rm() {
+	local -n _plan_out="$1"
+	local project="$2" container="$3"
+	local -n _dsts="$4"
+	local i
+	case "$container" in
+	netbox) plan_volume_rm "${!_plan_out}" "$(netbox_worktree_volume "$project")" ;;
+	offbox) plan_volume_rm "${!_plan_out}" "$(offbox_worktree_volume "$project")" ;;
+	esac
+	plan_volume_rm "${!_plan_out}" "$(gitdir_volume "$project" "$container")"
+	for ((i = 0; i < ${#_dsts[@]}; i++)); do
+		case "$container" in
+		netbox) plan_volume_rm "${!_plan_out}" "$(netbox_write_volume "$project" "$(dest_slug "${_dsts[$i]}")")" ;;
+		offbox) plan_volume_rm "${!_plan_out}" "$(offbox_write_volume "$project" "$(dest_slug "${_dsts[$i]}")")" ;;
+		esac
+	done
+}
+
 plan_onbox() {
 	local -n _plan_out="$1"
 	local project="$2" interactive="$3"
@@ -65,9 +91,11 @@ plan_recontain() {
 	local -n _plan_out="$1"
 	local project="$2" interactive="$3"
 	local -n _read="$4" _write="$5" _ports="$6"
-	local -a create_args=()
+	# shellcheck disable=SC2034 # consumed by nameref parameter
+	local -a create_args=() no_write_dsts=()
 	plan_onbox create_args "$project" "$interactive" "$4" "$5" "$6"
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$(onbox_container_name "$project")")
+	plan_container_volumes_rm "${!_plan_out}" "$project" onbox no_write_dsts
 	plan_gitdir_volume "${!_plan_out}" "$project" onbox
 	_plan_out+=("podman" "create")
 	_plan_out+=("${create_args[@]}")
@@ -78,10 +106,12 @@ plan_rebuild() {
 	local -n _plan_out="$1"
 	local project="$2" interactive="$3"
 	local -n _read="$4" _write="$5" _ports="$6"
-	local -a create_args=()
+	# shellcheck disable=SC2034 # consumed by nameref parameter
+	local -a create_args=() no_write_dsts=()
 	plan_onbox create_args "$project" "$interactive" "$4" "$5" "$6"
 	_plan_out+=("podman" "build" "-t" "$(base_image_name)" "-f" "$TALKBOX_ROOT/image/Containerfile" "$TALKBOX_ROOT/image")
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$(onbox_container_name "$project")")
+	plan_container_volumes_rm "${!_plan_out}" "$project" onbox no_write_dsts
 	plan_gitdir_volume "${!_plan_out}" "$project" onbox
 	_plan_out+=("podman" "create")
 	_plan_out+=("${create_args[@]}")
@@ -91,7 +121,10 @@ plan_rebuild() {
 plan_rm_container() {
 	local -n _plan_out="$1"
 	local project="$2"
+	# shellcheck disable=SC2034 # consumed by nameref parameter
+	local -a no_write_dsts=()
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$(onbox_container_name "$project")")
+	plan_container_volumes_rm "${!_plan_out}" "$project" onbox no_write_dsts
 }
 
 plan_rm_image() {
@@ -389,6 +422,7 @@ plan_netbox_recontain() {
 		image="$(base_image_name)"
 	fi
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$ctr")
+	plan_container_volumes_rm "${!_plan_out}" "$project" netbox "$7"
 	plan_netbox_populate "${!_plan_out}" "$project" "$6" "$7"
 	plan_gitdir_volume "${!_plan_out}" "$project" netbox
 	local -a create_args=()
@@ -413,6 +447,7 @@ plan_offbox_recontain() {
 		image="$(base_image_name)"
 	fi
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$ctr")
+	plan_container_volumes_rm "${!_plan_out}" "$project" offbox "$7"
 	plan_offbox_populate "${!_plan_out}" "$project" "$source" "$6" "$7"
 	plan_gitdir_volume "${!_plan_out}" "$project" offbox
 	local -a create_args=()
@@ -438,6 +473,7 @@ plan_netbox_rebuild() {
 		image="$(base_image_name)"
 	fi
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$ctr")
+	plan_container_volumes_rm "${!_plan_out}" "$project" netbox "$7"
 	plan_netbox_populate "${!_plan_out}" "$project" "$6" "$7"
 	plan_gitdir_volume "${!_plan_out}" "$project" netbox
 	local -a create_args=()
@@ -463,6 +499,7 @@ plan_offbox_rebuild() {
 		image="$(base_image_name)"
 	fi
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$ctr")
+	plan_container_volumes_rm "${!_plan_out}" "$project" offbox "$7"
 	plan_offbox_populate "${!_plan_out}" "$project" "$source" "$6" "$7"
 	plan_gitdir_volume "${!_plan_out}" "$project" offbox
 	local -a create_args=()
@@ -475,14 +512,18 @@ plan_offbox_rebuild() {
 plan_netbox_rm_container() {
 	local -n _plan_out="$1"
 	local project="$2"
+	local -n _dsts="$3"
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$(netbox_container_name "$project")")
+	plan_container_volumes_rm "${!_plan_out}" "$project" netbox "$3"
 	_plan_out+=("podman" "rmi" "$(netbox_root_image "$project")")
 }
 
 plan_offbox_rm_container() {
 	local -n _plan_out="$1"
 	local project="$2"
+	local -n _dsts="$3"
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$(offbox_container_name "$project")")
+	plan_container_volumes_rm "${!_plan_out}" "$project" offbox "$3"
 	_plan_out+=("podman" "rmi" "$(offbox_root_image "$project")")
 }
 
@@ -702,28 +743,32 @@ run_offbox_rebuild() {
 
 run_netbox_rm_container() {
 	local project="$1"
+	shift
 	local ctr root
 	ctr="$(netbox_container_name "$project")"
 	root="$(netbox_root_image "$project")"
 	local -a plan=()
 	if podman image exists "$root" >/dev/null 2>&1; then
-		plan_netbox_rm_container plan "$project"
+		plan_netbox_rm_container plan "$project" "$1"
 	else
 		plan+=("podman" "rm" "-f" "--volumes" "$ctr")
+		plan_container_volumes_rm plan "$project" netbox "$1"
 	fi
 	execute_plan "${plan[@]}"
 }
 
 run_offbox_rm_container() {
 	local project="$1"
+	shift
 	local ctr root
 	ctr="$(offbox_container_name "$project")"
 	root="$(offbox_root_image "$project")"
 	local -a plan=()
 	if podman image exists "$root" >/dev/null 2>&1; then
-		plan_offbox_rm_container plan "$project"
+		plan_offbox_rm_container plan "$project" "$1"
 	else
 		plan+=("podman" "rm" "-f" "--volumes" "$ctr")
+		plan_container_volumes_rm plan "$project" offbox "$1"
 	fi
 	execute_plan "${plan[@]}"
 }

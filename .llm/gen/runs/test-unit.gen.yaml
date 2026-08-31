@@ -1,21 +1,5 @@
 target: test-unit
-started: '2026-08-31T21:01:01Z'
-exit: 1
-totals: { total: 174, pass: 158, fail: 16, skip: 0 }
+started: '2026-08-31T21:32:21Z'
+exit: 0
+totals: { total: 174, pass: 174, fail: 0, skip: 0 }
 fail:
- - 'test/unit/lifecycle.bats :: recontain plan removes, recreates and starts the container'
- - 'test/unit/lifecycle.bats :: rebuild plan rebuilds the base image then recreates and starts'
- - 'test/unit/lifecycle.bats :: recontain plan removes only the volumes that exist'
- - 'test/unit/lifecycle.bats :: rm-container plan removes the container with its volumes'
- - 'test/unit/lifecycle.bats :: netbox recontain plan commits the source, removes volumes, populates and recreates the container'
- - 'test/unit/lifecycle.bats :: offbox recontain plan commits the netbox source, removes volumes, populates and recreates the container'
- - 'test/unit/lifecycle.bats :: netbox recontain plan skips the commit when the source is the base image'
- - 'test/unit/lifecycle.bats :: netbox recontain plan removes the write volumes and populates them when present'
- - 'test/unit/lifecycle.bats :: offbox recontain plan removes the write volumes and populates them when present'
- - 'test/unit/lifecycle.bats :: netbox rebuild plan rebuilds the base image, commits, removes volumes and recreates'
- - 'test/unit/lifecycle.bats :: offbox rebuild plan rebuilds the base image, commits, removes volumes and recreates'
- - 'test/unit/lifecycle.bats :: netbox rm-container plan removes the container, its root image and named volumes'
- - 'test/unit/lifecycle.bats :: offbox rm-container plan removes the container, its root image and named volumes'
- - 'test/unit/lifecycle.bats :: netbox rm-container plan removes the write volumes when write dests are supplied'
- - 'test/unit/lifecycle.bats :: rm-container volume removal is guarded by volume existence'
- - 'test/unit/lifecycle.bats :: plan_volume_rm emits podman volume rm -f only when the volume exists'

@@ -81,7 +81,7 @@ sandbox_action() {
 		"run_${container}_rebuild" "$(pwd)" "$TALKBOX_INTERACTIVE" read_mounts write_mounts write_srcs write_dsts ports
 		;;
 	rm-container)
-		"run_${container}_rm_container" "$(pwd)"
+		"run_${container}_rm_container" "$(pwd)" write_dsts
 		;;
 	rm-image)
 		"run_${container}_rm_image" "$(pwd)"

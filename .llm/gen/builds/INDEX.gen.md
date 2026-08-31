@@ -15,3 +15,4 @@
 - [Phase 6c: Replace `execute_fetch_plan` with two-array `plan_fetch` output](.llm/gen/builds/phase-6c-execute-fetch-plan-two-array.gen.md)
 - [Phase 6d: Increase `podman stop` grace period to 5 seconds](.llm/gen/builds/phase-6d-podman-stop-grace-period.gen.md)
 - [Phase 7: GPU support (`--gpu` flag)](.llm/gen/builds/phase-7-gpu-support.gen.md)
+- [Phase 8a: Lifecycle verbs remove and recreate named volumes](.llm/gen/builds/phase-8a-lifecycle-named-volume-cleanup.gen.md)

@@ -19,6 +19,6 @@ Implementation plan for `SPEC.md`, in recommended order. Each phase builds on th
 - [x] [Phase 6c: Replace `execute_fetch_plan` with two-array `plan_fetch` output](phase-6c-execute-fetch-plan-two-array.gen.md) #flow/unified #model/default
 - [x] [Phase 6d: Increase `podman stop` grace period to 5 seconds](phase-6d-podman-stop-grace-period.gen.md) #flow/unified #model/default
 - [x] [Phase 7: GPU support (`--gpu` flag)](phase-7-gpu-support.gen.md) #flow/redgreen #model/default
-- [ ] [Phase 8a: Lifecycle verbs remove and recreate named volumes](phase-8a-lifecycle-named-volume-cleanup.gen.md) #flow/redgreen #model/default
+- [x] [Phase 8a: Lifecycle verbs remove and recreate named volumes](phase-8a-lifecycle-named-volume-cleanup.gen.md) #flow/redgreen #model/default
 - [ ] [Phase 8b: Options requiring a value emit talkbox messages instead of raw bash errors](phase-8b-options-missing-value-diagnostics.gen.md) #flow/redgreen #model/default
 - [ ] [Phase 8c: Bring `helpers.bash` files under `make lint` and `make format`](phase-8c-helpers-bash-lint-format.gen.md) #flow/unified #model/default
