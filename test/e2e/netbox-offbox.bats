@@ -102,6 +102,34 @@ teardown() {
 	[[ "$output" != *'from-netbox'* ]]
 }
 
+@test "netbox --gpu passes the GPU options to podman create on a GPU-less host" {
+	local shimdir log
+	log="$(mktemp)"
+	shimdir="$(mk_gpu_shim "$log")"
+	# shellcheck disable=SC2016 # $0/$1/$2 expand inside the wrapped bash -c
+	run sdrun bash -c 'cd "$1" && PATH="$2:$PATH" "$0/talkbox.sh" netbox --gpu -c --noninteractive true' "$TALKBOX" "$PROJECT" "$shimdir"
+	[[ "$status" -eq 0 ]]
+	[[ "$(grep -c 'nvidia.com/gpu=all' "$log")" -ge 1 ]]
+	[[ "$(grep -c 'keep-groups' "$log")" -ge 1 ]]
+	run sdrun podman container exists "$NETBOX_CTR"
+	[[ "$status" -eq 0 ]]
+	rm -rf "$shimdir" "$log"
+}
+
+@test "offbox --gpu passes the GPU options to podman create on a GPU-less host" {
+	local shimdir log
+	log="$(mktemp)"
+	shimdir="$(mk_gpu_shim "$log")"
+	# shellcheck disable=SC2016 # $0/$1/$2 expand inside the wrapped bash -c
+	run sdrun bash -c 'cd "$1" && PATH="$2:$PATH" "$0/talkbox.sh" offbox --gpu -c --noninteractive true' "$TALKBOX" "$PROJECT" "$shimdir"
+	[[ "$status" -eq 0 ]]
+	[[ "$(grep -c 'nvidia.com/gpu=all' "$log")" -ge 1 ]]
+	[[ "$(grep -c 'keep-groups' "$log")" -ge 1 ]]
+	run sdrun podman container exists "$OFFBOX_CTR"
+	[[ "$status" -eq 0 ]]
+	rm -rf "$shimdir" "$log"
+}
+
 @test "netbox --rm-container removes the container and its root image" {
 	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'true'
 	[[ "$status" -eq 0 ]]

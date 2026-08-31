@@ -1,5 +1,8 @@
 target: test-e2e
-started: '2026-08-31T00:43:42Z'
-exit: 0
-totals: { total: 57, pass: 57, fail: 0, skip: 0 }
+started: '2026-08-31T02:18:59Z'
+exit: 1
+totals: { total: 60, pass: 57, fail: 3, skip: 0 }
 fail:
+ - 'test/e2e/netbox-offbox.bats :: netbox --gpu passes the GPU options to podman create on a GPU-less host'
+ - 'test/e2e/netbox-offbox.bats :: offbox --gpu passes the GPU options to podman create on a GPU-less host'
+ - 'test/e2e/onbox.bats :: onbox --gpu passes the GPU options to podman create on a GPU-less host'

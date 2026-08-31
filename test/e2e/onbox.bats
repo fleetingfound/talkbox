@@ -77,6 +77,20 @@ teardown() {
 	[[ "$output" == *"/working/$PROJECT_BASE"* ]]
 }
 
+@test "onbox --gpu passes the GPU options to podman create on a GPU-less host" {
+	local shimdir log
+	log="$(mktemp)"
+	shimdir="$(mk_gpu_shim "$log")"
+	# shellcheck disable=SC2016 # $0/$1/$2 expand inside the wrapped bash -c
+	run sdrun bash -c 'cd "$1" && PATH="$2:$PATH" "$0/talkbox.sh" onbox --gpu -c --noninteractive true' "$TALKBOX" "$PROJECT" "$shimdir"
+	[[ "$status" -eq 0 ]]
+	[[ "$(grep -c 'nvidia.com/gpu=all' "$log")" -ge 1 ]]
+	[[ "$(grep -c 'keep-groups' "$log")" -ge 1 ]]
+	run sdrun podman container exists "$CTR"
+	[[ "$status" -eq 0 ]]
+	rm -rf "$shimdir" "$log"
+}
+
 @test "onbox starts an interactive shell that exits via exit" {
 	local exp
 	exp="$(mktemp --suffix=.exp)"

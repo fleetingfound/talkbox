@@ -19,6 +19,18 @@ array_contains() {
 	return 1
 }
 
+array_has() {
+	local needle="$1"
+	shift
+	local element
+	for element in "$@"; do
+		if [[ "$element" == *"$needle"* ]]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
 array_has_none() {
 	local needle="$1"
 	shift
@@ -110,6 +122,36 @@ setup() {
 	local args=()
 	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
 	array_has_none 'dotfiles.project' "${args[@]}"
+}
+
+@test "onbox plan appends the GPU device and group options when TALKBOX_GPU is yes" {
+	load_onbox_plan
+	# shellcheck disable=SC2034 # global consumed by plan_onbox
+	TALKBOX_GPU=yes
+	local args=()
+	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_has 'nvidia.com/gpu=all' "${args[@]}"
+	array_has 'keep-groups' "${args[@]}"
+}
+
+@test "onbox recontain plan passes the GPU options to podman create when TALKBOX_GPU is yes" {
+	load_onbox_plan
+	# shellcheck disable=SC2034 # global consumed by plan_onbox
+	TALKBOX_GPU=yes
+	local args=()
+	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_has 'nvidia.com/gpu=all' "${args[@]}"
+	array_has 'keep-groups' "${args[@]}"
+}
+
+@test "onbox rebuild plan passes the GPU options to podman create when TALKBOX_GPU is yes" {
+	load_onbox_plan
+	# shellcheck disable=SC2034 # global consumed by plan_onbox
+	TALKBOX_GPU=yes
+	local args=()
+	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_has 'nvidia.com/gpu=all' "${args[@]}"
+	array_has 'keep-groups' "${args[@]}"
 }
 
 @test "onbox plan runs the shared base image" {

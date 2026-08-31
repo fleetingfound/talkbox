@@ -96,3 +96,25 @@ run_talkbox() {
 	shift 2
 	sdrun bash -c 'cd "$1" && shift && exec "$@"' bash "$project" "$talkbox/talkbox.sh" "$@"
 }
+
+mk_gpu_shim() {
+	# $1: log file path; prints the directory holding a podman shim which logs
+	# every invocation to $1 and delegates to the real podman for everything
+	# except start/exec/stop (stubbed to exit 0). A GPU-less host cannot start a
+	# container carrying `--device nvidia.com/gpu=all` (the CDI device is
+	# unresolvable), so the shim lets the `--gpu` flow reach `podman create`
+	# and succeed while the create arguments are still observed in the log.
+	local log="$1" dir real
+	dir="$(mktemp -d)"
+	real="$(command -v podman)"
+	cat >"$dir/podman" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >>'$log'
+case "\$1" in
+start|exec|stop) exit 0 ;;
+esac
+exec '$real' "\$@"
+EOF
+	chmod +x "$dir/podman"
+	printf '%s\n' "$dir"
+}

@@ -14,3 +14,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 5b: git transport behavioural alignment](phase-5b-behavioural-alignment.gen.md)
 - [Phase 5c: git transport coverage gaps](phase-5c-coverage-gaps.gen.md)
 - [Phase 6a: e2e `--port` TOCTOU fix](phase-6a-e2e-port-toctou-fix.gen.md)
+- [Phase 7: GPU support (`--gpu` flag)](phase-7-gpu-support.gen.md)

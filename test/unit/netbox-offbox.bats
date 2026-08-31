@@ -19,6 +19,18 @@ array_contains() {
 	return 1
 }
 
+array_has() {
+	local needle="$1"
+	shift
+	local element
+	for element in "$@"; do
+		if [[ "$element" == *"$needle"* ]]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
 array_has_none() {
 	local needle="$1"
 	shift
@@ -152,6 +164,16 @@ setup() {
 	array_contains '--cap-drop=NET_RAW' "${args[@]}"
 }
 
+@test "netbox plan appends the GPU device and group options when TALKBOX_GPU is yes" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # global consumed by plan_netbox
+	TALKBOX_GPU=yes
+	local args=()
+	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_has 'nvidia.com/gpu=all' "${args[@]}"
+	array_has 'keep-groups' "${args[@]}"
+}
+
 @test "netbox plan forwards -T ports on pasta" {
 	load_netbox_plan
 	# shellcheck disable=SC2054 # -T,<port> tokens are single array elements
@@ -185,6 +207,16 @@ setup() {
 	array_contains '--network=pasta:-i,lo,-I,talkbox0' "${args[@]}"
 	array_contains '--cap-drop=NET_ADMIN' "${args[@]}"
 	array_contains '--cap-drop=NET_RAW' "${args[@]}"
+}
+
+@test "offbox plan appends the GPU device and group options when TALKBOX_GPU is yes" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # global consumed by plan_offbox
+	TALKBOX_GPU=yes
+	local args=()
+	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_has 'nvidia.com/gpu=all' "${args[@]}"
+	array_has 'keep-groups' "${args[@]}"
 }
 
 @test "offbox plan forwards -T ports alongside the loopback restriction" {

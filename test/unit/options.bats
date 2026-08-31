@@ -10,6 +10,7 @@ setup() {
 	TALKBOX_PORT=()
 	TALKBOX_FRESH=""
 	TALKBOX_INHERIT=""
+	TALKBOX_GPU=""
 	TALKBOX_ALL=""
 	TALKBOX_BRANCH=""
 }
@@ -140,6 +141,25 @@ setup() {
 	parse_talkbox_options --fresh --inherit onbox -c 'pwd'
 	[[ "$TALKBOX_FRESH" == yes ]]
 	[[ "$TALKBOX_INHERIT" == onbox ]]
+	[[ "$TALKBOX_COMMAND" == 'pwd' ]]
+}
+
+@test "--gpu is recognised" {
+	load_lib options.sh
+	parse_talkbox_options --gpu
+	[[ "$TALKBOX_GPU" == yes ]]
+}
+
+@test "--gpu defaults to no" {
+	load_lib options.sh
+	parse_talkbox_options
+	[[ "$TALKBOX_GPU" == no ]]
+}
+
+@test "--gpu is not treated as the command" {
+	load_lib options.sh
+	parse_talkbox_options --gpu -c 'pwd'
+	[[ "$TALKBOX_GPU" == yes ]]
 	[[ "$TALKBOX_COMMAND" == 'pwd' ]]
 }
 

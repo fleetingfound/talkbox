@@ -1,0 +1,29 @@
+# Tests: Phase 7 GPU support (`--gpu` flag)
+
+Linked plan: [phase-7-gpu-support.gen.md](../plans/phase-7-gpu-support.gen.md)
+
+Summary: this phase implements the **gpu support** section of [SPEC.md](../../../SPEC.md) (lines 347-355) — parsing `--gpu` into the `TALKBOX_GPU` global (default `no`) and, when `yes`, appending `--device nvidia.com/gpu=all` and `--group-add keep-groups` to the `podman create` argument lists inside `plan_onbox`/`plan_netbox`/`plan_offbox` per [Choice: GPU flag threading](../choices/gpu-flag-threading.gen.md) (Option B), so the default-create, recontain and rebuild paths all inherit GPU support.
+
+## New tests
+
+- `test/unit/options.bats` — three parser tests: `--gpu is recognised` (`parse_talkbox_options --gpu` sets `TALKBOX_GPU=yes`), `--gpu defaults to no` (no flag leaves `TALKBOX_GPU=no`), and `--gpu is not treated as the command` (`--gpu -c 'pwd'` sets both the flag and the command). These are the plan's specified unit test ("asserting that `parse_talkbox_options` sets `TALKBOX_GPU=yes` when `--gpu` is present and `no` when absent") and verify the parser without invoking `podman`.
+- `test/unit/containers.bats` — `onbox plan appends the GPU device and group options when TALKBOX_GPU is yes` asserts `plan_onbox` emits tokens containing `nvidia.com/gpu=all` and `keep-groups` when `TALKBOX_GPU=yes`; `onbox recontain plan passes the GPU options to podman create when TALKBOX_GPU is yes` and `onbox rebuild plan passes the GPU options to podman create when TALKBOX_GPU is yes` assert the same through `plan_recontain`/`plan_rebuild`, covering the plan's claim that "the default-create (`run_onbox`/`run_netbox`/`run_offbox`), recontain and rebuild paths all inherit GPU support automatically". A substring `array_has` helper was added alongside the existing `array_contains`/`array_has_none` so both `--device=nvidia.com/gpu=all` and space-separated `--device nvidia.com/gpu=all` forms satisfy the test.
+- `test/unit/netbox-offbox.bats` — `netbox plan appends the GPU device and group options when TALKBOX_GPU is yes` and `offbox plan appends the GPU device and group options when TALKBOX_GPU is yes` assert the two options appear in `plan_netbox`/`plan_offbox` under the same global (the plan requires all three planners to append them). The same `array_has` helper was added here.
+- `test/e2e/onbox.bats` — `onbox --gpu passes the GPU options to podman create on a GPU-less host`; `test/e2e/netbox-offbox.bats` — `netbox --gpu passes the GPU options to podman create on a GPU-less host` and `offbox --gpu passes the GPU options to podman create on a GPU-less host`. Each runs `talkbox.sh <container> --gpu -c --noninteractive true` (noninteractive, `-c`, as the plan specifies) through a `podman` shim and asserts: the invocation exits 0, the recorded `podman create` invocation contains both `nvidia.com/gpu=all` and `keep-groups`, and the real (shim-delegated) `podman create` accepted the options because `podman container exists <ctr>` succeeds on the GPU-less host.
+- `test/e2e/helpers.bash` — `mk_gpu_shim <logfile>` helper, which creates a temporary `podman` shim that logs every invocation to the given log file and delegates to the real `podman` binary for every subcommand except `start`/`exec`/`stop` (stubbed to exit 0).
+
+### Deviation from the plan's literal e2e description
+
+The plan describes the e2e test as asserting that `--gpu` "successfully creates **and runs** a container on a GPU-less host — i.e. podman accepts the `--device`/`--group-add` options without error even when no GPU device is present". Empirically on this GPU-less host (podman 5.4.2, no `/etc/cdi` or `/var/run/cdi`, no `nvidia-container-toolkit`), `podman create --device nvidia.com/gpu=all --group-add keep-groups` **succeeds** but `podman start` **fails**: `Error: ... setting up CDI devices: unresolvable CDI devices nvidia.com/gpu=all`. There is no user-writable CDI spec directory (defaults are `/etc/cdi` and `/var/run/cdi`, both root-owned) and no `--cdi-spec-dir`/`CDI_SPEC_DIRS` override in this podman build, so a container carrying the CDI device cannot be started on this host.
+
+A test that required the container to actually start could never pass after the plan is implemented, so the e2e tests instead assert the strongest verifiable external behaviour on a GPU-less host: `--gpu` is accepted by the CLI, the two options reach the `podman create` invocation, and the real `podman create` accepts them (the container exists afterwards). `start`/`exec`/`stop` are stubbed so the run is deterministic on both GPU-less and GPU hosts, and — per `SPEC.md` (testing, line 394: "Do not write tests for GPU usage, since a GPU may not be available on all systems where tests are run") — the test never asserts that a GPU is actually exposed inside the container. This is consistent with the plan's deferred item: "Any GPU-availability detection or warning when `--gpu` is passed on a host without an Nvidia GPU ... podman/host behaviour when no GPU is present is out of scope."
+
+## Tests edited
+
+- `test/unit/options.bats` — `TALKBOX_GPU=""` was added to the `setup()` reset list so the new parser tests start from a clean global, matching the existing reset pattern for `TALKBOX_FRESH`/`TALKBOX_INHERIT`/etc.
+- `test/unit/containers.bats` and `test/unit/netbox-offbox.bats` — added the shared substring-helper `array_has` next to the existing `array_contains`/`array_has_none`; no existing tests were altered.
+- `test/e2e/helpers.bash` — added the `mk_gpu_shim` helper after `run_talkbox`; no existing helpers were altered.
+
+## Tests removed
+
+- None. No pre-existing test is inconsistent with the plan: the plan only adds the `--gpu` flag and the two planner-appended options, both previously untested, and changes no existing behaviour ("Without `--gpu`, behaviour is unchanged"), so all 162 unit and 57 e2e pre-existing tests remain valid.

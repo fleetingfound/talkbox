@@ -1,5 +1,13 @@
 target: test-unit
-started: '2026-08-31T00:43:03Z'
-exit: 0
-totals: { total: 162, pass: 162, fail: 0, skip: 0 }
+started: '2026-08-31T02:18:18Z'
+exit: 1
+totals: { total: 170, pass: 162, fail: 8, skip: 0 }
 fail:
+ - 'test/unit/containers.bats :: onbox plan appends the GPU device and group options when TALKBOX_GPU is yes'
+ - 'test/unit/containers.bats :: onbox recontain plan passes the GPU options to podman create when TALKBOX_GPU is yes'
+ - 'test/unit/containers.bats :: onbox rebuild plan passes the GPU options to podman create when TALKBOX_GPU is yes'
+ - 'test/unit/netbox-offbox.bats :: netbox plan appends the GPU device and group options when TALKBOX_GPU is yes'
+ - 'test/unit/netbox-offbox.bats :: offbox plan appends the GPU device and group options when TALKBOX_GPU is yes'
+ - 'test/unit/options.bats :: --gpu is recognised'
+ - 'test/unit/options.bats :: --gpu defaults to no'
+ - 'test/unit/options.bats :: --gpu is not treated as the command'
