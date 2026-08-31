@@ -6,6 +6,8 @@ source "$TALKBOX_ROOT/lib/common.sh"
 source "$TALKBOX_ROOT/lib/naming.sh"
 source "$TALKBOX_ROOT/lib/git.sh"
 
+STOP_GRACE_SECONDS=5
+
 plan_gitdir_volume() {
 	local -n _plan_out="$1"
 	local project="$2" container="$3" vol
@@ -165,7 +167,7 @@ run_onbox() {
 	else
 		podman exec --interactive --tty "$ctr" /bin/bash || status=$?
 	fi
-	podman stop -t 1 "$ctr" >/dev/null 2>&1 || true
+	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 	return "$status"
 }
 
@@ -176,7 +178,7 @@ run_recontain() {
 	local -a plan=()
 	plan_recontain plan "$project" "$interactive" "$1" "$2" "$3"
 	execute_plan "${plan[@]}"
-	podman stop -t 1 "$(onbox_container_name "$project")" >/dev/null 2>&1 || true
+	podman stop -t "$STOP_GRACE_SECONDS" "$(onbox_container_name "$project")" >/dev/null 2>&1 || true
 }
 
 run_rebuild() {
@@ -186,7 +188,7 @@ run_rebuild() {
 	local -a plan=()
 	plan_rebuild plan "$project" "$interactive" "$1" "$2" "$3"
 	execute_plan "${plan[@]}"
-	podman stop -t 1 "$(onbox_container_name "$project")" >/dev/null 2>&1 || true
+	podman stop -t "$STOP_GRACE_SECONDS" "$(onbox_container_name "$project")" >/dev/null 2>&1 || true
 }
 
 run_rm_container() {
@@ -600,7 +602,7 @@ run_netbox() {
 	else
 		podman exec --interactive --tty "$ctr" /bin/bash || status=$?
 	fi
-	podman stop -t 1 "$ctr" >/dev/null 2>&1 || true
+	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 	return "$status"
 }
 
@@ -624,7 +626,7 @@ run_offbox() {
 	else
 		podman exec --interactive --tty "$ctr" /bin/bash || status=$?
 	fi
-	podman stop -t 1 "$ctr" >/dev/null 2>&1 || true
+	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 	return "$status"
 }
 
@@ -641,7 +643,7 @@ run_netbox_recontain() {
 	local -a plan=()
 	plan_netbox_recontain plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$source"
 	execute_plan "${plan[@]}"
-	podman stop -t 1 "$ctr" >/dev/null 2>&1 || true
+	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 }
 
 run_offbox_recontain() {
@@ -657,7 +659,7 @@ run_offbox_recontain() {
 	local -a plan=()
 	plan_offbox_recontain plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$source"
 	execute_plan "${plan[@]}"
-	podman stop -t 1 "$ctr" >/dev/null 2>&1 || true
+	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 }
 
 run_netbox_rebuild() {
@@ -670,7 +672,7 @@ run_netbox_rebuild() {
 	local -a plan=()
 	plan_netbox_rebuild plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$source"
 	execute_plan "${plan[@]}"
-	podman stop -t 1 "$ctr" >/dev/null 2>&1 || true
+	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 }
 
 run_offbox_rebuild() {
@@ -683,7 +685,7 @@ run_offbox_rebuild() {
 	local -a plan=()
 	plan_offbox_rebuild plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$source"
 	execute_plan "${plan[@]}"
-	podman stop -t 1 "$ctr" >/dev/null 2>&1 || true
+	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 }
 
 run_netbox_rm_container() {
