@@ -6,5 +6,6 @@ load_lib() {
 		echo "lib/$lib does not exist" >&2
 		return 1
 	fi
+	# shellcheck disable=SC1090 # the sourced lib path is dynamic
 	source "$PROJECT_ROOT/lib/$lib"
 }

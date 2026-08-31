@@ -2,7 +2,7 @@ PROJECT_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
 
 INDIVIDUAL_TEST_TIMEOUT="${INDIVIDUAL_TEST_TIMEOUT:-60}"
 SD_TIMEOUT="${SD_TIMEOUT:-$((INDIVIDUAL_TEST_TIMEOUT - 5))}"
-(( SD_TIMEOUT > 0 )) || SD_TIMEOUT=1
+((SD_TIMEOUT > 0)) || SD_TIMEOUT=1
 
 sdrun() {
 	systemd-run --user --wait --collect --pipe \
@@ -75,6 +75,7 @@ start_host_http_server() {
 	local out p n
 	out="$(mktemp)"
 	python3 "$PROJECT_ROOT/test/e2e/host_http_server.py" "$dir" >"$out" 2>&1 &
+	# shellcheck disable=SC2034 # nameref target consumed by the caller
 	pid_ref=$!
 	p=""
 	for ((n = 0; n < 50; n++)); do
@@ -83,17 +84,20 @@ start_host_http_server() {
 		sleep 0.1
 	done
 	rm -f "$out"
+	# shellcheck disable=SC2034 # nameref target consumed by the caller
 	port_ref="$p"
 }
 
 run_onbox_noninteractive() {
 	local project="$1" talkbox="$2" cmd="$3"
+	# shellcheck disable=SC2016 # $0/$1/$2 expand inside the wrapped bash -c
 	sdrun bash -c 'cd "$1" && "$0/talkbox.sh" onbox -c --noninteractive "$2"' "$talkbox" "$project" "$cmd"
 }
 
 run_talkbox() {
 	local project="$1" talkbox="$2"
 	shift 2
+	# shellcheck disable=SC2016 # $1/$@ expand inside the wrapped bash -c
 	sdrun bash -c 'cd "$1" && shift && exec "$@"' bash "$project" "$talkbox/talkbox.sh" "$@"
 }
 

@@ -17,3 +17,4 @@
 - [Phase 7: GPU support (`--gpu` flag)](.llm/gen/builds/phase-7-gpu-support.gen.md)
 - [Phase 8a: Lifecycle verbs remove and recreate named volumes](.llm/gen/builds/phase-8a-lifecycle-named-volume-cleanup.gen.md)
 - [Phase 8b: Options requiring a value emit talkbox messages instead of raw bash errors](.llm/gen/builds/phase-8b-options-missing-value-diagnostics.gen.md)
+- [Phase 8c: Bring `helpers.bash` files under `make lint` and `make format`](.llm/gen/builds/phase-8c-helpers-bash-lint-format.gen.md)

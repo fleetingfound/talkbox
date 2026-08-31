@@ -7,7 +7,7 @@ export GLOBAL_TEST_TIMEOUT
 export INDIVIDUAL_TEST_TIMEOUT
 
 RUNNER := test/run-suite.sh
-SHELL_SCRIPTS := test/run-suite.sh test/lib.bash test/unit/*.bats test/e2e/*.bats test/canary/*.bats test/timeout/*.bats
+SHELL_SCRIPTS := test/run-suite.sh test/lib.bash test/unit/helpers.bash test/e2e/helpers.bash test/unit/*.bats test/e2e/*.bats test/canary/*.bats test/timeout/*.bats
 
 .PHONY: help test-unit test-e2e test-canary test-timeout lint format
 
