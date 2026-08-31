@@ -11,4 +11,4 @@
 - [x] [`podman stop -t 1` uses an aggressive stop grace period](podman-stop-aggressive-grace.gen.md)
 - [ ] [Lifecycle verbs leave named volumes orphaned and reuse stale volumes on recreate](lifecycle-verbs-leave-named-volumes-orphaned.gen.md)
 - [ ] [Options requiring a value produce raw bash errors instead of talkbox messages](options-missing-value-unbound-variable.gen.md)
-- [ ] [`helpers.bash` files are excluded from `make lint` and `make format`](helpers-bash-excluded-from-lint-format.gen.md)
+- [ ] [`helpers.bash` files are excluded from `make lint` and `make format`](helpers-bash-excluded-from-lint-format.gen.md) — resolved by [Phase 8c](../plans/phase-8c-helpers-bash-lint-format.gen.md)

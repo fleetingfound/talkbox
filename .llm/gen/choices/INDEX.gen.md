@@ -33,6 +33,10 @@
 
 - [x] [GPU flag threading](gpu-flag-threading.gen.md) - how the parsed `--gpu` flag reaches the `plan_onbox`/`plan_netbox`/`plan_offbox` planners.
 
+## Lifecycle volume cleanup choices
+
+- [x] [Write-volume discovery for `--rm-container`](rm-container-write-volume-discovery.gen.md) - how `plan_netbox_rm_container`/`plan_offbox_rm_container` obtain the per-dest write volume names to remove (thread write-mount dests, glob-list by name pattern, or inspect the container's mounts).
+
 ## Repository-review follow-up choices
 
 - [x] [`execute_fetch_plan` boundary mechanism](execute-fetch-plan-boundary.gen.md) - how to replace the brittle `git fetch` token-sniffing splitter in `execute_fetch_plan` (two-array output, explicit delimiter, or reuse `execute_plan`).
