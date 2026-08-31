@@ -64,6 +64,34 @@ setup() {
 	[[ "$output" == *"talkbox: unknown option: --bogus"* ]]
 }
 
+@test "--read as the final argument requires a value and exits 2" {
+	load_lib options.sh
+	run parse_talkbox_options --read
+	[[ "$status" -eq 2 ]]
+	[[ "$output" == *"talkbox: --read requires a value"* ]]
+}
+
+@test "--write as the final argument requires a value and exits 2" {
+	load_lib options.sh
+	run parse_talkbox_options --write
+	[[ "$status" -eq 2 ]]
+	[[ "$output" == *"talkbox: --write requires a value"* ]]
+}
+
+@test "--port as the final argument requires a value and exits 2" {
+	load_lib options.sh
+	run parse_talkbox_options --port
+	[[ "$status" -eq 2 ]]
+	[[ "$output" == *"talkbox: --port requires a value"* ]]
+}
+
+@test "--inherit as the final argument requires a value and exits 2" {
+	load_lib options.sh
+	run parse_talkbox_options --inherit
+	[[ "$status" -eq 2 ]]
+	[[ "$output" == *"talkbox: --inherit requires a value"* ]]
+}
+
 @test "--read records repeatable read specs" {
 	load_lib options.sh
 	parse_talkbox_options --read '/a:/b' --read '/c'
