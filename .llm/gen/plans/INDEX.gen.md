@@ -15,3 +15,6 @@ Implementation plan for `SPEC.md`, in recommended order. Each phase builds on th
 - [x] [Phase 5b: git transport behavioural alignment](phase-5b-behavioural-alignment.gen.md) #flow/redgreen #model/default
 - [x] [Phase 5c: git transport coverage gaps](phase-5c-coverage-gaps.gen.md) #flow/pin #model/default
 - [x] [Phase 6a: Fix e2e --port TOCTOU race](phase-6a-e2e-port-toctou-fix.gen.md) #flow/pin #model/default
+- [ ] [Phase 6b: Rename `parse_onbox_options` to `parse_talkbox_options`](phase-6b-rename-parse-talkbox-options.gen.md) #flow/unified #model/default
+- [ ] [Phase 6c: Replace `execute_fetch_plan` with two-array `plan_fetch` output](phase-6c-execute-fetch-plan-two-array.gen.md) #flow/unified #model/default
+- [ ] [Phase 6d: Increase `podman stop` grace period to 5 seconds](phase-6d-podman-stop-grace-period.gen.md) #flow/unified #model/default
