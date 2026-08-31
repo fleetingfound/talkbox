@@ -18,3 +18,4 @@ Implementation plan for `SPEC.md`, in recommended order. Each phase builds on th
 - [x] [Phase 6b: Rename `parse_onbox_options` to `parse_talkbox_options`](phase-6b-rename-parse-talkbox-options.gen.md) #flow/unified #model/default
 - [x] [Phase 6c: Replace `execute_fetch_plan` with two-array `plan_fetch` output](phase-6c-execute-fetch-plan-two-array.gen.md) #flow/unified #model/default
 - [x] [Phase 6d: Increase `podman stop` grace period to 5 seconds](phase-6d-podman-stop-grace-period.gen.md) #flow/unified #model/default
+- [ ] [Phase 7: GPU support (`--gpu` flag)](phase-7-gpu-support.gen.md) #flow/redgreen #model/default
