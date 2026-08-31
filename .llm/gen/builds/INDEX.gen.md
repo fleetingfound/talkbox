@@ -14,3 +14,4 @@
 - [Phase 6b: Rename `parse_onbox_options` to `parse_talkbox_options`](.llm/gen/builds/phase-6b-rename-parse-talkbox-options.gen.md)
 - [Phase 6c: Replace `execute_fetch_plan` with two-array `plan_fetch` output](.llm/gen/builds/phase-6c-execute-fetch-plan-two-array.gen.md)
 - [Phase 6d: Increase `podman stop` grace period to 5 seconds](.llm/gen/builds/phase-6d-podman-stop-grace-period.gen.md)
+- [Phase 7: GPU support (`--gpu` flag)](.llm/gen/builds/phase-7-gpu-support.gen.md)

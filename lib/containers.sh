@@ -34,6 +34,10 @@ plan_onbox() {
 	_plan_out+=("--network=$net")
 	_plan_out+=("--cap-drop=NET_ADMIN")
 	_plan_out+=("--cap-drop=NET_RAW")
+	if [[ "$TALKBOX_GPU" == yes ]]; then
+		_plan_out+=("--device" "nvidia.com/gpu=all")
+		_plan_out+=("--group-add" "keep-groups")
+	fi
 	_plan_out+=("-v" "$project:/working/$base")
 	if git_mounts_enabled "$project"; then
 		_plan_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
@@ -296,6 +300,10 @@ plan_netbox() {
 	_plan_out+=("--network=$net")
 	_plan_out+=("--cap-drop=NET_ADMIN")
 	_plan_out+=("--cap-drop=NET_RAW")
+	if [[ "$TALKBOX_GPU" == yes ]]; then
+		_plan_out+=("--device" "nvidia.com/gpu=all")
+		_plan_out+=("--group-add" "keep-groups")
+	fi
 	_plan_out+=("-v" "$(netbox_worktree_volume "$project"):/working/$base")
 	if git_mounts_enabled "$project"; then
 		_plan_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
@@ -339,6 +347,10 @@ plan_offbox() {
 	_plan_out+=("--network=$net")
 	_plan_out+=("--cap-drop=NET_ADMIN")
 	_plan_out+=("--cap-drop=NET_RAW")
+	if [[ "$TALKBOX_GPU" == yes ]]; then
+		_plan_out+=("--device" "nvidia.com/gpu=all")
+		_plan_out+=("--group-add" "keep-groups")
+	fi
 	_plan_out+=("-v" "$(offbox_worktree_volume "$project"):/working/$base")
 	if git_mounts_enabled "$project"; then
 		_plan_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")

@@ -15,6 +15,7 @@ parse_talkbox_options() {
 	TALKBOX_PORT=()
 	TALKBOX_FRESH="no"
 	TALKBOX_INHERIT=""
+	TALKBOX_GPU="no"
 	local after_command=no
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
@@ -48,6 +49,9 @@ parse_talkbox_options() {
 			;;
 		--all)
 			TALKBOX_ALL="yes"
+			;;
+		--gpu)
+			TALKBOX_GPU="yes"
 			;;
 		fetch | merge | sync)
 			if [[ "$after_command" == yes ]]; then
