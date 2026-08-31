@@ -30,14 +30,17 @@ parse_talkbox_options() {
 			;;
 		--read)
 			shift
+			[[ $# -gt 0 ]] || die "--read requires a value" 2
 			TALKBOX_READ+=("$1")
 			;;
 		--write)
 			shift
+			[[ $# -gt 0 ]] || die "--write requires a value" 2
 			TALKBOX_WRITE+=("$1")
 			;;
 		--port)
 			shift
+			[[ $# -gt 0 ]] || die "--port requires a value" 2
 			TALKBOX_PORT+=("$1")
 			;;
 		--fresh)
@@ -45,6 +48,7 @@ parse_talkbox_options() {
 			;;
 		--inherit)
 			shift
+			[[ $# -gt 0 ]] || die "--inherit requires a value" 2
 			TALKBOX_INHERIT="$1"
 			;;
 		--all)

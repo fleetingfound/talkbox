@@ -1,9 +1,5 @@
 target: test-unit
-started: '2026-08-31T22:00:23Z'
-exit: 1
-totals: { total: 178, pass: 174, fail: 4, skip: 0 }
+started: '2026-08-31T22:12:26Z'
+exit: 0
+totals: { total: 178, pass: 178, fail: 0, skip: 0 }
 fail:
- - 'test/unit/options.bats :: --read as the final argument requires a value and exits 2'
- - 'test/unit/options.bats :: --write as the final argument requires a value and exits 2'
- - 'test/unit/options.bats :: --port as the final argument requires a value and exits 2'
- - 'test/unit/options.bats :: --inherit as the final argument requires a value and exits 2'

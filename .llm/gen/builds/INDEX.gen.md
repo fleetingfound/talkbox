@@ -16,3 +16,4 @@
 - [Phase 6d: Increase `podman stop` grace period to 5 seconds](.llm/gen/builds/phase-6d-podman-stop-grace-period.gen.md)
 - [Phase 7: GPU support (`--gpu` flag)](.llm/gen/builds/phase-7-gpu-support.gen.md)
 - [Phase 8a: Lifecycle verbs remove and recreate named volumes](.llm/gen/builds/phase-8a-lifecycle-named-volume-cleanup.gen.md)
+- [Phase 8b: Options requiring a value emit talkbox messages instead of raw bash errors](.llm/gen/builds/phase-8b-options-missing-value-diagnostics.gen.md)
