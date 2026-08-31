@@ -114,28 +114,26 @@ setup() {
 	[[ "${cmd[${#cmd[@]} - 1]}" == feature ]]
 }
 
-@test "execute_fetch_plan splits the plan at the git fetch boundary and runs podman first" {
+@test "plan_fetch fills separate bundle and fetch command arrays with no token leakage" {
 	load_lib git.sh
 	local project="$BATS_TEST_TMPDIR/proj"
 	mkdir -p "$project"
-	local log="$BATS_TEST_TMPDIR/log"
-	: >"$log"
-	podman() { printf 'podman %s\n' "$*" >>"$log"; }
-	git() { printf 'git %s\n' "$*" >>"$log"; }
-	local -a plan=()
-	plan_fetch plan "$project" onbox "$BATS_TEST_TMPDIR/onbox.bundle"
-	execute_fetch_plan "${plan[@]}"
-	local content
-	content="$(cat "$log")"
-	[[ "$content" == *'podman run --rm --network=none'* ]]
-	[[ "$content" == *'git fetch'* ]]
-	[[ "$content" == *'refs/remotes/onbox'* ]]
-	local podman_line git_line
-	podman_line="$(grep -n '^podman ' "$log" | head -1 | cut -d: -f1)"
-	git_line="$(grep -n '^git fetch ' "$log" | head -1 | cut -d: -f1)"
-	[[ -n "$podman_line" ]]
-	[[ -n "$git_line" ]]
-	((podman_line < git_line))
+	local bundle="$BATS_TEST_TMPDIR/onbox.bundle"
+	local -a bundle_cmd=() fetch_cmd=()
+	plan_fetch bundle_cmd fetch_cmd "$project" onbox "$bundle"
+	[[ " ${bundle_cmd[*]} " == *' podman run --rm --network=none '* ]]
+	[[ " ${bundle_cmd[*]} " == *' git bundle create '* ]]
+	[[ " ${bundle_cmd[*]} " == *' /host/bundle/onbox.bundle '* ]]
+	[[ " ${fetch_cmd[*]} " == *' git fetch '* ]]
+	[[ " ${fetch_cmd[*]} " == *" $bundle "* ]]
+	[[ " ${fetch_cmd[*]} " == *' +refs/heads/*:refs/remotes/onbox/* '* ]]
+	local tok
+	for tok in "${fetch_cmd[@]}"; do
+		[[ "$tok" == git || " ${bundle_cmd[*]} " != *" $tok "* ]]
+	done
+	for tok in "${bundle_cmd[@]}"; do
+		[[ "$tok" == git || " ${fetch_cmd[*]} " != *" $tok "* ]]
+	done
 }
 
 @test "run_sync_in_container delegates to container_sync_cmd and executes the result" {

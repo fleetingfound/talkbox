@@ -97,29 +97,11 @@ host_fetch_cmd() {
 }
 
 plan_fetch() {
-	local -n _out="$1"
-	local project="$2" container="$3" bundle="$4"
-	local -a parts=()
-	gitdir_bundle_cmd parts "$project" "$container" "$bundle"
-	host_fetch_cmd parts "$bundle" "$container"
-	_out=("${parts[@]}")
-}
-
-execute_fetch_plan() {
-	local -a plan=("$@")
-	local -a cmd=()
-	local i arg
-	for ((i = 0; i < ${#plan[@]}; i++)); do
-		arg="${plan[$i]}"
-		if [[ "$arg" == git && "${plan[$((i + 1))]}" == fetch ]] && ((${#cmd[@]} > 0)); then
-			"${cmd[@]}"
-			cmd=()
-		fi
-		cmd+=("$arg")
-	done
-	if ((${#cmd[@]} > 0)); then
-		"${cmd[@]}"
-	fi
+	local -n _bundle_cmd="$1"
+	local -n _fetch_cmd="$2"
+	local project="$3" container="$4" bundle="$5"
+	gitdir_bundle_cmd _bundle_cmd "$project" "$container" "$bundle"
+	host_fetch_cmd _fetch_cmd "$bundle" "$container"
 }
 
 run_fetch() {
@@ -144,9 +126,9 @@ run_fetch() {
 			die "no git history for $c; create the container first" 1
 		fi
 		bundle="$tmp/$c.bundle"
-		local -a plan=()
-		plan_fetch plan "$project" "$c" "$bundle"
-		if ! execute_fetch_plan "${plan[@]}"; then
+		local -a bundle_cmd=() fetch_cmd=()
+		plan_fetch bundle_cmd fetch_cmd "$project" "$c" "$bundle"
+		if ! "${bundle_cmd[@]}" || ! "${fetch_cmd[@]}"; then
 			rc=1
 			break
 		fi
@@ -209,9 +191,9 @@ run_merge() {
 	local tmp bundle
 	tmp="$(mktemp -d "${TMPDIR:-/tmp}/talkbox-merge.XXXXXX")"
 	bundle="$tmp/$container.bundle"
-	local -a plan=()
-	plan_fetch plan "$project" "$container" "$bundle"
-	if ! execute_fetch_plan "${plan[@]}"; then
+	local -a bundle_cmd=() fetch_cmd=()
+	plan_fetch bundle_cmd fetch_cmd "$project" "$container" "$bundle"
+	if ! "${bundle_cmd[@]}" || ! "${fetch_cmd[@]}"; then
 		rm -rf "$tmp"
 		return 1
 	fi

@@ -103,19 +103,19 @@ $PROJECT/.git/modules/sub2" ]]
 @test "plan_fetch builds a no-network gitdir bundle command against the container gitdir volume" {
 	load_lib git.sh
 	load_lib naming.sh
-	local args=()
-	plan_fetch args "$PROJECT" onbox "$BATS_TEST_TMPDIR/onbox.bundle"
-	[[ "${args[*]}" == *'podman run --rm --network=none'* ]]
-	[[ "${args[*]}" == *'proj.onbox.gitdir:/gitdir:ro'* ]]
-	[[ "${args[*]}" == *'git bundle create'* ]]
+	local -a bundle_cmd=() fetch_cmd=()
+	plan_fetch bundle_cmd fetch_cmd "$PROJECT" onbox "$BATS_TEST_TMPDIR/onbox.bundle"
+	[[ "${bundle_cmd[*]}" == *'podman run --rm --network=none'* ]]
+	[[ "${bundle_cmd[*]}" == *'proj.onbox.gitdir:/gitdir:ro'* ]]
+	[[ "${bundle_cmd[*]}" == *'git bundle create'* ]]
 }
 
 @test "plan_fetch fetches the bundle into the host repo under refs/remotes/<container>" {
 	load_lib git.sh
 	load_lib naming.sh
-	local args=()
-	plan_fetch args "$PROJECT" netbox "$BATS_TEST_TMPDIR/netbox.bundle"
-	[[ "${args[*]}" == *'git fetch'* ]]
-	[[ "${args[*]}" == *'refs/remotes/netbox'* ]]
-	[[ "${args[*]}" == *'netbox.bundle'* ]]
+	local -a bundle_cmd=() fetch_cmd=()
+	plan_fetch bundle_cmd fetch_cmd "$PROJECT" netbox "$BATS_TEST_TMPDIR/netbox.bundle"
+	[[ "${fetch_cmd[*]}" == *'git fetch'* ]]
+	[[ "${fetch_cmd[*]}" == *'refs/remotes/netbox'* ]]
+	[[ "${fetch_cmd[*]}" == *'netbox.bundle'* ]]
 }

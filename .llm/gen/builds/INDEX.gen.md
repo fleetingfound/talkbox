@@ -12,3 +12,4 @@
 - [Phase 5a: git transport error diagnostics](.llm/gen/builds/phase-5a-error-diagnostics.gen.md)
 - [Phase 5b: git transport behavioural alignment](.llm/gen/builds/phase-5b-behavioural-alignment.gen.md)
 - [Phase 6b: Rename `parse_onbox_options` to `parse_talkbox_options`](.llm/gen/builds/phase-6b-rename-parse-talkbox-options.gen.md)
+- [Phase 6c: Replace `execute_fetch_plan` with two-array `plan_fetch` output](.llm/gen/builds/phase-6c-execute-fetch-plan-two-array.gen.md)
