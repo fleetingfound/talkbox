@@ -62,6 +62,30 @@ push_descendant() {
 	[[ "$output" != *'talkbox:'* ]]
 }
 
+@test "custom_merge applies Case 2 when an untracked file introduced by the remote already matches the worktree" {
+	load_lib git.sh
+	git -C "$WORK" switch -q -c advance-newfile
+	printf 'container\n' >"$WORK/test"
+	git -C "$WORK" add test
+	git -C "$WORK" commit -q -m "add test"
+	git -C "$WORK" push -q origin "HEAD:$BRANCH"
+	git -C "$WORK" switch -q -
+	git -C "$WORK" branch -q -D advance-newfile
+	git -C "$WORK" fetch -q origin
+	local remote_sha head_before
+	remote_sha="$(git -C "$WORK" rev-parse "refs/remotes/origin/$BRANCH")"
+	head_before="$(git -C "$WORK" rev-parse HEAD)"
+	[[ "$head_before" != "$remote_sha" ]]
+	printf 'container\n' >"$WORK/test"
+	cd "$WORK"
+	run custom_merge origin "$BRANCH"
+	[[ "$status" -eq 0 ]]
+	[[ "$(git -C "$WORK" rev-parse HEAD)" == "$remote_sha" ]]
+	[[ "$(git -C "$WORK" rev-parse "$BRANCH")" == "$remote_sha" ]]
+	[[ "$(cat "$WORK/test")" == 'container' ]]
+	[[ "$output" != *'talkbox:'* ]]
+}
+
 @test "custom_merge lets git refuse to overwrite a conflicting untracked file (Case 1)" {
 	load_lib git.sh
 	git -C "$WORK" switch -q -c advance-new

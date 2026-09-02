@@ -102,6 +102,27 @@ container_commit() {
 	[[ "$(cat "$PROJECT/untracked.txt")" == 'untracked' ]]
 }
 
+@test "onbox merge fast-forwards when the container commit introduces a file untracked in the host worktree" {
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive \
+		'git config user.email c@example.com && git config user.name container && printf "container\n" >new-file.txt && git add new-file.txt && git commit -q -m container-new-file-commit'
+	[[ "$status" -eq 0 ]]
+	[[ "$(cat "$PROJECT/new-file.txt")" == 'container' ]]
+	run git -C "$PROJECT" status --porcelain
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'new-file.txt'* ]]
+	local host_head
+	host_head="$(git -C "$PROJECT" rev-parse HEAD)"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox fetch
+	[[ "$status" -eq 0 ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox merge
+	[[ "$status" -eq 0 ]]
+	[[ "$(git -C "$PROJECT" rev-parse HEAD)" != "$host_head" ]]
+	run git -C "$PROJECT" log --oneline -1
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'container-new-file-commit'* ]]
+	[[ "$(cat "$PROJECT/new-file.txt")" == 'container' ]]
+}
+
 @test "onbox merge --all stops at the first failing branch and skips the rest" {
 	git -C "$PROJECT" checkout -q -b feature
 	printf 'host-feature\n' >"$PROJECT/feature.txt"

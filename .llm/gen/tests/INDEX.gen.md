@@ -18,3 +18,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 8a: lifecycle verbs remove and recreate named volumes](phase-8a-lifecycle-named-volume-cleanup.gen.md)
 - [Phase 8b: options requiring a value emit talkbox messages instead of raw bash errors](phase-8b-options-missing-value-diagnostics.gen.md)
 - [Phase 8d: `resolve_branches` test must not hardcode `master`](phase-8d-git-transport-test-default-branch.gen.md)
+- [Phase 9a: `custom_merge` Case 2 precedence over Case 1](phase-9a-custom-merge-case2-precedence.gen.md)

@@ -1,5 +1,6 @@
 target: test-e2e
-started: '2026-09-02T20:40:53Z'
-exit: 0
-totals: { total: 60, pass: 60, fail: 0, skip: 0 }
+started: '2026-09-02T22:10:11Z'
+exit: 1
+totals: { total: 61, pass: 60, fail: 1, skip: 0 }
 fail:
+ - 'test/e2e/merge-sync.bats :: onbox merge fast-forwards when the container commit introduces a file untracked in the host worktree'
