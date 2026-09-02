@@ -12,3 +12,4 @@
 - [x] [Lifecycle verbs leave named volumes orphaned and reuse stale volumes on recreate](lifecycle-verbs-leave-named-volumes-orphaned.gen.md)
 - [x] [Options requiring a value produce raw bash errors instead of talkbox messages](options-missing-value-unbound-variable.gen.md)
 - [x] [`helpers.bash` files are excluded from `make lint` and `make format`](helpers-bash-excluded-from-lint-format.gen.md) — resolved by [Phase 8c](../plans/phase-8c-helpers-bash-lint-format.gen.md)
+- [ ] [`custom_merge` Case 1 shadows Case 2 when the worktree matches the remote ref but contains host-untracked files](custom-merge-case1-shadowing-case2.gen.md)

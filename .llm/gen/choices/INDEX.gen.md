@@ -37,6 +37,10 @@
 
 - [x] [Write-volume discovery for `--rm-container`](rm-container-write-volume-discovery.gen.md) - how `plan_netbox_rm_container`/`plan_offbox_rm_container` obtain the per-dest write volume names to remove (thread write-mount dests, glob-list by name pattern, or inspect the container's mounts).
 
+## Git identity propagation (Phase 9b)
+
+- [x] [Git identity propagation into containers](git-identity-propagation.gen.md) - the mechanism by which the host's `user.name`/`user.email` reach the container's git config (env vars + entrypoint global config write, `GIT_AUTHOR_*` env vars only, or entrypoint write to repo local config during init).
+
 ## Repository-review follow-up choices
 
 - [x] [`execute_fetch_plan` boundary mechanism](execute-fetch-plan-boundary.gen.md) - how to replace the brittle `git fetch` token-sniffing splitter in `execute_fetch_plan` (two-array output, explicit delimiter, or reuse `execute_plan`).
