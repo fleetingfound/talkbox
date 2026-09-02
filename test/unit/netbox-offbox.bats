@@ -242,6 +242,40 @@ setup() {
 	array_has_none 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/wdata:ro' "${args[@]}"
 }
 
+@test "netbox plan emits git identity env vars for a git-tracked project but not for a non-git project" {
+	load_netbox_plan
+	git -C "$PROJECT" init -q
+	git -C "$PROJECT" config user.name host-user
+	git -C "$PROJECT" config user.email host@example.com
+	local args=()
+	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_has 'TALKBOX_GIT_USER_NAME=host-user' "${args[@]}"
+	array_has 'TALKBOX_GIT_USER_EMAIL=host@example.com' "${args[@]}"
+	local plain
+	plain="$BATS_TEST_TMPDIR/plain"
+	mkdir -p "$plain"
+	args=()
+	plan_netbox args "$plain" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_has_none 'TALKBOX_GIT_USER' "${args[@]}"
+}
+
+@test "offbox plan emits git identity env vars for a git-tracked project but not for a non-git project" {
+	load_netbox_plan
+	git -C "$PROJECT" init -q
+	git -C "$PROJECT" config user.name host-user
+	git -C "$PROJECT" config user.email host@example.com
+	local args=()
+	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_has 'TALKBOX_GIT_USER_NAME=host-user' "${args[@]}"
+	array_has 'TALKBOX_GIT_USER_EMAIL=host@example.com' "${args[@]}"
+	local plain
+	plain="$BATS_TEST_TMPDIR/plain"
+	mkdir -p "$plain"
+	args=()
+	plan_offbox args "$plain" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_has_none 'TALKBOX_GIT_USER' "${args[@]}"
+}
+
 @test "netbox plan adds the git mounts and the populate leaves the gitdir volume empty" {
 	load_netbox_plan
 	mkdir -p "$PROJECT/.git"

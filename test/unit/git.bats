@@ -1,3 +1,4 @@
+# shellcheck disable=SC2030,SC2031 # bats runs each test in a subshell, so exported HOME/GIT_CONFIG_NOSYSTEM are intentional
 load helpers
 
 setup() {
@@ -98,6 +99,34 @@ $PROJECT/.git/modules/sub2" ]]
 	[[ "$status" -ne 0 ]]
 	[[ "$output" == *'talkbox:'* ]]
 	[[ "$output" != *'fatal:'* ]]
+}
+
+@test "host_git_identity prints the effective user.name and user.email in order" {
+	load_lib git.sh
+	git -C "$PROJECT" init -q
+	git -C "$PROJECT" config user.name host-user
+	git -C "$PROJECT" config user.email host@example.com
+	run host_git_identity "$PROJECT"
+	[[ "$output" == $'host-user\nhost@example.com' ]]
+}
+
+@test "host_git_identity omits a field the host has not configured" {
+	load_lib git.sh
+	export HOME="$BATS_TEST_TMPDIR/home"
+	export GIT_CONFIG_NOSYSTEM=1
+	git -C "$PROJECT" init -q
+	git -C "$PROJECT" config user.name host-user
+	run host_git_identity "$PROJECT"
+	[[ "$output" == 'host-user' ]]
+}
+
+@test "host_git_identity prints nothing when no identity is configured" {
+	load_lib git.sh
+	export HOME="$BATS_TEST_TMPDIR/home"
+	export GIT_CONFIG_NOSYSTEM=1
+	git -C "$PROJECT" init -q
+	run host_git_identity "$PROJECT"
+	[[ -z "$output" ]]
 }
 
 @test "plan_fetch builds a no-network gitdir bundle command against the container gitdir volume" {

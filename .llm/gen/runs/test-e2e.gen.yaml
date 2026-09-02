@@ -1,5 +1,11 @@
 target: test-e2e
-started: '2026-09-02T22:28:42Z'
-exit: 0
-totals: { total: 61, pass: 61, fail: 0, skip: 0 }
+started: '2026-09-02T23:26:11Z'
+exit: 1
+totals: { total: 67, pass: 61, fail: 6, skip: 0 }
 fail:
+ - 'test/e2e/git-identity.bats :: onbox container git identity matches the host user.name and user.email'
+ - 'test/e2e/git-identity.bats :: onbox commits are attributed to the host git identity'
+ - 'test/e2e/git-identity.bats :: netbox container git identity matches the host user.name and user.email'
+ - 'test/e2e/git-identity.bats :: netbox commits are attributed to the host git identity'
+ - 'test/e2e/git-identity.bats :: offbox container git identity matches the host user.name and user.email'
+ - 'test/e2e/git-identity.bats :: offbox commits are attributed to the host git identity'

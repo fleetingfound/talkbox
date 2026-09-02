@@ -235,3 +235,32 @@ setup() {
 	array_has_none '/host/git' "${args[@]}"
 	array_has_none '.gitdir' "${args[@]}"
 }
+
+@test "onbox plan emits git identity env vars for a git-tracked project but not for a non-git project" {
+	load_onbox_plan
+	git -C "$PROJECT" init -q
+	git -C "$PROJECT" config user.name host-user
+	git -C "$PROJECT" config user.email host@example.com
+	local args=()
+	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_has 'TALKBOX_GIT_USER_NAME=host-user' "${args[@]}"
+	array_has 'TALKBOX_GIT_USER_EMAIL=host@example.com' "${args[@]}"
+	local plain
+	plain="$BATS_TEST_TMPDIR/plain"
+	mkdir -p "$plain"
+	args=()
+	plan_onbox args "$plain" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_has_none 'TALKBOX_GIT_USER' "${args[@]}"
+}
+
+@test "onbox plan omits a git identity env var for a field the host has not configured" {
+	load_onbox_plan
+	export HOME="$BATS_TEST_TMPDIR/home"
+	export GIT_CONFIG_NOSYSTEM=1
+	git -C "$PROJECT" init -q
+	git -C "$PROJECT" config user.email host@example.com
+	local args=()
+	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_has_none 'TALKBOX_GIT_USER_NAME' "${args[@]}"
+	array_has 'TALKBOX_GIT_USER_EMAIL=host@example.com' "${args[@]}"
+}
