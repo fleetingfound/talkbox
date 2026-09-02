@@ -60,10 +60,10 @@ worktree_matches_tree() {
 custom_merge_current() {
 	local remote="$1" branchname="$2" remote_ref
 	remote_ref="refs/remotes/$remote/$branchname"
-	if git diff --cached --quiet && git diff --quiet; then
-		git merge --ff-only "$remote_ref"
-	elif git diff --cached --quiet && worktree_matches_tree "$remote_ref"; then
+	if git diff --cached --quiet && worktree_matches_tree "$remote_ref"; then
 		git reset --mixed "$remote_ref"
+	elif git diff --cached --quiet && git diff --quiet; then
+		git merge --ff-only "$remote_ref"
 	else
 		warn "refusing to merge $branchname from $remote: the working tree has changes"
 		return 1

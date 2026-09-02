@@ -18,3 +18,4 @@
 - [Phase 8a: Lifecycle verbs remove and recreate named volumes](.llm/gen/builds/phase-8a-lifecycle-named-volume-cleanup.gen.md)
 - [Phase 8b: Options requiring a value emit talkbox messages instead of raw bash errors](.llm/gen/builds/phase-8b-options-missing-value-diagnostics.gen.md)
 - [Phase 8c: Bring `helpers.bash` files under `make lint` and `make format`](.llm/gen/builds/phase-8c-helpers-bash-lint-format.gen.md)
+- [Phase 9a: Resolve `custom_merge` Case 1 shadowing Case 2](.llm/gen/builds/phase-9a-custom-merge-case2-precedence.gen.md)

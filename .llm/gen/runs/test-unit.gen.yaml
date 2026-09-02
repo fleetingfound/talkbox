@@ -1,6 +1,5 @@
 target: test-unit
-started: '2026-09-02T22:09:30Z'
-exit: 1
-totals: { total: 179, pass: 178, fail: 1, skip: 0 }
+started: '2026-09-02T22:27:50Z'
+exit: 0
+totals: { total: 179, pass: 179, fail: 0, skip: 0 }
 fail:
- - 'test/unit/merge.bats :: custom_merge applies Case 2 when an untracked file introduced by the remote already matches the worktree'
