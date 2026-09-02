@@ -28,7 +28,7 @@ setup() {
 	resolve_branches got yes '' origin
 	[[ "${got[*]}" == "${expected[*]}" ]]
 	[[ " ${got[*]} " == *' feature '* ]]
-	[[ " ${got[*]} " == *' master '* ]]
+	[[ " ${got[*]} " == *" $BRANCH "* ]]
 }
 
 @test "resolve_branches with --all and no remote enumerates the host branches" {

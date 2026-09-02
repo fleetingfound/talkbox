@@ -22,6 +22,6 @@ Implementation plan for `SPEC.md`, in recommended order. Each phase builds on th
 - [x] [Phase 8a: Lifecycle verbs remove and recreate named volumes](phase-8a-lifecycle-named-volume-cleanup.gen.md) #flow/redgreen #model/default
 - [x] [Phase 8b: Options requiring a value emit talkbox messages instead of raw bash errors](phase-8b-options-missing-value-diagnostics.gen.md) #flow/redgreen #model/default
 - [x] [Phase 8c: Bring `helpers.bash` files under `make lint` and `make format`](phase-8c-helpers-bash-lint-format.gen.md) #flow/unified #model/default
-- [ ] [Phase 8d: `resolve_branches` test must not hardcode `master`](phase-8d-git-transport-test-default-branch.gen.md) #flow/pin #model/default
+- [x] [Phase 8d: `resolve_branches` test must not hardcode `master`](phase-8d-git-transport-test-default-branch.gen.md) #flow/pin #model/default
 - [ ] [Phase 9a: Resolve `custom_merge` Case 1 shadowing Case 2](phase-9a-custom-merge-case2-precedence.gen.md) #flow/redgreen #model/default
 - [ ] [Phase 9b: Propagate host git `user.name`/`user.email` into containers](phase-9b-git-identity-propagation.gen.md) #flow/redgreen #model/default
