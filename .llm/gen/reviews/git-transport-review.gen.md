@@ -164,3 +164,5 @@ The original observation noted that when neither `refs/heads/<branchname>` nor `
 The git transport implementation is correct, well-structured, and faithfully follows the specification. The merge logic is sound, the bundle-based transfer boundary is preserved, and the location-agnostic design of `merge.sh` is clean. All five observations from the original review have been resolved, each backed by dedicated unit and e2e tests.
 
 One subsequent issue was found: Case 1 shadows Case 2 in the `onbox` shared-worktree scenario where the container introduces a new file that already exists (matching) as an untracked file on the host — see the open issue [custom-merge-case1-shadowing-case2](../issues/custom-merge-case1-shadowing-case2.gen.md).
+
+A separate test-only defect causes `test/unit/git-transport.bats` to fail on hosts whose `git init` default branch is `main`: the `resolve_branches ... --all ... remote` assertion hardcodes `master` instead of the captured `BRANCH`. The implementation is correct — see the open issue [git-transport-test-hardcodes-master-branch](../issues/git-transport-test-hardcodes-master-branch.gen.md).

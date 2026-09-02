@@ -1,5 +1,6 @@
 target: test-unit
-started: '2026-08-31T22:26:31Z'
-exit: 0
-totals: { total: 178, pass: 178, fail: 0, skip: 0 }
+started: '2026-09-02T19:57:48Z'
+exit: 1
+totals: { total: 178, pass: 177, fail: 1, skip: 0 }
 fail:
+ - 'test/unit/git-transport.bats :: resolve_branches with --all and a remote enumerates the remote branches'
