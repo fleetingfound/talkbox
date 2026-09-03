@@ -20,3 +20,4 @@
 - [Phase 8c: Bring `helpers.bash` files under `make lint` and `make format`](.llm/gen/builds/phase-8c-helpers-bash-lint-format.gen.md)
 - [Phase 9a: Resolve `custom_merge` Case 1 shadowing Case 2](.llm/gen/builds/phase-9a-custom-merge-case2-precedence.gen.md)
 - [Phase 9b: Propagate host git `user.name`/`user.email` into containers](.llm/gen/builds/phase-9b-git-identity-propagation.gen.md)
+- [Phase 10a: `--init` for persistent containers (PID 1 signal handling)](.llm/gen/builds/phase-10a-pid1-init.gen.md)

@@ -73,6 +73,7 @@ plan_onbox() {
 	_plan_out+=("--network=$net")
 	_plan_out+=("--cap-drop=NET_ADMIN")
 	_plan_out+=("--cap-drop=NET_RAW")
+	_plan_out+=("--init")
 	if [[ "$TALKBOX_GPU" == yes ]]; then
 		_plan_out+=("--device" "nvidia.com/gpu=all")
 		_plan_out+=("--group-add" "keep-groups")
@@ -347,6 +348,7 @@ plan_netbox() {
 	_plan_out+=("--network=$net")
 	_plan_out+=("--cap-drop=NET_ADMIN")
 	_plan_out+=("--cap-drop=NET_RAW")
+	_plan_out+=("--init")
 	if [[ "$TALKBOX_GPU" == yes ]]; then
 		_plan_out+=("--device" "nvidia.com/gpu=all")
 		_plan_out+=("--group-add" "keep-groups")
@@ -395,6 +397,7 @@ plan_offbox() {
 	_plan_out+=("--network=$net")
 	_plan_out+=("--cap-drop=NET_ADMIN")
 	_plan_out+=("--cap-drop=NET_RAW")
+	_plan_out+=("--init")
 	if [[ "$TALKBOX_GPU" == yes ]]; then
 		_plan_out+=("--device" "nvidia.com/gpu=all")
 		_plan_out+=("--group-add" "keep-groups")
