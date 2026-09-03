@@ -49,3 +49,7 @@
 ## Container exit hang (PID 1 signal handling)
 
 - [x] [PID 1 signal handling for persistent containers](pid1-signal-handling.gen.md) - how to give the `onbox`/`netbox`/`offbox` persistent containers a PID 1 that honours `SIGTERM` so `podman stop` returns promptly (`--init`, entrypoint trap, or a signal-handling command loop).
+
+## Command-prompt host segment (Phase 10b)
+
+- [x] [Command-prompt host segment (`<project-slug>.<container-type>`)](prompt-host-segment.gen.md) - how `<project-slug>` and `<container-type>` reach the container's interactive prompt and where the `<slug>.<container>` string is assembled (two env vars read by `.bashrc`, a single combined env var, or entrypoint-assembled).
