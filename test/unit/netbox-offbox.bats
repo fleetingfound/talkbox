@@ -118,6 +118,7 @@ setup() {
 	array_contains 'talkbox-proj.netbox.worktree:/talkbox/target' "${args[@]}"
 	array_has_none '/talkbox/target:ro' "${args[@]}"
 	array_contains 'cp' "${args[@]}"
+	array_has_none '--init' "${args[@]}"
 }
 
 @test "volume-population planner mounts a source volume read-write" {
@@ -274,6 +275,88 @@ setup() {
 	args=()
 	plan_offbox args "$plain" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
 	array_has_none 'TALKBOX_GIT_USER' "${args[@]}"
+}
+
+@test "netbox plan emits --init for the persistent container" {
+	load_netbox_plan
+	local img args=()
+	img="$(base_image_name)"
+	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$img"
+	array_contains '--init' "${args[@]}"
+}
+
+@test "netbox plan emits --init ahead of the image name and the sleep command" {
+	load_netbox_plan
+	local img args=() init_at=-1 img_at=-1 i
+	img="$(base_image_name)"
+	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$img"
+	for ((i = 0; i < ${#args[@]}; i++)); do
+		if [[ "${args[$i]}" == --init ]]; then
+			init_at=$i
+		fi
+		if [[ "${args[$i]}" == "$img" ]]; then
+			img_at=$i
+		fi
+	done
+	[[ $init_at -ge 0 ]]
+	[[ $init_at -lt $img_at ]]
+}
+
+@test "offbox plan emits --init for the persistent container" {
+	load_netbox_plan
+	local img args=()
+	img="$(base_image_name)"
+	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$img"
+	array_contains '--init' "${args[@]}"
+}
+
+@test "offbox plan emits --init ahead of the image name and the sleep command" {
+	load_netbox_plan
+	local img args=() init_at=-1 img_at=-1 i
+	img="$(base_image_name)"
+	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$img"
+	for ((i = 0; i < ${#args[@]}; i++)); do
+		if [[ "${args[$i]}" == --init ]]; then
+			init_at=$i
+		fi
+		if [[ "${args[$i]}" == "$img" ]]; then
+			img_at=$i
+		fi
+	done
+	[[ $init_at -ge 0 ]]
+	[[ $init_at -lt $img_at ]]
+}
+
+@test "netbox recontain plan propagates --init to podman create" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local -a srcs=() dsts=() args=()
+	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
+	array_contains '--init' "${args[@]}"
+}
+
+@test "offbox recontain plan propagates --init to podman create" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local -a srcs=() dsts=() args=()
+	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
+	array_contains '--init' "${args[@]}"
+}
+
+@test "netbox rebuild plan propagates --init to podman create" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local -a srcs=() dsts=() args=()
+	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
+	array_contains '--init' "${args[@]}"
+}
+
+@test "offbox rebuild plan propagates --init to podman create" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local -a srcs=() dsts=() args=()
+	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
+	array_contains '--init' "${args[@]}"
 }
 
 @test "netbox plan adds the git mounts and the populate leaves the gitdir volume empty" {

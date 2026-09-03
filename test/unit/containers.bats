@@ -154,6 +154,44 @@ setup() {
 	array_has 'keep-groups' "${args[@]}"
 }
 
+@test "onbox plan emits --init for the persistent container" {
+	load_onbox_plan
+	local args=()
+	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_contains '--init' "${args[@]}"
+}
+
+@test "onbox plan emits --init ahead of the image name and the sleep command" {
+	load_onbox_plan
+	local img args=() init_at=-1 img_at=-1 i
+	img="$(base_image_name)"
+	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	for ((i = 0; i < ${#args[@]}; i++)); do
+		if [[ "${args[$i]}" == --init ]]; then
+			init_at=$i
+		fi
+		if [[ "${args[$i]}" == "$img" ]]; then
+			img_at=$i
+		fi
+	done
+	[[ $init_at -ge 0 ]]
+	[[ $init_at -lt $img_at ]]
+}
+
+@test "onbox recontain plan propagates --init to podman create" {
+	load_onbox_plan
+	local args=()
+	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_contains '--init' "${args[@]}"
+}
+
+@test "onbox rebuild plan propagates --init to podman create" {
+	load_onbox_plan
+	local args=()
+	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_contains '--init' "${args[@]}"
+}
+
 @test "onbox plan runs the shared base image" {
 	load_onbox_plan
 	local img args=()
