@@ -17,6 +17,19 @@ plan_gitdir_volume() {
 	fi
 }
 
+plan_git_identity_env() {
+	local -n _plan_out="$1"
+	local project="$2" name email
+	name="$(host_git_identity "$project" user.name)"
+	email="$(host_git_identity "$project" user.email)"
+	if [[ -n "$name" ]]; then
+		_plan_out+=("--env" "TALKBOX_GIT_USER_NAME=$name")
+	fi
+	if [[ -n "$email" ]]; then
+		_plan_out+=("--env" "TALKBOX_GIT_USER_EMAIL=$email")
+	fi
+}
+
 plan_volume_rm() {
 	local -n _plan_out="$1"
 	local vol="$2"
@@ -69,6 +82,7 @@ plan_onbox() {
 		_plan_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
 		_plan_out+=("-v" "$(gitdir_volume "$project" onbox):/working/$base/.git")
 		_plan_out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro")
+		plan_git_identity_env "${!_plan_out}" "$project"
 	fi
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
@@ -342,6 +356,7 @@ plan_netbox() {
 		_plan_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
 		_plan_out+=("-v" "$(gitdir_volume "$project" netbox):/working/$base/.git")
 		_plan_out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro")
+		plan_git_identity_env "${!_plan_out}" "$project"
 	fi
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
@@ -389,6 +404,7 @@ plan_offbox() {
 		_plan_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
 		_plan_out+=("-v" "$(gitdir_volume "$project" offbox):/working/$base/.git")
 		_plan_out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro")
+		plan_git_identity_env "${!_plan_out}" "$project"
 	fi
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")

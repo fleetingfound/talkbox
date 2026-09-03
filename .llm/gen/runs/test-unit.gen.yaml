@@ -1,12 +1,5 @@
 target: test-unit
-started: '2026-09-02T23:25:02Z'
-exit: 1
-totals: { total: 186, pass: 179, fail: 7, skip: 0 }
+started: '2026-09-03T05:36:34Z'
+exit: 0
+totals: { total: 186, pass: 186, fail: 0, skip: 0 }
 fail:
- - 'test/unit/containers.bats :: onbox plan emits git identity env vars for a git-tracked project but not for a non-git project'
- - 'test/unit/containers.bats :: onbox plan omits a git identity env var for a field the host has not configured'
- - 'test/unit/git.bats :: host_git_identity prints the effective user.name and user.email in order'
- - 'test/unit/git.bats :: host_git_identity omits a field the host has not configured'
- - 'test/unit/git.bats :: host_git_identity prints nothing when no identity is configured'
- - 'test/unit/netbox-offbox.bats :: netbox plan emits git identity env vars for a git-tracked project but not for a non-git project'
- - 'test/unit/netbox-offbox.bats :: offbox plan emits git identity env vars for a git-tracked project but not for a non-git project'

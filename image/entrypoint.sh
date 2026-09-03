@@ -8,6 +8,13 @@ if [[ -d /talkbox/dotfiles.project ]]; then
 	cp -a /talkbox/dotfiles.project/. /home/dev/
 fi
 
+if [[ -n "${TALKBOX_GIT_USER_NAME:-}" ]]; then
+	git config --global user.name "$TALKBOX_GIT_USER_NAME"
+fi
+if [[ -n "${TALKBOX_GIT_USER_EMAIL:-}" ]]; then
+	git config --global user.email "$TALKBOX_GIT_USER_EMAIL"
+fi
+
 if [[ -d /host/git ]]; then
 	repo="$(pwd)"
 	if ! git -C "$repo" rev-parse --git-dir >/dev/null 2>&1; then

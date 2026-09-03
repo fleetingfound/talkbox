@@ -14,3 +14,4 @@
 - [x] [`helpers.bash` files are excluded from `make lint` and `make format`](helpers-bash-excluded-from-lint-format.gen.md) — resolved by [Phase 8c](../plans/phase-8c-helpers-bash-lint-format.gen.md)
 - [x] [`custom_merge` Case 1 shadows Case 2 when the worktree matches the remote ref but contains host-untracked files](custom-merge-case1-shadowing-case2.gen.md) — resolved by [Phase 9a](../plans/phase-9a-custom-merge-case2-precedence.gen.md)
 - [x] [`resolve_branches` unit test hardcodes `master` as the default branch](git-transport-test-hardcodes-master-branch.gen.md) — resolved by [Phase 8d](../plans/phase-8d-git-transport-test-default-branch.gen.md)
+- [ ] [E2e commands executed on a freshly started container race the entrypoint](e2e-fresh-container-exec-races-entrypoint.gen.md)

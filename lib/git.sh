@@ -60,6 +60,22 @@ git_mounts_enabled() {
 	git_tracked "$project" && [[ "$(classify_git_dir "$project")" == inside ]]
 }
 
+host_git_identity() {
+	local project="$1" field="${2:-}" name email
+	if [[ -z "$field" || "$field" == user.name ]]; then
+		name="$(git -C "$project" config user.name 2>/dev/null || true)"
+		if [[ -n "$name" ]]; then
+			printf '%s\n' "$name"
+		fi
+	fi
+	if [[ -z "$field" || "$field" == user.email ]]; then
+		email="$(git -C "$project" config user.email 2>/dev/null || true)"
+		if [[ -n "$email" ]]; then
+			printf '%s\n' "$email"
+		fi
+	fi
+}
+
 refuse_outside_gitdir() {
 	local project="$1"
 	if git_tracked "$project" && [[ "$(classify_git_dir "$project")" == outside ]]; then
