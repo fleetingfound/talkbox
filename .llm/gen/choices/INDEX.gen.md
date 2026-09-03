@@ -45,3 +45,7 @@
 
 - [x] [`execute_fetch_plan` boundary mechanism](execute-fetch-plan-boundary.gen.md) - how to replace the brittle `git fetch` token-sniffing splitter in `execute_fetch_plan` (two-array output, explicit delimiter, or reuse `execute_plan`).
 - [x] [`podman stop` grace period](podman-stop-grace-period.gen.md) - what stop grace period to use for the nine `podman stop -t 1` call sites, and whether to extract a named constant.
+
+## Container exit hang (PID 1 signal handling)
+
+- [x] [PID 1 signal handling for persistent containers](pid1-signal-handling.gen.md) - how to give the `onbox`/`netbox`/`offbox` persistent containers a PID 1 that honours `SIGTERM` so `podman stop` returns promptly (`--init`, entrypoint trap, or a signal-handling command loop).

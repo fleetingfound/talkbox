@@ -1,5 +1,12 @@
 target: test-unit
+<<<<<<< Updated upstream
 started: '2026-09-03T05:36:34Z'
 exit: 0
 totals: { total: 186, pass: 186, fail: 0, skip: 0 }
+=======
+started: '2026-09-02T19:44:11Z'
+exit: 1
+totals: { total: 178, pass: 177, fail: 1, skip: 0 }
+>>>>>>> Stashed changes
 fail:
+ - 'test/unit/git-transport.bats :: resolve_branches with --all and a remote enumerates the remote branches'
