@@ -1,5 +1,12 @@
 target: test-unit
-started: '2026-09-03T14:52:26Z'
-exit: 0
-totals: { total: 198, pass: 198, fail: 0, skip: 0 }
+started: '2026-09-03T15:08:32Z'
+exit: 1
+totals: { total: 205, pass: 198, fail: 7, skip: 0 }
 fail:
+ - 'test/unit/bashrc.bats :: bashrc replaces the hostname in PS1 with the talkbox project slug and container type'
+ - 'test/unit/containers.bats :: onbox plan emits the prompt host env vars for git-tracked and non-git projects'
+ - 'test/unit/containers.bats :: onbox recontain and rebuild plans propagate the prompt host env vars to podman create'
+ - 'test/unit/netbox-offbox.bats :: netbox plan emits the prompt host env vars for git-tracked and non-git projects'
+ - 'test/unit/netbox-offbox.bats :: offbox plan emits the prompt host env vars for git-tracked and non-git projects'
+ - 'test/unit/netbox-offbox.bats :: netbox recontain and rebuild plans propagate the prompt host env vars to podman create'
+ - 'test/unit/netbox-offbox.bats :: offbox recontain and rebuild plans propagate the prompt host env vars to podman create'

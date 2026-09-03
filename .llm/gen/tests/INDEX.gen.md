@@ -21,3 +21,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 9a: `custom_merge` Case 2 precedence over Case 1](phase-9a-custom-merge-case2-precedence.gen.md)
 - [Phase 9b: git identity propagation into containers](phase-9b-git-identity-propagation.gen.md)
 - [Phase 10a: `--init` for persistent containers (PID 1 signal handling)](phase-10a-pid1-init.gen.md)
+- [Phase 10b: command-prompt host segment (`<project-slug>.<container-type>`)](phase-10b-prompt-host-segment.gen.md)

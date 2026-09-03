@@ -384,3 +384,69 @@ setup() {
 	plan_offbox_populate plan "$PROJECT" base srcs dsts
 	array_has_none 'talkbox-proj.offbox.gitdir' "${plan[@]}"
 }
+
+@test "netbox plan emits the prompt host env vars for git-tracked and non-git projects" {
+	load_netbox_plan
+	git -C "$PROJECT" init -q
+	git -C "$PROJECT" config user.name host-user
+	git -C "$PROJECT" config user.email host@example.com
+	local args=()
+	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
+	array_contains 'TALKBOX_CONTAINER_TYPE=netbox' "${args[@]}"
+	array_has 'TALKBOX_GIT_USER_NAME=host-user' "${args[@]}"
+	local plain
+	plain="$BATS_TEST_TMPDIR/plain"
+	mkdir -p "$plain"
+	args=()
+	plan_netbox args "$plain" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_contains 'TALKBOX_PROJECT_SLUG=plain' "${args[@]}"
+	array_contains 'TALKBOX_CONTAINER_TYPE=netbox' "${args[@]}"
+	array_has_none 'TALKBOX_GIT_USER' "${args[@]}"
+}
+
+@test "offbox plan emits the prompt host env vars for git-tracked and non-git projects" {
+	load_netbox_plan
+	git -C "$PROJECT" init -q
+	git -C "$PROJECT" config user.name host-user
+	git -C "$PROJECT" config user.email host@example.com
+	local args=()
+	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
+	array_contains 'TALKBOX_CONTAINER_TYPE=offbox' "${args[@]}"
+	array_has 'TALKBOX_GIT_USER_NAME=host-user' "${args[@]}"
+	local plain
+	plain="$BATS_TEST_TMPDIR/plain"
+	mkdir -p "$plain"
+	args=()
+	plan_offbox args "$plain" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_contains 'TALKBOX_PROJECT_SLUG=plain' "${args[@]}"
+	array_contains 'TALKBOX_CONTAINER_TYPE=offbox' "${args[@]}"
+	array_has_none 'TALKBOX_GIT_USER' "${args[@]}"
+}
+
+@test "netbox recontain and rebuild plans propagate the prompt host env vars to podman create" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local -a srcs=() dsts=() args=()
+	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
+	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
+	array_contains 'TALKBOX_CONTAINER_TYPE=netbox' "${args[@]}"
+	args=()
+	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
+	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
+	array_contains 'TALKBOX_CONTAINER_TYPE=netbox' "${args[@]}"
+}
+
+@test "offbox recontain and rebuild plans propagate the prompt host env vars to podman create" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local -a srcs=() dsts=() args=()
+	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
+	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
+	array_contains 'TALKBOX_CONTAINER_TYPE=offbox' "${args[@]}"
+	args=()
+	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
+	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
+	array_contains 'TALKBOX_CONTAINER_TYPE=offbox' "${args[@]}"
+}

@@ -302,3 +302,35 @@ setup() {
 	array_has_none 'TALKBOX_GIT_USER_NAME' "${args[@]}"
 	array_has 'TALKBOX_GIT_USER_EMAIL=host@example.com' "${args[@]}"
 }
+
+@test "onbox plan emits the prompt host env vars for git-tracked and non-git projects" {
+	load_onbox_plan
+	git -C "$PROJECT" init -q
+	git -C "$PROJECT" config user.name host-user
+	git -C "$PROJECT" config user.email host@example.com
+	local args=()
+	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
+	array_contains 'TALKBOX_CONTAINER_TYPE=onbox' "${args[@]}"
+	array_has 'TALKBOX_GIT_USER_NAME=host-user' "${args[@]}"
+	local plain
+	plain="$BATS_TEST_TMPDIR/plain"
+	mkdir -p "$plain"
+	args=()
+	plan_onbox args "$plain" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_contains 'TALKBOX_PROJECT_SLUG=plain' "${args[@]}"
+	array_contains 'TALKBOX_CONTAINER_TYPE=onbox' "${args[@]}"
+	array_has_none 'TALKBOX_GIT_USER' "${args[@]}"
+}
+
+@test "onbox recontain and rebuild plans propagate the prompt host env vars to podman create" {
+	load_onbox_plan
+	local args=()
+	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
+	array_contains 'TALKBOX_CONTAINER_TYPE=onbox' "${args[@]}"
+	args=()
+	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
+	array_contains 'TALKBOX_CONTAINER_TYPE=onbox' "${args[@]}"
+}
