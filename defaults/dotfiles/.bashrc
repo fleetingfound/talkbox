@@ -3,7 +3,7 @@ blue="\001$(tput setaf 6)\002"
 dim="\001$(tput setaf 1)\002"
 reset="\001$(tput sgr0)\002"
 
-PS1="$dim[\t] $teal\u@\h $blue\w$reset: "
+PS1="$dim[\t] $teal\u@${TALKBOX_PROJECT_SLUG:-}.${TALKBOX_CONTAINER_TYPE:-} $blue\w$reset: "
 
 export OPENCODE_ENABLE_EXA=1
 

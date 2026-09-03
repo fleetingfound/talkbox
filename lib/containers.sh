@@ -78,6 +78,8 @@ plan_onbox() {
 		_plan_out+=("--device" "nvidia.com/gpu=all")
 		_plan_out+=("--group-add" "keep-groups")
 	fi
+	_plan_out+=("--env" "TALKBOX_PROJECT_SLUG=$(project_slug "$project")")
+	_plan_out+=("--env" "TALKBOX_CONTAINER_TYPE=onbox")
 	_plan_out+=("-v" "$project:/working/$base")
 	if git_mounts_enabled "$project"; then
 		_plan_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
@@ -353,6 +355,8 @@ plan_netbox() {
 		_plan_out+=("--device" "nvidia.com/gpu=all")
 		_plan_out+=("--group-add" "keep-groups")
 	fi
+	_plan_out+=("--env" "TALKBOX_PROJECT_SLUG=$(project_slug "$project")")
+	_plan_out+=("--env" "TALKBOX_CONTAINER_TYPE=netbox")
 	_plan_out+=("-v" "$(netbox_worktree_volume "$project"):/working/$base")
 	if git_mounts_enabled "$project"; then
 		_plan_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
@@ -402,6 +406,8 @@ plan_offbox() {
 		_plan_out+=("--device" "nvidia.com/gpu=all")
 		_plan_out+=("--group-add" "keep-groups")
 	fi
+	_plan_out+=("--env" "TALKBOX_PROJECT_SLUG=$(project_slug "$project")")
+	_plan_out+=("--env" "TALKBOX_CONTAINER_TYPE=offbox")
 	_plan_out+=("-v" "$(offbox_worktree_volume "$project"):/working/$base")
 	if git_mounts_enabled "$project"; then
 		_plan_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
