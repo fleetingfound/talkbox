@@ -23,3 +23,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 10a: `--init` for persistent containers (PID 1 signal handling)](phase-10a-pid1-init.gen.md)
 - [Phase 10b: command-prompt host segment (`<project-slug>.<container-type>`)](phase-10b-prompt-host-segment.gen.md)
 - [Phase 11a: entrypoint readiness synchronization (tmpfs sentinel)](phase-11a-entrypoint-readiness-sync.gen.md)
+- [Phase 11b: e2e test teardown hygiene](phase-11b-e2e-teardown-hygiene.gen.md)

@@ -13,11 +13,7 @@ teardown() {
 	if [[ -n "$HOST_SRV_PID" ]]; then
 		kill "$HOST_SRV_PID" 2>/dev/null || true
 	fi
-	sdrun podman rm -f -v "$CTR" >/dev/null 2>&1 || true
-	local v
-	for v in $(sdrun podman volume ls -q --filter "name=$PROJECT_SLUG" 2>/dev/null); do
-		sdrun podman volume rm -f "$v" >/dev/null 2>&1 || true
-	done
+	teardown_talkbox "$PROJECT_SLUG"
 	rm -rf "$PROJECT" "$TALKBOX"
 }
 

@@ -42,6 +42,22 @@ mk_talkbox() {
 	printf '%s\n' "$dest"
 }
 
+teardown_talkbox() {
+	local slug="$1" extra v
+	local ctrs=("$slug.onbox" "$slug.netbox" "$slug.offbox")
+	shift
+	for extra in "$@"; do
+		if [[ -n "$extra" ]]; then
+			ctrs+=("$extra")
+		fi
+	done
+	sdrun podman rm -f -v "${ctrs[@]}" >/dev/null 2>&1 || true
+	sdrun podman rmi "$slug.netbox.root" "$slug.offbox.root" >/dev/null 2>&1 || true
+	for v in $(sdrun podman volume ls -q --filter "name=$slug" 2>/dev/null); do
+		sdrun podman volume rm -f "$v" >/dev/null 2>&1 || true
+	done
+}
+
 project_slug_e2e() {
 	local base
 	base="$(basename "$1")"

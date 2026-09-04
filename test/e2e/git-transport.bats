@@ -16,15 +16,7 @@ setup() {
 }
 
 teardown() {
-	sdrun podman rm -f -v "$ONBOX_CTR" "$NETBOX_CTR" "$OFFBOX_CTR" >/dev/null 2>&1 || true
-	if [[ -n "$PLAIN_CTR" ]]; then
-		sdrun podman rm -f -v "$PLAIN_CTR" >/dev/null 2>&1 || true
-	fi
-	sdrun podman rmi "$PROJECT_SLUG.netbox.root" "$PROJECT_SLUG.offbox.root" >/dev/null 2>&1 || true
-	local v
-	for v in $(sdrun podman volume ls -q --filter "name=$PROJECT_SLUG" 2>/dev/null); do
-		sdrun podman volume rm -f "$v" >/dev/null 2>&1 || true
-	done
+	teardown_talkbox "$PROJECT_SLUG" "$PLAIN_CTR"
 	rm -rf "$PROJECT" "$TALKBOX" "${EXTRA_DIRS[@]}"
 }
 

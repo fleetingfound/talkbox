@@ -8,7 +8,7 @@ setup() {
 }
 
 teardown() {
-	sdrun podman rm -f -v "$CTR" >/dev/null 2>&1 || true
+	teardown_talkbox "$(project_slug_e2e "$PROJECT")"
 	rm -rf "$PROJECT" "$TALKBOX"
 }
 

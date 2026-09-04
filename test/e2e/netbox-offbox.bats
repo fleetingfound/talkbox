@@ -4,20 +4,13 @@ setup() {
 	PROJECT="$(mk_project)"
 	TALKBOX="$(mk_talkbox)"
 	PROJECT_SLUG="$(project_slug_e2e "$PROJECT")"
-	ONBOX_CTR="$PROJECT_SLUG.onbox"
 	NETBOX_CTR="$PROJECT_SLUG.netbox"
 	OFFBOX_CTR="$PROJECT_SLUG.offbox"
 	NETBOX_ROOT="$PROJECT_SLUG.netbox.root"
-	OFFBOX_ROOT="$PROJECT_SLUG.offbox.root"
 }
 
 teardown() {
-	sdrun podman rm -f -v "$NETBOX_CTR" "$OFFBOX_CTR" "$ONBOX_CTR" >/dev/null 2>&1 || true
-	sdrun podman rmi "$NETBOX_ROOT" "$OFFBOX_ROOT" >/dev/null 2>&1 || true
-	local v
-	for v in $(sdrun podman volume ls -q --filter "name=$PROJECT_SLUG" 2>/dev/null); do
-		sdrun podman volume rm -f "$v" >/dev/null 2>&1 || true
-	done
+	teardown_talkbox "$PROJECT_SLUG"
 	rm -rf "$PROJECT" "$TALKBOX"
 }
 

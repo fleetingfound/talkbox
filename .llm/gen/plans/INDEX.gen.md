@@ -28,4 +28,4 @@ Implementation plan for `SPEC.md`, in recommended order. Each phase builds on th
 - [x] [Phase 10a: `--init` for persistent containers (PID 1 signal handling)](phase-10a-pid1-init.gen.md) #flow/redgreen #model/default
 - [x] [Phase 10b: Command-prompt host segment (`<project-slug>.<container-type>`)](phase-10b-prompt-host-segment.gen.md) #flow/redgreen #model/default
 - [x] [Phase 11a: Entrypoint readiness synchronization (tmpfs sentinel)](phase-11a-entrypoint-readiness-sync.gen.md) #flow/redgreen #model/default
-- [ ] [Phase 11b: E2e test teardown hygiene](phase-11b-e2e-teardown-hygiene.gen.md) #flow/pin #model/default
+- [x] [Phase 11b: E2e test teardown hygiene](phase-11b-e2e-teardown-hygiene.gen.md) #flow/pin #model/default
