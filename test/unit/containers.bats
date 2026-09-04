@@ -334,3 +334,71 @@ setup() {
 	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
 	array_contains 'TALKBOX_CONTAINER_TYPE=onbox' "${args[@]}"
 }
+
+@test "onbox plan mounts a tmpfs at /run/talkbox for the entrypoint readiness sentinel" {
+	load_onbox_plan
+	local img args=() tmpfs_at=-1 img_at=-1 i
+	img="$(base_image_name)"
+	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	for ((i = 0; i < ${#args[@]}; i++)); do
+		if [[ "${args[$i]}" == --tmpfs ]]; then
+			tmpfs_at=$i
+		fi
+		if [[ "${args[$i]}" == "$img" ]]; then
+			img_at=$i
+		fi
+	done
+	[[ $tmpfs_at -ge 0 ]]
+	[[ "${args[$((tmpfs_at + 1))]}" == /run/talkbox ]]
+	[[ $tmpfs_at -lt $img_at ]]
+}
+
+@test "onbox recontain plan propagates the /run/talkbox tmpfs to podman create" {
+	load_onbox_plan
+	local args=()
+	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_contains '--tmpfs' "${args[@]}"
+	array_contains '/run/talkbox' "${args[@]}"
+}
+
+@test "onbox rebuild plan propagates the /run/talkbox tmpfs to podman create" {
+	load_onbox_plan
+	local args=()
+	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_contains '--tmpfs' "${args[@]}"
+	array_contains '/run/talkbox' "${args[@]}"
+}
+
+@test "wait_for_entrypoint returns success once podman exec reports the sentinel file" {
+	load_onbox_plan
+	local shimdir log
+	shimdir="$BATS_TEST_TMPDIR/shim"
+	log="$BATS_TEST_TMPDIR/podman.log"
+	mkdir -p "$shimdir"
+	cat >"$shimdir/podman" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >>'$log'
+exit 0
+EOF
+	chmod +x "$shimdir/podman"
+	PATH="$shimdir:$PATH" run wait_for_entrypoint talkbox-proj.onbox
+	[[ "$status" -eq 0 ]]
+	[[ -f "$log" ]]
+	[[ "$(cat "$log")" == *'exec'* ]]
+	[[ "$(cat "$log")" == *'/run/talkbox/ready'* ]]
+}
+
+@test "wait_for_entrypoint dies with a talkbox error when the sentinel never appears" {
+	load_onbox_plan
+	local shimdir
+	shimdir="$BATS_TEST_TMPDIR/shim"
+	mkdir -p "$shimdir"
+	cat >"$shimdir/podman" <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+	chmod +x "$shimdir/podman"
+	PATH="$shimdir:$PATH" run wait_for_entrypoint talkbox-proj.onbox
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+}

@@ -119,6 +119,7 @@ setup() {
 	array_has_none '/talkbox/target:ro' "${args[@]}"
 	array_contains 'cp' "${args[@]}"
 	array_has_none '--init' "${args[@]}"
+	array_has_none '--tmpfs' "${args[@]}"
 }
 
 @test "volume-population planner mounts a source volume read-write" {
@@ -449,4 +450,76 @@ setup() {
 	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
 	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
 	array_contains 'TALKBOX_CONTAINER_TYPE=offbox' "${args[@]}"
+}
+
+@test "netbox plan mounts a tmpfs at /run/talkbox for the entrypoint readiness sentinel" {
+	load_netbox_plan
+	local img args=() tmpfs_at=-1 img_at=-1 i
+	img="$(base_image_name)"
+	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$img"
+	for ((i = 0; i < ${#args[@]}; i++)); do
+		if [[ "${args[$i]}" == --tmpfs ]]; then
+			tmpfs_at=$i
+		fi
+		if [[ "${args[$i]}" == "$img" ]]; then
+			img_at=$i
+		fi
+	done
+	[[ $tmpfs_at -ge 0 ]]
+	[[ "${args[$((tmpfs_at + 1))]}" == /run/talkbox ]]
+	[[ $tmpfs_at -lt $img_at ]]
+}
+
+@test "offbox plan mounts a tmpfs at /run/talkbox for the entrypoint readiness sentinel" {
+	load_netbox_plan
+	local img args=() tmpfs_at=-1 img_at=-1 i
+	img="$(base_image_name)"
+	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$img"
+	for ((i = 0; i < ${#args[@]}; i++)); do
+		if [[ "${args[$i]}" == --tmpfs ]]; then
+			tmpfs_at=$i
+		fi
+		if [[ "${args[$i]}" == "$img" ]]; then
+			img_at=$i
+		fi
+	done
+	[[ $tmpfs_at -ge 0 ]]
+	[[ "${args[$((tmpfs_at + 1))]}" == /run/talkbox ]]
+	[[ $tmpfs_at -lt $img_at ]]
+}
+
+@test "netbox recontain plan propagates the /run/talkbox tmpfs to podman create" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local -a srcs=() dsts=() args=()
+	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
+	array_contains '--tmpfs' "${args[@]}"
+	array_contains '/run/talkbox' "${args[@]}"
+}
+
+@test "offbox recontain plan propagates the /run/talkbox tmpfs to podman create" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local -a srcs=() dsts=() args=()
+	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
+	array_contains '--tmpfs' "${args[@]}"
+	array_contains '/run/talkbox' "${args[@]}"
+}
+
+@test "netbox rebuild plan propagates the /run/talkbox tmpfs to podman create" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local -a srcs=() dsts=() args=()
+	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
+	array_contains '--tmpfs' "${args[@]}"
+	array_contains '/run/talkbox' "${args[@]}"
+}
+
+@test "offbox rebuild plan propagates the /run/talkbox tmpfs to podman create" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local -a srcs=() dsts=() args=()
+	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
+	array_contains '--tmpfs' "${args[@]}"
+	array_contains '/run/talkbox' "${args[@]}"
 }
