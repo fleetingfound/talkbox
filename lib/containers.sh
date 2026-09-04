@@ -74,6 +74,7 @@ plan_onbox() {
 	_plan_out+=("--cap-drop=NET_ADMIN")
 	_plan_out+=("--cap-drop=NET_RAW")
 	_plan_out+=("--init")
+	_plan_out+=("--tmpfs" "/run/talkbox")
 	if [[ "$TALKBOX_GPU" == yes ]]; then
 		_plan_out+=("--device" "nvidia.com/gpu=all")
 		_plan_out+=("--group-add" "keep-groups")
@@ -184,6 +185,13 @@ container_running() {
 	[[ "$(podman inspect -f '{{.State.Running}}' "$ctr" 2>/dev/null)" == true ]]
 }
 
+wait_for_entrypoint() {
+	local ctr="$1"
+	if ! podman exec "$ctr" bash -c 'for ((i = 0; i < 150; i++)); do [[ -f /run/talkbox/ready ]] && exit 0; sleep 0.1; done; exit 1'; then
+		die "container $ctr did not signal entrypoint readiness within 15 seconds" 1
+	fi
+}
+
 image_in_use() {
 	local image="$1" ctr="$2"
 	local names name
@@ -211,6 +219,7 @@ run_onbox() {
 		podman create "${create_args[@]}"
 	fi
 	podman start "$ctr"
+	wait_for_entrypoint "$ctr"
 	local -a exec_args=()
 	if [[ "$interactive" == yes ]]; then
 		exec_args+=("--interactive" "--tty")
@@ -351,6 +360,7 @@ plan_netbox() {
 	_plan_out+=("--cap-drop=NET_ADMIN")
 	_plan_out+=("--cap-drop=NET_RAW")
 	_plan_out+=("--init")
+	_plan_out+=("--tmpfs" "/run/talkbox")
 	if [[ "$TALKBOX_GPU" == yes ]]; then
 		_plan_out+=("--device" "nvidia.com/gpu=all")
 		_plan_out+=("--group-add" "keep-groups")
@@ -402,6 +412,7 @@ plan_offbox() {
 	_plan_out+=("--cap-drop=NET_ADMIN")
 	_plan_out+=("--cap-drop=NET_RAW")
 	_plan_out+=("--init")
+	_plan_out+=("--tmpfs" "/run/talkbox")
 	if [[ "$TALKBOX_GPU" == yes ]]; then
 		_plan_out+=("--device" "nvidia.com/gpu=all")
 		_plan_out+=("--group-add" "keep-groups")
@@ -670,6 +681,7 @@ run_netbox() {
 		create_netbox "$project" "$interactive" "$1" "$2" "$3" "$4" "$5"
 	fi
 	podman start "$ctr"
+	wait_for_entrypoint "$ctr"
 	local -a exec_args=()
 	if [[ "$interactive" == yes ]]; then
 		exec_args+=("--interactive" "--tty")
@@ -694,6 +706,7 @@ run_offbox() {
 		create_offbox "$project" "$interactive" "$1" "$2" "$3" "$4" "$5"
 	fi
 	podman start "$ctr"
+	wait_for_entrypoint "$ctr"
 	local -a exec_args=()
 	if [[ "$interactive" == yes ]]; then
 		exec_args+=("--interactive" "--tty")

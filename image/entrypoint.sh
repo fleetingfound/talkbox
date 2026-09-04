@@ -33,6 +33,12 @@ if [[ -d /host/git ]]; then
 	fi
 fi
 
+if [[ -d /run/talkbox ]]; then
+	if ! touch /run/talkbox/ready 2>/dev/null; then
+		sudo -n touch /run/talkbox/ready 2>/dev/null || true
+	fi
+fi
+
 if [[ $# -gt 0 ]]; then
 	exec bash -c "$*"
 fi
