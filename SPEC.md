@@ -63,8 +63,6 @@ or
 
 where `<source>` refers to the path on the host and `<dest>` refers to the target path within the container. The spaces before and after the colon may or may not be present.
 
-Blank lines and lines whose first non-whitespace character is `#` are ignored.
-
 When `<dest>` is omitted, use `/host/read/<basename>` for read mounts and `/host/write/<basename>` for write mounts, where `<basename>` is the basename of `<source>`.
 
 The path `<source>` may use the placeholders `~` or `$HOME` to reference the host home folder.
@@ -222,18 +220,26 @@ For `offbox`, this is achieved by running `podman create` with the options:
 For `onbox` and `netbox`, use only the options:
 
 ```
---network="pasta:-T,<port1>,-T,<port2>"
+--network="pasta:-T,<port1>,-T,<port2>,--dns-forward,169.254.1.1,--map-guest-addr,none"
 --cap-drop=NET_ADMIN
 --cap-drop=NET_RAW
 ```
 
+Setting `--dns-forward=169.254.1.1` ensures that DNS forwarding is available at a fixed address within the container.
+
 In all cases, replace `-T,<port1>,-T,<port2>` with the ports which the containers should have access to.
 
-Default ports are specified in `defaults/ports` in this repository, which lists one port per line. Blank lines and lines whose first non-whitespace character is `#` are ignored. This configuration file may be empty or absent.
+Default ports may be specified in `defaults/ports` in this repository, which lists one port per line.
 
 As an alternative to the file `ports`, the argument `--port` accepts a single port and may be used multiple times in the command which creates the container.
 
-The union of the ports specified by the global defaults and the ports declared on the command which creates the container is used.
+The union of the ports specified by `defaults/ports` and the ports declared as an argument to the command which creates the container is used.
+
+For the `onbox` and `netbox` containers, IP addresses and CIDR ranges listed in `defaults/deny.ip` are blocked. Access is always allowed to loopback addresses and `169.254.1.1` since it is used for DNS forwarding, even if those addresses are matched by `defaults/deny.ip`. List an IP address in `defaults/allow.ip` to allow access even if is matched by `defaults/deny.ip`.
+
+As an alternative to the files `defaults/deny.ip` and `defaults/allow.ip`, use the argument `--deny-ip` and `--allow-ip`. Take the union of blocked entries specified with `defaults/deny.ip` and `--deny-ip`. Also take the union of `defaults/allow.ip` and `--allow-ip` for allowed entries.
+
+Addresses or CIDR ranges not matched by `defaults/deny.ip` or an argument `--deny-ip` are allowed. These options do not affect the `offbox` container.
 
 ## image and container management
 
@@ -373,7 +379,10 @@ The directory `defaults/` may include:
 
 - files `read.mounts` and `write.mounts` specifying read-only and read-write mounts
 - the file `ports` specifying the ports which the containers should have access to
+- files `deny.ip` and `allow.ip` specify blocked and allowed IP addresses and CIDR ranges
 - the folder `dotfiles` providing default dotfiles
+
+In the files read.mounts, write.mounts, ports, deny.ip and allow.ip, blank lines and lines whose first non-whitespace character is # are ignored.
 
 All shell scripts should be implemented in Bash. Shell scripts should be checked with ShellCheck (invoked via `make lint`) and formatted with `shfmt` (invoked via `make format`).
 

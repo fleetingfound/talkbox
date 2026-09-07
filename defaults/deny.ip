@@ -1,0 +1,61 @@
+# Derived from the IANA Special-Purpose Address Registries. (2025-10-09)
+# Rule: deny every block with Globally Reachable = FALSE.
+#   https://www.iana.org/assignments/iana-ipv4-special-registry
+#   https://www.iana.org/assignments/iana-ipv6-special-registry
+#
+# 127.0.0.0/8, ::1/128 and 169.254.1.1 are omitted since they correspond to
+# loopback addresses and the DNS forwarder, which are allowed uncoditionally.
+#
+# This list should kept up to date with IANA standards.
+
+# --- IPv4 ---
+# "This network"                        RFC 791
+0.0.0.0/8
+# Private-Use                           RFC 1918
+10.0.0.0/8
+# Shared Address Space (CGNAT)          RFC 6598
+100.64.0.0/10
+# Link Local (cloud metadata lives here) RFC 3927
+169.254.0.0/16
+# Private-Use                           RFC 1918
+172.16.0.0/12
+# IETF Protocol Assignments             RFC 6890 §2.1
+192.0.0.0/24
+# Documentation (TEST-NET-1)            RFC 5737
+192.0.2.0/24
+# 6a44-relay anycast                    RFC 6751
+192.88.99.2/32
+# Private-Use                           RFC 1918
+192.168.0.0/16
+# Benchmarking                          RFC 2544
+198.18.0.0/15
+# Documentation (TEST-NET-2)            RFC 5737
+198.51.100.0/24
+# Documentation (TEST-NET-3)            RFC 5737
+203.0.113.0/24
+# Reserved (includes Limited Broadcast, RFC 919) RFC 1112 §4
+240.0.0.0/4
+
+# --- IPv6 ---
+# Unspecified Address                   RFC 4291
+::/128
+# IPv4-mapped Address                   RFC 4291
+::ffff:0:0/96
+# IPv4-IPv6 Translation (local-use)     RFC 8215
+64:ff9b:1::/48
+# Discard-Only Address Block            RFC 6666
+100::/64
+# Dummy IPv6 Prefix                     RFC 9780
+100:0:0:1::/64
+# IETF Protocol Assignments             RFC 2928
+2001::/23
+# Documentation                         RFC 3849
+2001:db8::/32
+# Documentation                         RFC 9637
+3fff::/20
+# Segment Routing (SRv6) SIDs           RFC 9602
+5f00::/16
+# Unique-Local (AWS IMDSv6 lives here)  RFC 4193
+fc00::/7
+# Link-Local Unicast                    RFC 4291
+fe80::/10
