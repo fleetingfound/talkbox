@@ -1,8 +1,5 @@
 target: test-unit
-started: '2026-09-08T21:50:21Z'
-exit: 1
-totals: { total: 247, pass: 244, fail: 3, skip: 0 }
+started: '2026-09-08T22:05:33Z'
+exit: 0
+totals: { total: 247, pass: 247, fail: 0, skip: 0 }
 fail:
- - 'test/unit/network.bats :: install_nft_deny with a non-empty deny set fails hard when podman inspect fails to return a PID'
- - 'test/unit/network.bats :: install_nft_deny with a non-empty deny set fails hard when the nft pipeline exits non-zero'
- - 'test/unit/network.bats :: install_nft_deny with a non-empty deny set applies the rules and resolves nft via the augmented sbin PATH'

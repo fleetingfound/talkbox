@@ -204,6 +204,14 @@ image_in_use() {
 	return 1
 }
 
+install_nft_deny_or_die() {
+	local ctr="$1"
+	if ! install_nft_deny "$@"; then
+		podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
+		die "cannot apply nftables deny/allow rules in container $ctr; deny list left unenforced" 1
+	fi
+}
+
 run_onbox() {
 	local project="$1" command="$2" interactive="$3"
 	shift 3
@@ -220,7 +228,7 @@ run_onbox() {
 	fi
 	podman start "$ctr"
 	wait_for_entrypoint "$ctr"
-	install_nft_deny "$ctr" "$4" "$5"
+	install_nft_deny_or_die "$ctr" "$4" "$5"
 	local -a exec_args=()
 	if [[ "$interactive" == yes ]]; then
 		exec_args+=("--interactive" "--tty")
@@ -685,7 +693,7 @@ run_netbox() {
 	fi
 	podman start "$ctr"
 	wait_for_entrypoint "$ctr"
-	install_nft_deny "$ctr" "$6" "$7"
+	install_nft_deny_or_die "$ctr" "$6" "$7"
 	local -a exec_args=()
 	if [[ "$interactive" == yes ]]; then
 		exec_args+=("--interactive" "--tty")
@@ -738,7 +746,7 @@ run_netbox_recontain() {
 	local -a plan=()
 	plan_netbox_recontain plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$source"
 	execute_plan "${plan[@]}"
-	install_nft_deny "$ctr" "$6" "$7"
+	install_nft_deny_or_die "$ctr" "$6" "$7"
 	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 }
 
@@ -768,7 +776,7 @@ run_netbox_rebuild() {
 	local -a plan=()
 	plan_netbox_rebuild plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$source"
 	execute_plan "${plan[@]}"
-	install_nft_deny "$ctr" "$6" "$7"
+	install_nft_deny_or_die "$ctr" "$6" "$7"
 	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 }
 

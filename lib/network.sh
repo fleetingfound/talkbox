@@ -132,6 +132,10 @@ plan_nft_deny() {
 	fi
 }
 
+nft_strict() {
+	[[ "${TALKBOX_STRICT_NFT:-1}" != 0 ]]
+}
+
 install_nft_deny() {
 	local ctr="$1"
 	local -n _deny="$2"
@@ -139,14 +143,29 @@ install_nft_deny() {
 		return 0
 	fi
 	local pid
-	pid="$(podman inspect -f '{{.State.Pid}}' "$ctr" 2>/dev/null)" || {
-		printf 'talkbox: warning: cannot determine the PID of container %s; deny/allow rules not applied\n' "$ctr" >&2
-		return 0
-	}
+	if nft_strict; then
+		pid="$(podman inspect -f '{{.State.Pid}}' "$ctr")" || {
+			printf 'talkbox: cannot determine the PID of container %s; deny/allow rules not applied\n' "$ctr" >&2
+			return 1
+		}
+	else
+		pid="$(podman inspect -f '{{.State.Pid}}' "$ctr" 2>/dev/null)" || {
+			printf 'talkbox: warning: cannot determine the PID of container %s; deny/allow rules not applied\n' "$ctr" >&2
+			return 0
+		}
+	fi
 	local -a cmd=()
 	plan_nft_deny cmd "$pid" "$2" "$3"
-	if ! nft_deny_ruleset "$2" "$3" | "${cmd[@]}" >/dev/null 2>&1; then
-		printf 'talkbox: warning: cannot apply nftables deny/allow rules in container %s; deny list left unenforced\n' "$ctr" >&2
+	if (
+		PATH="/usr/sbin:/sbin:$PATH"
+		nft_deny_ruleset "$2" "$3" | "${cmd[@]}" >/dev/null
+	); then
+		return 0
 	fi
+	if nft_strict; then
+		printf 'talkbox: failed to apply nftables deny/allow rules in container %s; deny list left unenforced\n' "$ctr" >&2
+		return 1
+	fi
+	printf 'talkbox: warning: cannot apply nftables deny/allow rules in container %s; deny list left unenforced\n' "$ctr" >&2
 	return 0
 }
