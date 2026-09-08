@@ -66,7 +66,9 @@ plan_onbox() {
 	if ((${#_ports[@]} > 0)); then
 		printf -v port_list '%s,' "${_ports[@]}"
 		port_list="${port_list%,}"
-		net+=":$port_list"
+		net+=":$port_list,--dns-forward,169.254.1.1,--map-guest-addr,none"
+	else
+		net+=":--dns-forward,169.254.1.1,--map-guest-addr,none"
 	fi
 	_plan_out+=("--workdir=/working/$base")
 	_plan_out+=("--userns=keep-id:uid=1000,gid=1000")
@@ -109,6 +111,9 @@ plan_recontain() {
 	local -n _plan_out="$1"
 	local project="$2" interactive="$3"
 	local -n _read="$4" _write="$5" _ports="$6"
+	if (($# > 6)); then
+		local -n _deny="$7"
+	fi
 	# shellcheck disable=SC2034 # consumed by nameref parameter
 	local -a create_args=() no_write_dsts=()
 	plan_onbox create_args "$project" "$interactive" "$4" "$5" "$6"
@@ -124,6 +129,9 @@ plan_rebuild() {
 	local -n _plan_out="$1"
 	local project="$2" interactive="$3"
 	local -n _read="$4" _write="$5" _ports="$6"
+	if (($# > 6)); then
+		local -n _deny="$7"
+	fi
 	# shellcheck disable=SC2034 # consumed by nameref parameter
 	local -a create_args=() no_write_dsts=()
 	plan_onbox create_args "$project" "$interactive" "$4" "$5" "$6"
@@ -207,7 +215,7 @@ image_in_use() {
 run_onbox() {
 	local project="$1" command="$2" interactive="$3"
 	shift 3
-	local -n _read="$1" _write="$2" _ports="$3"
+	local -n _read="$1" _write="$2" _ports="$3" _deny="$4"
 	local ctr
 	ctr="$(onbox_container_name "$project")"
 	if ! container_exists "$ctr"; then
@@ -237,9 +245,9 @@ run_onbox() {
 run_recontain() {
 	local project="$1" interactive="$2"
 	shift 2
-	local -n _read="$1" _write="$2" _ports="$3"
+	local -n _read="$1" _write="$2" _ports="$3" _deny="$4"
 	local -a plan=()
-	plan_recontain plan "$project" "$interactive" "$1" "$2" "$3"
+	plan_recontain plan "$project" "$interactive" "$1" "$2" "$3" "$4"
 	execute_plan "${plan[@]}"
 	podman stop -t "$STOP_GRACE_SECONDS" "$(onbox_container_name "$project")" >/dev/null 2>&1 || true
 }
@@ -247,9 +255,9 @@ run_recontain() {
 run_rebuild() {
 	local project="$1" interactive="$2"
 	shift 2
-	local -n _read="$1" _write="$2" _ports="$3"
+	local -n _read="$1" _write="$2" _ports="$3" _deny="$4"
 	local -a plan=()
-	plan_rebuild plan "$project" "$interactive" "$1" "$2" "$3"
+	plan_rebuild plan "$project" "$interactive" "$1" "$2" "$3" "$4"
 	execute_plan "${plan[@]}"
 	podman stop -t "$STOP_GRACE_SECONDS" "$(onbox_container_name "$project")" >/dev/null 2>&1 || true
 }
@@ -352,7 +360,9 @@ plan_netbox() {
 	if ((${#_ports[@]} > 0)); then
 		printf -v port_list '%s,' "${_ports[@]}"
 		port_list="${port_list%,}"
-		net+=":$port_list"
+		net+=":$port_list,--dns-forward,169.254.1.1,--map-guest-addr,none"
+	else
+		net+=":--dns-forward,169.254.1.1,--map-guest-addr,none"
 	fi
 	_plan_out+=("--workdir=/working/$base")
 	_plan_out+=("--userns=keep-id:uid=1000,gid=1000")
@@ -448,6 +458,10 @@ plan_netbox_recontain() {
 	local project="$2" interactive="$3"
 	local -n _read="$4" _write="$5" _srcs="$6" _dsts="$7" _ports="$8"
 	local source="$9"
+	if (($# > 9)); then
+		local -n _deny="$9"
+		source="${10}"
+	fi
 	local ctr root image
 	ctr="$(netbox_container_name "$project")"
 	root="$(netbox_root_image "$project")"
@@ -473,6 +487,10 @@ plan_offbox_recontain() {
 	local project="$2" interactive="$3"
 	local -n _read="$4" _write="$5" _srcs="$6" _dsts="$7" _ports="$8"
 	local source="$9"
+	if (($# > 9)); then
+		local -n _deny="$9"
+		source="${10}"
+	fi
 	local ctr root image
 	ctr="$(offbox_container_name "$project")"
 	root="$(offbox_root_image "$project")"
@@ -498,6 +516,10 @@ plan_netbox_rebuild() {
 	local project="$2" interactive="$3"
 	local -n _read="$4" _write="$5" _srcs="$6" _dsts="$7" _ports="$8"
 	local source="$9"
+	if (($# > 9)); then
+		local -n _deny="$9"
+		source="${10}"
+	fi
 	local ctr root image
 	ctr="$(netbox_container_name "$project")"
 	root="$(netbox_root_image "$project")"
@@ -524,6 +546,10 @@ plan_offbox_rebuild() {
 	local project="$2" interactive="$3"
 	local -n _read="$4" _write="$5" _srcs="$6" _dsts="$7" _ports="$8"
 	local source="$9"
+	if (($# > 9)); then
+		local -n _deny="$9"
+		source="${10}"
+	fi
 	local ctr root image
 	ctr="$(offbox_container_name "$project")"
 	root="$(offbox_root_image "$project")"
@@ -674,7 +700,7 @@ create_offbox() {
 run_netbox() {
 	local project="$1" command="$2" interactive="$3"
 	shift 3
-	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
+	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5" _deny="$6"
 	local ctr
 	ctr="$(netbox_container_name "$project")"
 	if ! container_exists "$ctr"; then
@@ -699,7 +725,7 @@ run_netbox() {
 run_offbox() {
 	local project="$1" command="$2" interactive="$3"
 	shift 3
-	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
+	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5" _deny="$6"
 	local ctr
 	ctr="$(offbox_container_name "$project")"
 	if ! container_exists "$ctr"; then
@@ -724,7 +750,7 @@ run_offbox() {
 run_netbox_recontain() {
 	local project="$1" interactive="$2"
 	shift 2
-	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
+	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5" _deny="$6"
 	local ctr source
 	ctr="$(netbox_container_name "$project")"
 	source="$(inherit_source netbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$ctr")" "$(exists_yn "$(offbox_container_name "$project")")" "$TALKBOX_FRESH" "$TALKBOX_INHERIT")"
@@ -732,7 +758,7 @@ run_netbox_recontain() {
 		ensure_base_image
 	fi
 	local -a plan=()
-	plan_netbox_recontain plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$source"
+	plan_netbox_recontain plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$6" "$source"
 	execute_plan "${plan[@]}"
 	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 }
@@ -740,7 +766,7 @@ run_netbox_recontain() {
 run_offbox_recontain() {
 	local project="$1" interactive="$2"
 	shift 2
-	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
+	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5" _deny="$6"
 	local ctr source
 	ctr="$(offbox_container_name "$project")"
 	source="$(inherit_source offbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$(netbox_container_name "$project")")" "$(exists_yn "$ctr")" "$TALKBOX_FRESH" "$TALKBOX_INHERIT")"
@@ -748,7 +774,7 @@ run_offbox_recontain() {
 		ensure_base_image
 	fi
 	local -a plan=()
-	plan_offbox_recontain plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$source"
+	plan_offbox_recontain plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$6" "$source"
 	execute_plan "${plan[@]}"
 	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 }
@@ -756,12 +782,12 @@ run_offbox_recontain() {
 run_netbox_rebuild() {
 	local project="$1" interactive="$2"
 	shift 2
-	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
+	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5" _deny="$6"
 	local ctr source
 	ctr="$(netbox_container_name "$project")"
 	source="$(inherit_source netbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$ctr")" "$(exists_yn "$(offbox_container_name "$project")")" "$TALKBOX_FRESH" "$TALKBOX_INHERIT")"
 	local -a plan=()
-	plan_netbox_rebuild plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$source"
+	plan_netbox_rebuild plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$6" "$source"
 	execute_plan "${plan[@]}"
 	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 }
@@ -769,12 +795,12 @@ run_netbox_rebuild() {
 run_offbox_rebuild() {
 	local project="$1" interactive="$2"
 	shift 2
-	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
+	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5" _deny="$6"
 	local ctr source
 	ctr="$(offbox_container_name "$project")"
 	source="$(inherit_source offbox "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$(netbox_container_name "$project")")" "$(exists_yn "$ctr")" "$TALKBOX_FRESH" "$TALKBOX_INHERIT")"
 	local -a plan=()
-	plan_offbox_rebuild plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$source"
+	plan_offbox_rebuild plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$6" "$source"
 	execute_plan "${plan[@]}"
 	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 }

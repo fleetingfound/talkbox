@@ -1,28 +1,5 @@
 target: test-unit
-started: '2026-09-08T10:59:43Z'
-exit: 1
-totals: { total: 235, pass: 212, fail: 23, skip: 0 }
+started: '2026-09-08T11:45:02Z'
+exit: 0
+totals: { total: 235, pass: 235, fail: 0, skip: 0 }
 fail:
- - 'test/unit/containers.bats :: onbox plan uses rootless pasta networking without host-port forwarding'
- - 'test/unit/containers.bats :: onbox plan applies default mounts and pasta -T ports'
- - 'test/unit/netbox-offbox.bats :: netbox plan uses pasta networking without loopback restriction and drops caps'
- - 'test/unit/netbox-offbox.bats :: netbox plan forwards -T ports on pasta'
- - 'test/unit/network.bats :: deny_allow_args reads the deny file in order'
- - 'test/unit/network.bats :: deny_allow_args unions CLI deny entries after the file entries'
- - 'test/unit/network.bats :: deny_allow_args accepts CLI-only deny entries when the files are absent'
- - 'test/unit/network.bats :: deny_allow_args ignores blank and comment lines and trims whitespace'
- - 'test/unit/network.bats :: deny_allow_args yields no entries for absent or empty files'
- - 'test/unit/network.bats :: deny_allow_args deduplicates deny entries'
- - 'test/unit/network.bats :: deny_allow_args lets an allow entry override an equal deny entry'
- - 'test/unit/network.bats :: deny_allow_args applies allow entries from the allow file and the CLI'
- - 'test/unit/network.bats :: deny_allow_args keeps the deny set when an allow entry matches nothing'
- - 'test/unit/network.bats :: deny_allow_args always removes loopback addresses and 169.254.1.1 from the deny set'
- - 'test/unit/network.bats :: deny_allow_args carves an allowed range out of a broader deny CIDR'
- - 'test/unit/network.bats :: deny_allow_args carves an allowed range supplied via the CLI'
- - 'test/unit/network.bats :: deny_allow_args keeps a multi-entry deny set in order while carving'
- - 'test/unit/network.bats :: deny_allow_args carves the always-allowed DNS-forward address out of a deny CIDR that contains it'
- - 'test/unit/options.bats :: --deny-ip records repeatable deny addresses'
- - 'test/unit/options.bats :: --allow-ip records repeatable allow addresses'
- - 'test/unit/options.bats :: --deny-ip as the final argument requires a value and exits 2'
- - 'test/unit/options.bats :: --allow-ip as the final argument requires a value and exits 2'
- - 'test/unit/options.bats :: --deny-ip value is not treated as the command'

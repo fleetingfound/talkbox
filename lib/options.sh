@@ -13,6 +13,8 @@ parse_talkbox_options() {
 	TALKBOX_READ=()
 	TALKBOX_WRITE=()
 	TALKBOX_PORT=()
+	TALKBOX_DENY_IP=()
+	TALKBOX_ALLOW_IP=()
 	TALKBOX_FRESH="no"
 	TALKBOX_INHERIT=""
 	TALKBOX_GPU="no"
@@ -42,6 +44,16 @@ parse_talkbox_options() {
 			shift
 			[[ $# -gt 0 ]] || die "--port requires a value" 2
 			TALKBOX_PORT+=("$1")
+			;;
+		--deny-ip)
+			shift
+			[[ $# -gt 0 ]] || die "--deny-ip requires a value" 2
+			TALKBOX_DENY_IP+=("$1")
+			;;
+		--allow-ip)
+			shift
+			[[ $# -gt 0 ]] || die "--allow-ip requires a value" 2
+			TALKBOX_ALLOW_IP+=("$1")
 			;;
 		--fresh)
 			TALKBOX_FRESH="yes"
