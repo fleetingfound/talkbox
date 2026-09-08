@@ -63,6 +63,14 @@
 
 - [x] [IPv6 deny/allow CIDR range carving approach](ipv6-deny-allow-carving-approach.gen.md) - how to perform IPv6 range subtraction in `deny_allow_subtract` given Bash cannot hold a 128-bit integer natively (pure Bash four-32-bit words, delegate to python3, minimum `::1` special-case, or move the set difference into nft).
 
+## nft deny install fail-hard behaviour
+
+- [x] [nft deny failure scope](nft-deny-failure-scope.gen.md) - which failure conditions in `install_nft_deny` abort the container start (nft pipeline error only, or also the PID-lookup failure).
+- [x] [nft deny error surfacing](nft-deny-error-surfacing.gen.md) - whether the underlying `nft`/`nsenter` stderr is surfaced to the user on failure.
+- [x] [nft deny failure escape hatch](nft-deny-failure-escape-hatch.gen.md) - whether to provide an env-var opt-out restoring warn-and-continue behaviour.
+- [x] [nft deny failure container cleanup](nft-deny-failure-container-cleanup.gen.md) - whether to stop/remove the already-started container before raising the error.
+- [x] [nft PATH resolution](nft-path-resolution.gen.md) - how to auto-handle `nft` being installed at `/usr/sbin` but off the non-root PATH (PATH augmentation, absolute-path resolution, or diagnostic-only).
+
 ## Entrypoint readiness synchronization
 
 - [x] [Entrypoint readiness synchronization mechanism](entrypoint-readiness-sync.gen.md) - how the `run_onbox`/`run_netbox`/`run_offbox` executors wait for the entrypoint to finish its start-up work before running `podman exec` (tmpfs sentinel, filesystem sentinel with remove-at-start, podman healthcheck, or moving setup into an exec step).

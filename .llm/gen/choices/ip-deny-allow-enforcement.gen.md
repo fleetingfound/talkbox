@@ -40,4 +40,6 @@ Create the network namespace ourselves (via `unshare -r -n`), install `nft` rule
 
 ## Selected
 
-Option A — nftables rules in the container netns, applied post-start via `nsenter` (using `podman unshare` to acquire `CAP_NET_ADMIN` in the rootless netns). Confirmed by user. If the capability is unavailable, talkbox warns and continues with the deny list unenforced rather than aborting the container start.
+Option A — nftables rules in the container netns, applied post-start via `nsenter` (using `podman unshare` to acquire `CAP_NET_ADMIN` in the rootless netns). Confirmed by user.
+
+> **Revised 2026-09-08:** The original "warn and continue with the deny list unenforced" semantics have been reversed. `install_nft_deny` now fails hard by default when the deny set is non-empty and the rules cannot be applied (whether because the container PID could not be determined or because the `nft` pipeline exited non-zero): the already-started container is stopped and a non-zero status propagates to the caller. The underlying `nft`/`nsenter` stderr is surfaced to the user. An env-var escape hatch `TALKBOX_STRICT_NFT=0` restores the previous warn-and-continue behaviour for hosts without `nft` on `PATH`. See [nft deny failure scope](../choices/nft-deny-failure-scope.gen.md), [nft deny error surfacing](../choices/nft-deny-error-surfacing.gen.md), [nft deny failure escape hatch](../choices/nft-deny-failure-escape-hatch.gen.md), and [nft deny failure container cleanup](../choices/nft-deny-failure-container-cleanup.gen.md).
