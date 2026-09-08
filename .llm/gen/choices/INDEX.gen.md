@@ -54,6 +54,11 @@
 
 - [x] [Command-prompt host segment (`<project-slug>.<container-type>`)](prompt-host-segment.gen.md) - how `<project-slug>` and `<container-type>` reach the container's interactive prompt and where the `<slug>.<container>` string is assembled (two env vars read by `.bashrc`, a single combined env var, or entrypoint-assembled).
 
+## IP deny/allow lists
+
+- [x] [IP deny/allow enforcement mechanism](ip-deny-allow-enforcement.gen.md) - how the deny/allow IP and CIDR lists are enforced for onbox/netbox (nftables in the container netns via nsenter, iptables in the netns, host-side nftables, or a pre-created managed netns).
+- [x] [IP deny/allow module structure](ip-deny-allow-module.gen.md) - where the deny/allow parsing, effective-set computation and rule application live (new `lib/netfilter.sh`, extend/rename `lib/ports.sh`, or inline in `lib/containers.sh`).
+
 ## Entrypoint readiness synchronization
 
 - [x] [Entrypoint readiness synchronization mechanism](entrypoint-readiness-sync.gen.md) - how the `run_onbox`/`run_netbox`/`run_offbox` executors wait for the entrypoint to finish its start-up work before running `podman exec` (tmpfs sentinel, filesystem sentinel with remove-at-start, podman healthcheck, or moving setup into an exec step).
