@@ -16,5 +16,5 @@
 - [x] [`resolve_branches` unit test hardcodes `master` as the default branch](git-transport-test-hardcodes-master-branch.gen.md) — resolved by [Phase 8d](../plans/phase-8d-git-transport-test-default-branch.gen.md)
 - [x] [E2e commands executed on a freshly started container race the entrypoint](e2e-fresh-container-exec-races-entrypoint.gen.md) — resolved by [Phase 11a](../plans/phase-11a-entrypoint-readiness-sync.gen.md) and [Phase 11b](../plans/phase-11b-e2e-teardown-hygiene.gen.md)
 - [x] [PID 1 (`sleep infinity`) ignores `SIGTERM`, so `podman stop` always waits the full grace period before `SIGKILL`](pid1-sleep-ignores-sigterm.gen.md) — resolved by [Phase 10a](../plans/phase-10a-pid1-init.gen.md)
-- [ ] [IPv6 deny/allow does not perform CIDR range carving](ipv6-deny-allow-no-cidr-carving.gen.md)
+- [x] [IPv6 deny/allow does not perform CIDR range carving](ipv6-deny-allow-no-cidr-carving.gen.md) — resolved by [Phase 12d](../plans/phase-12d-ipv6-deny-allow-nft-set-difference.gen.md)
 - [ ] [Dead `_deny` nameref parameter in plan functions](dead-deny-nameref-in-plan-functions.gen.md)

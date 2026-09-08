@@ -1,7 +1,5 @@
 target: test-e2e
-started: '2026-09-08T14:46:37Z'
-exit: 1
-totals: { total: 73, pass: 71, fail: 2, skip: 0 }
+started: '2026-09-08T15:04:47Z'
+exit: 0
+totals: { total: 73, pass: 73, fail: 0, skip: 0 }
 fail:
- - 'test/e2e/deny-allow.bats :: onbox runs the nft installer for a non-empty deny set, also when allow entries are present; offbox does not'
- - 'test/e2e/deny-allow.bats :: onbox --deny-ip ::/0 keeps the IPv6 loopback ::1 reachable'
