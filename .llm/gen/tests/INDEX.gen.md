@@ -28,3 +28,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 12c: IP deny/allow enforcement via nftables in the container netns](phase-12c-ip-deny-allow-enforcement.gen.md)
 - [Phase 12d: IPv6 deny/allow via nft set difference (accept allow-set, then drop deny-set)](phase-12d-ipv6-deny-allow-nft-set-difference.gen.md)
 - [Phase 13a: Remove dead `_deny` nameref parameter from plan functions](phase-13a-remove-dead-deny-nameref.gen.md)
+- [Phase 14a: `install_nft_deny` fails hard when the deny set cannot be enforced](phase-14a-nft-deny-fail-hard.gen.md)

@@ -35,6 +35,10 @@ Deviation from the plan's test wording, with justification: the plan asks for a 
 
 None. No pre-existing test is inconsistent with the plan: every existing unit and e2e test passes an empty deny set to the executors (Phase 12b threaded the deny array, empty for all current tests), so the new post-start enforcement step adds no podman invocation to any existing test's execution, and no existing test asserts the absence of such an invocation or an exact executor call sequence.
 
+## Supersession note (Phase 14a)
+
+The planned-but-never-implemented unit test "`install_nft_deny` warns and returns success when the rules cannot be applied" (described in the New tests section above) is superseded by [Phase 14a](.llm/gen/plans/phase-14a-nft-deny-fail-hard.gen.md), which reverses the warn-and-continue semantics recorded here: the strict-mode (default) tests in the [Phase 14a test document](.llm/gen/tests/phase-14a-nft-deny-fail-hard.gen.md) assert that `install_nft_deny` fails hard (non-zero return, `talkbox:` error, surfaced underlying stderr) on both the PID-lookup failure path and the `nft` pipeline failure path, while the lax-mode tests (`TALKBOX_STRICT_NFT=0`) assert the warn-and-return-0 behaviour described in the superseded test. The Phase 12c e2e tests are unaffected by the reversal, which only changes behaviour on hosts where the install fails; Phase 14a only adds no-warning assertions to their passing-path runs.
+
 ## Implementation notes
 
 - The e2e file prepends `/usr/sbin:/sbin` to `PATH`: on Debian derivatives `nft` lives in `/usr/sbin`, which is not on the default user `PATH`; the enforcement mechanism invokes `nft` by bare name through `nsenter`, so the tests must make it resolvable (validated: `podman unshare nsenter -t <PID> -n nft -f -` installs and enforces the ruleset with that `PATH`).

@@ -55,6 +55,7 @@ require_nft_ipv6() {
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'DENIED-BLOCKED'* ]]
 	[[ "$output" == *'ALLOWED-REACHABLE'* ]]
+	[[ "$output" != *'talkbox:'* ]]
 	kill "$srv" 2>/dev/null || true
 	HOST_SRV_PID=""
 	rm -rf "$www"
@@ -81,6 +82,7 @@ require_nft_ipv6() {
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'DENIED-BLOCKED'* ]]
 	[[ "$output" == *'ALLOWED-REACHABLE'* ]]
+	[[ "$output" != *'talkbox:'* ]]
 	kill "$srv" 2>/dev/null || true
 	HOST_SRV_PID=""
 	rm -rf "$www"
@@ -135,6 +137,7 @@ EOF
 		'curl -fsS --max-time 8 "http://[::1]:'"$port"'/marker" && echo IPV6-LOOPBACK-REACHABLE'
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'IPV6-LOOPBACK-REACHABLE'* ]]
+	[[ "$output" != *'talkbox:'* ]]
 	kill "$srv" 2>/dev/null || true
 	HOST_SRV_PID=""
 	rm -rf "$www"
@@ -147,9 +150,11 @@ EOF
 		'curl -sS --max-time 8 -o /dev/null http://1.1.1.1/ 2>/dev/null && echo DENY-REACHABLE || echo DENY-BLOCKED'
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'DENY-BLOCKED'* ]]
+	[[ "$output" != *'talkbox:'* ]]
 	# shellcheck disable=SC2016 # $0/$1/$2 expand inside the wrapped bash -c
 	run run_talkbox "$PROJECT" "$TALKBOX" onbox --deny-ip 1.1.1.1 --allow-ip 1.1.1.1 -c --noninteractive \
 		'curl -sS --max-time 8 -o /dev/null http://1.1.1.1/ 2>/dev/null && echo ALLOW-REACHABLE || echo ALLOW-BLOCKED'
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'ALLOW-REACHABLE'* ]]
+	[[ "$output" != *'talkbox:'* ]]
 }

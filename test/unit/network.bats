@@ -1,3 +1,4 @@
+# shellcheck disable=SC2030,SC2031 # bats runs each test in a subshell; exported shim configuration is consumed only within the test that sets it
 load helpers
 
 setup() {
@@ -292,6 +293,50 @@ EOF
 	[[ ${#out[@]} -eq 0 ]]
 }
 
+make_podman_shim() {
+	local dir="$BATS_TEST_TMPDIR/shim"
+	mkdir -p "$dir"
+	cat >"$dir/podman" <<'EOF'
+#!/usr/bin/env bash
+case "$1" in
+inspect)
+	if [[ -n "${SHIM_INSPECT_RC}" && "${SHIM_INSPECT_RC}" != 0 ]]; then
+		printf '%s\n' "${SHIM_INSPECT_STDERR:-podman inspect: container not found}" >&2
+		exit "${SHIM_INSPECT_RC}"
+	fi
+	printf '%s\n' "${SHIM_PID:-4242}"
+	exit 0
+	;;
+unshare)
+	if [[ -n "${SHIM_LOG}" ]]; then
+		printf 'PATH=%s\n' "$PATH" >>"${SHIM_LOG}"
+	fi
+	if [[ -n "${SHIM_NFT_RC}" && "${SHIM_NFT_RC}" != 0 ]]; then
+		printf '%s\n' "${SHIM_NFT_STDERR:-nft: netlink error: Operation not permitted}" >&2
+		exit "${SHIM_NFT_RC}"
+	fi
+	exit 0
+	;;
+esac
+exit 0
+EOF
+	chmod +x "$dir/podman"
+	printf '%s\n' "$dir"
+}
+
+path_without_sbin() {
+	local -a entries=() filtered=()
+	local entry out
+	IFS=: read -r -a entries <<<"$PATH"
+	for entry in "${entries[@]}"; do
+		if [[ "$entry" != /usr/sbin && "$entry" != /sbin ]]; then
+			filtered+=("$entry")
+		fi
+	done
+	printf -v out '%s:' "${filtered[@]}"
+	printf '%s\n' "${out%:}"
+}
+
 @test "install_nft_deny with an empty deny set performs no podman invocation even when the allow set is not empty" {
 	load_lib network.sh
 	# shellcheck disable=SC2034 # arrays are passed by name to the install_nft_deny function
@@ -308,4 +353,80 @@ EOF
 	PATH="$shimdir:$PATH" run install_nft_deny talkbox-proj.onbox deny allow
 	[[ "$status" -eq 0 ]]
 	[[ ! -e "$log" ]]
+}
+
+@test "install_nft_deny with a non-empty deny set fails hard when podman inspect fails to return a PID" {
+	load_lib network.sh
+	# shellcheck disable=SC2034 # arrays are passed by name to the install_nft_deny function
+	local deny=(10.0.0.0/8) allow=()
+	local shimdir
+	shimdir="$(make_podman_shim)"
+	export SHIM_INSPECT_RC=1
+	export SHIM_INSPECT_STDERR='Error: no container with name or ID "talkbox-proj.onbox" found'
+	export PATH="$shimdir:$PATH"
+	run install_nft_deny talkbox-proj.onbox deny allow
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$output" == *'Error: no container with name or ID "talkbox-proj.onbox" found'* ]]
+}
+
+@test "install_nft_deny with a non-empty deny set fails hard when the nft pipeline exits non-zero" {
+	load_lib network.sh
+	# shellcheck disable=SC2034 # arrays are passed by name to the install_nft_deny function
+	local deny=(10.0.0.0/8) allow=()
+	local shimdir
+	shimdir="$(make_podman_shim)"
+	export SHIM_NFT_RC=1
+	export SHIM_NFT_STDERR='nft: netlink error: Operation not permitted'
+	export PATH="$shimdir:$PATH"
+	run install_nft_deny talkbox-proj.onbox deny allow
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$output" == *'nft: netlink error: Operation not permitted'* ]]
+}
+
+@test "install_nft_deny with a non-empty deny set applies the rules and resolves nft via the augmented sbin PATH" {
+	load_lib network.sh
+	# shellcheck disable=SC2034 # arrays are passed by name to the install_nft_deny function
+	local deny=(10.0.0.0/8) allow=()
+	local shimdir log first stripped
+	shimdir="$(make_podman_shim)"
+	log="$BATS_TEST_TMPDIR/podman.log"
+	stripped="$(path_without_sbin)"
+	export SHIM_LOG="$log"
+	export PATH="$shimdir:$stripped"
+	run install_nft_deny talkbox-proj.onbox deny allow
+	[[ "$status" -eq 0 ]]
+	[[ "$output" != *'talkbox:'* ]]
+	[[ -e "$log" ]]
+	IFS= read -r first <"$log"
+	[[ "$first" == 'PATH=/usr/sbin:/sbin:'* ]]
+}
+
+@test "install_nft_deny with TALKBOX_STRICT_NFT=0 warns and returns 0 when podman inspect fails to return a PID" {
+	load_lib network.sh
+	# shellcheck disable=SC2034 # arrays are passed by name to the install_nft_deny function
+	local deny=(10.0.0.0/8) allow=()
+	local shimdir
+	shimdir="$(make_podman_shim)"
+	export SHIM_INSPECT_RC=1
+	export TALKBOX_STRICT_NFT=0
+	export PATH="$shimdir:$PATH"
+	run install_nft_deny talkbox-proj.onbox deny allow
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'talkbox: warning: cannot determine the PID of container talkbox-proj.onbox; deny/allow rules not applied'* ]]
+}
+
+@test "install_nft_deny with TALKBOX_STRICT_NFT=0 warns and returns 0 when the nft pipeline exits non-zero" {
+	load_lib network.sh
+	# shellcheck disable=SC2034 # arrays are passed by name to the install_nft_deny function
+	local deny=(10.0.0.0/8) allow=()
+	local shimdir
+	shimdir="$(make_podman_shim)"
+	export SHIM_NFT_RC=1
+	export TALKBOX_STRICT_NFT=0
+	export PATH="$shimdir:$PATH"
+	run install_nft_deny talkbox-proj.onbox deny allow
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'talkbox: warning: cannot apply nftables deny/allow rules in container talkbox-proj.onbox; deny list left unenforced'* ]]
 }
