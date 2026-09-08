@@ -90,13 +90,15 @@ offbox_ctr_name() {
 }
 
 start_host_http_server() {
-	# $1 directory to serve, $2 nameref for PID, $3 nameref for port
+	# $1 directory to serve, $2 nameref for PID, $3 nameref for port,
+	# $4 optional bind address (default 127.0.0.1; use ::1 for an IPv6 server)
 	local dir="$1"
 	local -n pid_ref="$2"
 	local -n port_ref="$3"
+	local bind="${4:-127.0.0.1}"
 	local out p n
 	out="$(mktemp)"
-	python3 "$PROJECT_ROOT/test/e2e/host_http_server.py" "$dir" >"$out" 2>&1 &
+	python3 "$PROJECT_ROOT/test/e2e/host_http_server.py" "$dir" "$bind" >"$out" 2>&1 &
 	# shellcheck disable=SC2034 # nameref target consumed by the caller
 	pid_ref=$!
 	p=""

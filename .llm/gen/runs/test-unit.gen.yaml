@@ -1,5 +1,26 @@
 target: test-unit
-started: '2026-09-08T13:16:29Z'
-exit: 0
-totals: { total: 243, pass: 243, fail: 0, skip: 0 }
+started: '2026-09-08T14:53:18Z'
+exit: 1
+totals: { total: 242, pass: 221, fail: 21, skip: 0 }
 fail:
+ - 'test/unit/network.bats :: deny_allow_args reads the deny file into the deny set in order'
+ - 'test/unit/network.bats :: deny_allow_args unions CLI deny entries after the file entries'
+ - 'test/unit/network.bats :: deny_allow_args accepts CLI-only deny entries when the files are absent'
+ - 'test/unit/network.bats :: deny_allow_args ignores blank and comment lines and trims whitespace'
+ - 'test/unit/network.bats :: deny_allow_args yields an empty deny set for absent or empty files'
+ - 'test/unit/network.bats :: deny_allow_args deduplicates deny entries'
+ - 'test/unit/network.bats :: deny_allow_args returns user allow entries before the always-allowed entries'
+ - 'test/unit/network.bats :: deny_allow_args deduplicates allow entries including the always-allowed entries'
+ - 'test/unit/network.bats :: deny_allow_args does not carve an allow entry out of an equal deny entry'
+ - 'test/unit/network.bats :: deny_allow_args keeps a broad deny CIDR whole when an allow sub-range is supplied'
+ - 'test/unit/network.bats :: deny_allow_args keeps the always-allowed addresses in the deny set and the allow set'
+ - 'test/unit/network.bats :: deny_allow_args leaves a broad IPv6 deny CIDR raw while ::1 stays in the allow set'
+ - 'test/unit/network.bats :: deny_allow_args keeps a multi-entry deny set in order without carving'
+ - 'test/unit/network.bats :: nft_deny_ruleset emits a two-set accept-then-drop ruleset for a mixed IPv4/IPv6 deny set'
+ - 'test/unit/network.bats :: nft_deny_ruleset emits only the deny set and drop rule for a deny-only family'
+ - 'test/unit/network.bats :: nft_deny_ruleset emits only the IPv6 family for IPv6-only deny entries'
+ - 'test/unit/network.bats :: nft_deny_ruleset emits nothing for a family present only in the allow set'
+ - 'test/unit/network.bats :: nft_deny_ruleset emits the allow set before the deny set for a broad IPv6 deny with allows'
+ - 'test/unit/network.bats :: nft_deny_ruleset emits nothing for empty deny and allow sets'
+ - 'test/unit/network.bats :: plan_nft_deny produces no invocation tokens when the deny set is empty even if the allow set is not'
+ - 'test/unit/network.bats :: install_nft_deny with an empty deny set performs no podman invocation even when the allow set is not empty'
