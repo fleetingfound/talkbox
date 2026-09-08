@@ -8,6 +8,8 @@ setup() {
 	TALKBOX_READ=()
 	TALKBOX_WRITE=()
 	TALKBOX_PORT=()
+	TALKBOX_DENY_IP=()
+	TALKBOX_ALLOW_IP=()
 	TALKBOX_FRESH=""
 	TALKBOX_INHERIT=""
 	TALKBOX_GPU=""
@@ -114,6 +116,44 @@ setup() {
 	[[ "${#TALKBOX_PORT[@]}" -eq 2 ]]
 	[[ "${TALKBOX_PORT[0]}" == '8080' ]]
 	[[ "${TALKBOX_PORT[1]}" == '9090' ]]
+}
+
+@test "--deny-ip records repeatable deny addresses" {
+	load_lib options.sh
+	parse_talkbox_options --deny-ip 10.0.0.0/8 --deny-ip 192.168.1.1
+	[[ "${#TALKBOX_DENY_IP[@]}" -eq 2 ]]
+	[[ "${TALKBOX_DENY_IP[0]}" == '10.0.0.0/8' ]]
+	[[ "${TALKBOX_DENY_IP[1]}" == '192.168.1.1' ]]
+}
+
+@test "--allow-ip records repeatable allow addresses" {
+	load_lib options.sh
+	parse_talkbox_options --allow-ip 10.0.0.0/8 --allow-ip 192.168.1.1
+	[[ "${#TALKBOX_ALLOW_IP[@]}" -eq 2 ]]
+	[[ "${TALKBOX_ALLOW_IP[0]}" == '10.0.0.0/8' ]]
+	[[ "${TALKBOX_ALLOW_IP[1]}" == '192.168.1.1' ]]
+}
+
+@test "--deny-ip as the final argument requires a value and exits 2" {
+	load_lib options.sh
+	run parse_talkbox_options --deny-ip
+	[[ "$status" -eq 2 ]]
+	[[ "$output" == *"talkbox: --deny-ip requires a value"* ]]
+}
+
+@test "--allow-ip as the final argument requires a value and exits 2" {
+	load_lib options.sh
+	run parse_talkbox_options --allow-ip
+	[[ "$status" -eq 2 ]]
+	[[ "$output" == *"talkbox: --allow-ip requires a value"* ]]
+}
+
+@test "--deny-ip value is not treated as the command" {
+	load_lib options.sh
+	parse_talkbox_options --deny-ip 10.0.0.0/8 -c 'pwd'
+	[[ "${#TALKBOX_DENY_IP[@]}" -eq 1 ]]
+	[[ "${TALKBOX_DENY_IP[0]}" == '10.0.0.0/8' ]]
+	[[ "$TALKBOX_COMMAND" == 'pwd' ]]
 }
 
 @test "lifecycle verbs are recognised" {

@@ -24,3 +24,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 10b: command-prompt host segment (`<project-slug>.<container-type>`)](phase-10b-prompt-host-segment.gen.md)
 - [Phase 11a: entrypoint readiness synchronization (tmpfs sentinel)](phase-11a-entrypoint-readiness-sync.gen.md)
 - [Phase 11b: e2e test teardown hygiene](phase-11b-e2e-teardown-hygiene.gen.md)
+- [Phase 12b: IP deny/allow parsing, option threading and onbox/netbox pasta string](phase-12b-ip-deny-allow-parsing.gen.md)

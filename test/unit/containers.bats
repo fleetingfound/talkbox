@@ -60,6 +60,7 @@ setup() {
 	READ_MOUNTS=()
 	WRITE_MOUNTS=()
 	PORTS=()
+	DENY=()
 }
 
 @test "onbox plan sets the working directory to /working/<project-base>" {
@@ -80,7 +81,7 @@ setup() {
 	load_onbox_plan
 	local args=()
 	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains '--network=pasta' "${args[@]}"
+	array_contains '--network=pasta:--dns-forward,169.254.1.1,--map-guest-addr,none' "${args[@]}"
 	[[ "${args[*]}" != *'-T,'* ]]
 }
 
@@ -139,7 +140,7 @@ setup() {
 	# shellcheck disable=SC2034 # global consumed by plan_onbox
 	TALKBOX_GPU=yes
 	local args=()
-	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS DENY
 	array_has 'nvidia.com/gpu=all' "${args[@]}"
 	array_has 'keep-groups' "${args[@]}"
 }
@@ -149,7 +150,7 @@ setup() {
 	# shellcheck disable=SC2034 # global consumed by plan_onbox
 	TALKBOX_GPU=yes
 	local args=()
-	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS DENY
 	array_has 'nvidia.com/gpu=all' "${args[@]}"
 	array_has 'keep-groups' "${args[@]}"
 }
@@ -181,14 +182,14 @@ setup() {
 @test "onbox recontain plan propagates --init to podman create" {
 	load_onbox_plan
 	local args=()
-	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS DENY
 	array_contains '--init' "${args[@]}"
 }
 
 @test "onbox rebuild plan propagates --init to podman create" {
 	load_onbox_plan
 	local args=()
-	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS DENY
 	array_contains '--init' "${args[@]}"
 }
 
@@ -229,7 +230,7 @@ setup() {
 	plan_onbox args "$PROJECT" yes read_mounts write_mounts ports
 	array_contains '/host/etc:/host/read/etc:ro' "${args[@]}"
 	array_contains '/host/var:/host/write/var' "${args[@]}"
-	array_contains '--network=pasta:-T,8080,-T,9090' "${args[@]}"
+	array_contains '--network=pasta:-T,8080,-T,9090,--dns-forward,169.254.1.1,--map-guest-addr,none' "${args[@]}"
 }
 
 @test "onbox interactive plan allocates a terminal" {
@@ -326,11 +327,11 @@ setup() {
 @test "onbox recontain and rebuild plans propagate the prompt host env vars to podman create" {
 	load_onbox_plan
 	local args=()
-	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS DENY
 	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
 	array_contains 'TALKBOX_CONTAINER_TYPE=onbox' "${args[@]}"
 	args=()
-	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS DENY
 	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
 	array_contains 'TALKBOX_CONTAINER_TYPE=onbox' "${args[@]}"
 }
@@ -356,7 +357,7 @@ setup() {
 @test "onbox recontain plan propagates the /run/talkbox tmpfs to podman create" {
 	load_onbox_plan
 	local args=()
-	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS DENY
 	array_contains '--tmpfs' "${args[@]}"
 	array_contains '/run/talkbox' "${args[@]}"
 }
@@ -364,7 +365,7 @@ setup() {
 @test "onbox rebuild plan propagates the /run/talkbox tmpfs to podman create" {
 	load_onbox_plan
 	local args=()
-	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS DENY
 	array_contains '--tmpfs' "${args[@]}"
 	array_contains '/run/talkbox' "${args[@]}"
 }
