@@ -179,3 +179,62 @@ deny_allow_args() {
 		deny_allow_subtract "${!_out}" "$d" "${allow[@]}"
 	done
 }
+
+nft_deny_family_ruleset() {
+	local family="$1" type="$2" daddr="$3"
+	shift 3
+	if (($# == 0)); then
+		return
+	fi
+	printf 'add table %s talkbox_deny\n' "$family"
+	printf 'add set %s talkbox_deny blocked { type %s; flags interval; elements = { ' "$family" "$type"
+	local i sep=''
+	for ((i = 1; i <= $#; i++)); do
+		printf '%s%s' "$sep" "${!i}"
+		sep=', '
+	done
+	printf ' } }\n'
+	printf 'add chain %s talkbox_deny output { type filter hook output priority 0; policy accept; }\n' "$family"
+	printf 'add rule %s talkbox_deny output %s daddr @blocked drop\n' "$family" "$daddr"
+}
+
+nft_deny_ruleset() {
+	local -a v4=() v6=() entry
+	for entry in "$@"; do
+		if [[ "$entry" == *:* ]]; then
+			v6+=("$entry")
+		else
+			v4+=("$entry")
+		fi
+	done
+	nft_deny_family_ruleset ip ipv4_addr ip "${v4[@]}"
+	nft_deny_family_ruleset ip6 ipv6_addr ip6 "${v6[@]}"
+}
+
+plan_nft_deny() {
+	local -n _out="$1"
+	local pid="$2"
+	shift 2
+	if (($# > 0)); then
+		_out+=("podman" "unshare" "nsenter" "-t" "$pid" "-n" "nft" "-f" "-")
+	fi
+}
+
+install_nft_deny() {
+	local ctr="$1"
+	shift
+	if (($# == 0)); then
+		return 0
+	fi
+	local pid
+	pid="$(podman inspect -f '{{.State.Pid}}' "$ctr" 2>/dev/null)" || {
+		printf 'talkbox: warning: cannot determine the PID of container %s; deny/allow rules not applied\n' "$ctr" >&2
+		return 0
+	}
+	local -a cmd=()
+	plan_nft_deny cmd "$pid" "$@"
+	if ! nft_deny_ruleset "$@" | "${cmd[@]}" >/dev/null 2>&1; then
+		printf 'talkbox: warning: cannot apply nftables deny/allow rules in container %s; deny list left unenforced\n' "$ctr" >&2
+	fi
+	return 0
+}

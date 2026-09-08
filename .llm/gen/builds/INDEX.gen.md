@@ -25,3 +25,4 @@
 - [Phase 11a: Entrypoint readiness synchronization (tmpfs sentinel)](.llm/gen/builds/phase-11a-entrypoint-readiness-sync.gen.md)
 - [Phase 12a: Rename `lib/ports.sh` to `lib/network.sh`](.llm/gen/builds/phase-12a-rename-ports-to-network.gen.md)
 - [Phase 12b: IP deny/allow parsing, option threading and onbox/netbox pasta string](.llm/gen/builds/phase-12b-ip-deny-allow-parsing.gen.md)
+- [Phase 12c: IP deny/allow enforcement via nftables in the container netns](.llm/gen/builds/phase-12c-ip-deny-allow-enforcement.gen.md)

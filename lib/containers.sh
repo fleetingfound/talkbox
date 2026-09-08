@@ -228,6 +228,7 @@ run_onbox() {
 	fi
 	podman start "$ctr"
 	wait_for_entrypoint "$ctr"
+	install_nft_deny "$ctr" "${_deny[@]}"
 	local -a exec_args=()
 	if [[ "$interactive" == yes ]]; then
 		exec_args+=("--interactive" "--tty")
@@ -708,6 +709,7 @@ run_netbox() {
 	fi
 	podman start "$ctr"
 	wait_for_entrypoint "$ctr"
+	install_nft_deny "$ctr" "${_deny[@]}"
 	local -a exec_args=()
 	if [[ "$interactive" == yes ]]; then
 		exec_args+=("--interactive" "--tty")
@@ -760,6 +762,7 @@ run_netbox_recontain() {
 	local -a plan=()
 	plan_netbox_recontain plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$6" "$source"
 	execute_plan "${plan[@]}"
+	install_nft_deny "$ctr" "${_deny[@]}"
 	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 }
 
@@ -789,6 +792,7 @@ run_netbox_rebuild() {
 	local -a plan=()
 	plan_netbox_rebuild plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$6" "$source"
 	execute_plan "${plan[@]}"
+	install_nft_deny "$ctr" "${_deny[@]}"
 	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 }
 
