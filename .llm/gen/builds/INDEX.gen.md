@@ -27,3 +27,4 @@
 - [Phase 12b: IP deny/allow parsing, option threading and onbox/netbox pasta string](.llm/gen/builds/phase-12b-ip-deny-allow-parsing.gen.md)
 - [Phase 12c: IP deny/allow enforcement via nftables in the container netns](.llm/gen/builds/phase-12c-ip-deny-allow-enforcement.gen.md)
 - [Phase 12d: IPv6 deny/allow via nft set difference (accept allow-set, then drop deny-set)](.llm/gen/builds/phase-12d-ipv6-deny-allow-nft-set-difference.gen.md)
+- [Phase 13a: Remove dead `_deny` nameref parameter from plan functions](.llm/gen/builds/phase-13a-remove-dead-deny-nameref.gen.md)
