@@ -29,6 +29,6 @@ Implementation plan for `SPEC.md`, in recommended order. Each phase builds on th
 - [x] [Phase 10b: Command-prompt host segment (`<project-slug>.<container-type>`)](phase-10b-prompt-host-segment.gen.md) #flow/redgreen #model/default
 - [x] [Phase 11a: Entrypoint readiness synchronization (tmpfs sentinel)](phase-11a-entrypoint-readiness-sync.gen.md) #flow/redgreen #model/default
 - [x] [Phase 11b: E2e test teardown hygiene](phase-11b-e2e-teardown-hygiene.gen.md) #flow/pin #model/default
-- [ ] [Phase 12a: Rename `lib/ports.sh` to `lib/network.sh`](phase-12a-rename-ports-to-network.gen.md) #flow/unified #model/default
+- [x] [Phase 12a: Rename `lib/ports.sh` to `lib/network.sh`](phase-12a-rename-ports-to-network.gen.md) #flow/unified #model/default
 - [ ] [Phase 12b: IP deny/allow parsing, option threading and onbox/netbox pasta string](phase-12b-ip-deny-allow-parsing.gen.md) #flow/redgreen #model/default
 - [ ] [Phase 12c: IP deny/allow enforcement via nftables in the container netns](phase-12c-ip-deny-allow-enforcement.gen.md) #flow/redgreen #model/default

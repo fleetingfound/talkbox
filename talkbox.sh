@@ -8,7 +8,7 @@ source "$TALKBOX_ROOT/lib/common.sh"
 source "$TALKBOX_ROOT/lib/naming.sh"
 source "$TALKBOX_ROOT/lib/options.sh"
 source "$TALKBOX_ROOT/lib/mounts.sh"
-source "$TALKBOX_ROOT/lib/ports.sh"
+source "$TALKBOX_ROOT/lib/network.sh"
 source "$TALKBOX_ROOT/lib/git.sh"
 source "$TALKBOX_ROOT/lib/containers.sh"
 
