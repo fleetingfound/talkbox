@@ -60,7 +60,6 @@ setup() {
 	READ_MOUNTS=()
 	WRITE_MOUNTS=()
 	PORTS=()
-	DENY=()
 }
 
 @test "inheritance planner uses the base image when no source container exists" {
@@ -333,7 +332,7 @@ setup() {
 	load_netbox_plan
 	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
 	local -a srcs=() dsts=() args=()
-	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY base
+	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
 	array_contains '--init' "${args[@]}"
 }
 
@@ -341,7 +340,7 @@ setup() {
 	load_netbox_plan
 	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
 	local -a srcs=() dsts=() args=()
-	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY base
+	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
 	array_contains '--init' "${args[@]}"
 }
 
@@ -349,7 +348,7 @@ setup() {
 	load_netbox_plan
 	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
 	local -a srcs=() dsts=() args=()
-	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY base
+	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
 	array_contains '--init' "${args[@]}"
 }
 
@@ -357,7 +356,7 @@ setup() {
 	load_netbox_plan
 	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
 	local -a srcs=() dsts=() args=()
-	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY base
+	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
 	array_contains '--init' "${args[@]}"
 }
 
@@ -431,11 +430,11 @@ setup() {
 	load_netbox_plan
 	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
 	local -a srcs=() dsts=() args=()
-	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY base
+	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
 	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
 	array_contains 'TALKBOX_CONTAINER_TYPE=netbox' "${args[@]}"
 	args=()
-	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY base
+	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
 	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
 	array_contains 'TALKBOX_CONTAINER_TYPE=netbox' "${args[@]}"
 }
@@ -444,11 +443,11 @@ setup() {
 	load_netbox_plan
 	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
 	local -a srcs=() dsts=() args=()
-	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY base
+	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
 	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
 	array_contains 'TALKBOX_CONTAINER_TYPE=offbox' "${args[@]}"
 	args=()
-	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY base
+	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
 	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
 	array_contains 'TALKBOX_CONTAINER_TYPE=offbox' "${args[@]}"
 }
@@ -493,7 +492,7 @@ setup() {
 	load_netbox_plan
 	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
 	local -a srcs=() dsts=() args=()
-	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY base
+	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
 	array_contains '--tmpfs' "${args[@]}"
 	array_contains '/run/talkbox' "${args[@]}"
 }
@@ -502,7 +501,7 @@ setup() {
 	load_netbox_plan
 	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
 	local -a srcs=() dsts=() args=()
-	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY base
+	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
 	array_contains '--tmpfs' "${args[@]}"
 	array_contains '/run/talkbox' "${args[@]}"
 }
@@ -511,7 +510,7 @@ setup() {
 	load_netbox_plan
 	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
 	local -a srcs=() dsts=() args=()
-	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY base
+	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
 	array_contains '--tmpfs' "${args[@]}"
 	array_contains '/run/talkbox' "${args[@]}"
 }
@@ -520,7 +519,7 @@ setup() {
 	load_netbox_plan
 	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
 	local -a srcs=() dsts=() args=()
-	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY base
+	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
 	array_contains '--tmpfs' "${args[@]}"
 	array_contains '/run/talkbox' "${args[@]}"
 }
