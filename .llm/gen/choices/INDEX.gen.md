@@ -59,6 +59,10 @@
 - [x] [IP deny/allow enforcement mechanism](ip-deny-allow-enforcement.gen.md) - how the deny/allow IP and CIDR lists are enforced for onbox/netbox (nftables in the container netns via nsenter, iptables in the netns, host-side nftables, or a pre-created managed netns).
 - [x] [IP deny/allow module structure](ip-deny-allow-module.gen.md) - where the deny/allow parsing, effective-set computation and rule application live (new `lib/netfilter.sh`, extend/rename `lib/ports.sh`, or inline in `lib/containers.sh`).
 
+## IPv6 deny/allow CIDR carving
+
+- [x] [IPv6 deny/allow CIDR range carving approach](ipv6-deny-allow-carving-approach.gen.md) - how to perform IPv6 range subtraction in `deny_allow_subtract` given Bash cannot hold a 128-bit integer natively (pure Bash four-32-bit words, delegate to python3, minimum `::1` special-case, or move the set difference into nft).
+
 ## Entrypoint readiness synchronization
 
 - [x] [Entrypoint readiness synchronization mechanism](entrypoint-readiness-sync.gen.md) - how the `run_onbox`/`run_netbox`/`run_offbox` executors wait for the entrypoint to finish its start-up work before running `podman exec` (tmpfs sentinel, filesystem sentinel with remove-at-start, podman healthcheck, or moving setup into an exec step).
