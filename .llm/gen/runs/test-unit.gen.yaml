@@ -1,5 +1,13 @@
 target: test-unit
-started: '2026-09-08T11:45:02Z'
-exit: 0
-totals: { total: 235, pass: 235, fail: 0, skip: 0 }
+started: '2026-09-08T12:31:14Z'
+exit: 1
+totals: { total: 243, pass: 235, fail: 8, skip: 0 }
 fail:
+ - 'test/unit/network.bats :: nft_deny_ruleset builds an interval-set ruleset for a mixed IPv4/IPv6 deny set'
+ - 'test/unit/network.bats :: nft_deny_ruleset emits only the IPv4 family for IPv4-only deny entries'
+ - 'test/unit/network.bats :: nft_deny_ruleset emits only the IPv6 family for IPv6-only deny entries'
+ - 'test/unit/network.bats :: nft_deny_ruleset emits nothing for an empty deny set'
+ - 'test/unit/network.bats :: plan_nft_deny builds the podman unshare nsenter nft invocation tokens'
+ - 'test/unit/network.bats :: plan_nft_deny produces no invocation tokens for an empty deny set'
+ - 'test/unit/network.bats :: install_nft_deny with an empty deny set performs no podman invocation'
+ - 'test/unit/network.bats :: install_nft_deny warns and returns success when the rules cannot be applied'

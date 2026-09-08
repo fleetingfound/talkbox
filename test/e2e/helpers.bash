@@ -36,9 +36,15 @@ mk_talkbox() {
 	# Neutralise the copied default mounts/ports so e2e is hermetic: default
 	# mounts would otherwise reference host paths outside the test and are
 	# covered by unit tests; e2e exercises only the CLI --read/--write/--port.
+	# Empty the copied defaults/deny.ip and defaults/allow.ip so every e2e
+	# onbox/netbox container starts from an empty effective deny set; the
+	# deny/allow behaviour under test is exercised via CLI --deny-ip/--allow-ip
+	# only.
 	: >"$dest/defaults/read.mounts"
 	: >"$dest/defaults/write.mounts"
 	: >"$dest/defaults/ports"
+	: >"$dest/defaults/deny.ip"
+	: >"$dest/defaults/allow.ip"
 	printf '%s\n' "$dest"
 }
 
