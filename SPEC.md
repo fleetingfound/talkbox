@@ -193,9 +193,9 @@ Global dotfiles which are reused across all working repositories may be provided
 
 Dotfiles specific to a working repository may be provided in `<project>/.dotfiles/`.
 
-Both folders are bind-mounted read-only in the created `onbox`, `netbox` or `offbox` containers. Whenever one of these containers starts, the script `entrypoint.sh` copies these into `/home/dev/`. Dotfiles originating from `<project>/.dotfiles/` should override those derived from `defaults/dotfiles/`.
+Both folders are bind-mounted read-only in the created `onbox`, `netbox` or `offbox` containers. After the container has been started, then `image/setup.sh` is invoked with `podman exec` in order to install the dotfiles. For the `onbox` and `netbox` containers, this happens after `nft` has been configured.
 
-The script `entrypoint.sh` is on `PATH` inside the containers so that the user can call it manually.
+Dotfiles originating from `<project>/.dotfiles/` should override those derived from `defaults/dotfiles/`.
 
 ## user mapping
 
@@ -235,11 +235,13 @@ As an alternative to the file `ports`, the argument `--port` accepts a single po
 
 The union of the ports specified by `defaults/ports` and the ports declared as an argument to the command which creates the container is used.
 
-For the `onbox` and `netbox` containers, IP addresses and CIDR ranges listed in `defaults/deny.ip` are blocked. Access is always allowed to loopback addresses and `169.254.1.1` since it is used for DNS forwarding, even if those addresses are matched by `defaults/deny.ip`. List an IP address in `defaults/allow.ip` to allow access even if is matched by `defaults/deny.ip`.
+For the `onbox` and `netbox` containers, IP addresses and CIDR ranges listed in `defaults/deny.ip` are blocked. Access is always allowed to loopback addresses and `169.254.1.1` since it is used for DNS forwarding, even if those addresses are matched by `defaults/deny.ip`. For any address or CIDR range listed in `defaults/allow.ip`, access is allowed even if is matched by `defaults/deny.ip`.
 
 As an alternative to the files `defaults/deny.ip` and `defaults/allow.ip`, use the argument `--deny-ip` and `--allow-ip`. Take the union of blocked entries specified with `defaults/deny.ip` and `--deny-ip`. Also take the union of `defaults/allow.ip` and `--allow-ip` for allowed entries.
 
 Addresses or CIDR ranges not matched by `defaults/deny.ip` or an argument `--deny-ip` are allowed. These options do not affect the `offbox` container.
+
+For the `onbox` and `netbox` containers, the restrictions are enforced via `nft` before `image/setup.sh` is invoked.
 
 ## image and container management
 
@@ -352,7 +354,7 @@ Analogously, `netbox sync` is used to sync changes back to the `netbox` containe
 
 ## gpu support
 
-When the flag `--gpu` is given to any of the commands `openbox`, `netbox` or `offbox`, then any available Nvidia GPUs from the host are made available in the container when it is created by passing the following options to `podman`:
+When the flag `--gpu` is given to any of the commands `onbox`, `netbox` or `offbox`, then any available Nvidia GPUs from the host are made available in the container when it is created by passing the following options to `podman`:
 
 ```
 --device nvidia.com/gpu=all
@@ -373,7 +375,7 @@ When symlinked as `offbox` or called as `talkbox.sh offbox`, then `talkbox.sh` a
 
 `Containerfile` is used to specify an image that includes:
 
-- `entrypoint.sh` which defines operations to be executed on container initialization, including applying dotfiles
+- `image/setup.sh` which defines operations to be executed on container initialization, including installation of dotfiles, configuration of git identity and initialization of the container's git directory
 
 The directory `defaults/` may include:
 
