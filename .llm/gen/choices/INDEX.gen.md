@@ -78,3 +78,7 @@
 ## Post-nft entrypoint setup ordering
 
 - [x] [Post-nft entrypoint setup invocation mechanism](post-nft-setup-invocation.gen.md) - how the entrypoint setup body is moved out of the image ENTRYPOINT into a post-nft `podman exec` for persistent containers (override `--entrypoint` with a no-op command, extract a separate `setup.sh`, or add a `--setup-only` mode to `entrypoint.sh`).
+
+## Inline comments in config files
+
+- [x] [Inline-comment scope](inline-comment-scope.gen.md) - whether inline `#` comments are supported only in `deny.ip`/`allow.ip` or uniformly across all config files (`read.mounts`, `write.mounts`, `ports`, `deny.ip`, `allow.ip`).
