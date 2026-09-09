@@ -90,6 +90,7 @@ plan_onbox() {
 		_plan_out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro")
 		plan_git_identity_env "${!_plan_out}" "$project"
 	fi
+	_plan_out+=("-v" "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro")
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
 	fi
@@ -385,6 +386,7 @@ plan_netbox() {
 		_plan_out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro")
 		plan_git_identity_env "${!_plan_out}" "$project"
 	fi
+	_plan_out+=("-v" "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro")
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
 	fi
@@ -437,6 +439,7 @@ plan_offbox() {
 		_plan_out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro")
 		plan_git_identity_env "${!_plan_out}" "$project"
 	fi
+	_plan_out+=("-v" "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro")
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
 	fi
