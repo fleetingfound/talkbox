@@ -1,5 +1,14 @@
 target: test-unit
-started: '2026-09-08T22:05:33Z'
-exit: 0
-totals: { total: 247, pass: 247, fail: 0, skip: 0 }
+started: '2026-09-09T17:03:50Z'
+exit: 1
+totals: { total: 256, pass: 247, fail: 9, skip: 0 }
 fail:
+ - 'test/unit/containers.bats :: onbox plan bind-mounts the host entrypoint read-only'
+ - 'test/unit/containers.bats :: onbox recontain plan propagates the entrypoint read-only bind mount to podman create'
+ - 'test/unit/containers.bats :: onbox rebuild plan propagates the entrypoint read-only bind mount to podman create'
+ - 'test/unit/netbox-offbox.bats :: netbox plan bind-mounts the host entrypoint read-only'
+ - 'test/unit/netbox-offbox.bats :: offbox plan bind-mounts the host entrypoint read-only'
+ - 'test/unit/netbox-offbox.bats :: netbox recontain plan propagates the entrypoint read-only bind mount to podman create'
+ - 'test/unit/netbox-offbox.bats :: offbox recontain plan propagates the entrypoint read-only bind mount to podman create'
+ - 'test/unit/netbox-offbox.bats :: netbox rebuild plan propagates the entrypoint read-only bind mount to podman create'
+ - 'test/unit/netbox-offbox.bats :: offbox rebuild plan propagates the entrypoint read-only bind mount to podman create'

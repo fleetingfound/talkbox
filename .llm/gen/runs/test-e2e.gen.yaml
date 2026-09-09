@@ -1,5 +1,7 @@
 target: test-e2e
-started: '2026-09-08T22:06:48Z'
-exit: 0
-totals: { total: 73, pass: 73, fail: 0, skip: 0 }
+started: '2026-09-09T16:55:40Z'
+exit: 1
+totals: { total: 75, pass: 73, fail: 2, skip: 0 }
 fail:
+ - 'test/e2e/netbox-offbox.bats :: netbox --recontain re-applies the trusted entrypoint after a tampering attempt'
+ - 'test/e2e/onbox.bats :: onbox entrypoint is a read-only bind mount that resists tampering'

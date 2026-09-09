@@ -194,6 +194,20 @@ setup() {
 	array_contains "$img" "${args[@]}"
 }
 
+@test "netbox plan bind-mounts the host entrypoint read-only" {
+	load_netbox_plan
+	local args=()
+	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
+}
+
+@test "offbox plan bind-mounts the host entrypoint read-only" {
+	load_netbox_plan
+	local args=()
+	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
+}
+
 @test "offbox plan mounts the worktree volume and names the container" {
 	load_netbox_plan
 	local args=()
@@ -522,4 +536,36 @@ setup() {
 	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
 	array_contains '--tmpfs' "${args[@]}"
 	array_contains '/run/talkbox' "${args[@]}"
+}
+
+@test "netbox recontain plan propagates the entrypoint read-only bind mount to podman create" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local -a srcs=() dsts=() args=()
+	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
+	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
+}
+
+@test "offbox recontain plan propagates the entrypoint read-only bind mount to podman create" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local -a srcs=() dsts=() args=()
+	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
+	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
+}
+
+@test "netbox rebuild plan propagates the entrypoint read-only bind mount to podman create" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local -a srcs=() dsts=() args=()
+	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
+	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
+}
+
+@test "offbox rebuild plan propagates the entrypoint read-only bind mount to podman create" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+	local -a srcs=() dsts=() args=()
+	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
+	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
 }

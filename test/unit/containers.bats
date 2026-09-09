@@ -1,3 +1,4 @@
+# shellcheck disable=SC2030,SC2031 # bats runs each test in a subshell; TALKBOX_ROOT is overridden only within its own test
 load helpers
 
 load_onbox_plan() {
@@ -122,6 +123,13 @@ setup() {
 	local args=()
 	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
 	array_has_none 'dotfiles.project' "${args[@]}"
+}
+
+@test "onbox plan bind-mounts the host entrypoint read-only" {
+	load_onbox_plan
+	local args=()
+	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
 }
 
 @test "onbox plan appends the GPU device and group options when TALKBOX_GPU is yes" {
@@ -367,6 +375,20 @@ setup() {
 	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
 	array_contains '--tmpfs' "${args[@]}"
 	array_contains '/run/talkbox' "${args[@]}"
+}
+
+@test "onbox recontain plan propagates the entrypoint read-only bind mount to podman create" {
+	load_onbox_plan
+	local args=()
+	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
+}
+
+@test "onbox rebuild plan propagates the entrypoint read-only bind mount to podman create" {
+	load_onbox_plan
+	local args=()
+	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
+	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
 }
 
 @test "wait_for_entrypoint returns success once podman exec reports the sentinel file" {
