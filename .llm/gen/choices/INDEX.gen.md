@@ -74,3 +74,7 @@
 ## Entrypoint readiness synchronization
 
 - [x] [Entrypoint readiness synchronization mechanism](entrypoint-readiness-sync.gen.md) - how the `run_onbox`/`run_netbox`/`run_offbox` executors wait for the entrypoint to finish its start-up work before running `podman exec` (tmpfs sentinel, filesystem sentinel with remove-at-start, podman healthcheck, or moving setup into an exec step).
+
+## Post-nft entrypoint setup ordering
+
+- [x] [Post-nft entrypoint setup invocation mechanism](post-nft-setup-invocation.gen.md) - how the entrypoint setup body is moved out of the image ENTRYPOINT into a post-nft `podman exec` for persistent containers (override `--entrypoint` with a no-op command, extract a separate `setup.sh`, or add a `--setup-only` mode to `entrypoint.sh`).
