@@ -10,19 +10,18 @@ Refactors the persistent-container startup sequence so that
 reset --mixed`), closing the pre-nft window for the trusted entrypoint itself
 (Option B of
 [review: entrypoint-before-nft ordering](../reviews/entrypoint-before-nft-ordering.gen.md)).
-Implements the selected design
-([post-nft-setup-invocation choice, Option B](../choices/post-nft-setup-invocation.gen.md)):
-the setup body is extracted into a new `image/setup.sh`, the image `ENTRYPOINT`
-is removed (the planner-supplied `sleep infinity` command becomes PID 1
-directly for persistent containers), and the executors run `setup.sh` via
-`podman exec` **after** `install_nft_deny_or_die`. The existing tmpfs
-`/run/talkbox` sentinel mechanism and `wait_for_entrypoint` poll are removed
-(setup is now synchronous). One-shot `podman run --rm` paths are updated to
-invoke `setup.sh` explicitly before their command. This is the second of two
-phases resolving
+The design selected for this phase is to extract the setup body into a new
+`image/setup.sh`, remove the image `ENTRYPOINT` (the planner-supplied `sleep
+infinity` command becomes PID 1 directly for persistent containers), and have
+the executors run `setup.sh` via `podman exec` **after**
+`install_nft_deny_or_die`. The existing tmpfs `/run/talkbox` sentinel
+mechanism and `wait_for_entrypoint` poll are removed (setup is now
+synchronous). One-shot `podman run --rm` paths are updated to invoke
+`setup.sh` explicitly before their command. This is the second of two phases
+resolving
 [issue: agent-modified entrypoint runs before nft deny enforcement](../issues/agent-modified-entrypoint-pre-nft.gen.md);
-it builds on [Phase 14b](phase-14b-entrypoint-readonly-bindmount.gen.md), which
-closed the tampering vector.
+it builds on [Phase 14b](phase-14b-entrypoint-readonly-bindmount.gen.md),
+which closed the tampering vector.
 
 The new persistent-container startup ordering becomes:
 
@@ -33,31 +32,50 @@ The new persistent-container startup ordering becomes:
    **under** the deny list.
 4. `podman exec` the user command.
 
-## Choice documents
+## Design rationale
 
-This plan implements the selected option of
-[post-nft-setup-invocation](../choices/post-nft-setup-invocation.gen.md)
-(Option B: extract `setup.sh`, trivial ENTRYPOINT). The prior choice
-[entrypoint-readiness-sync](../choices/entrypoint-readiness-sync.gen.md)
-(Option A, tmpfs sentinel) is superseded for persistent containers by this
-refactor: the sentinel/poll mechanism is removed because setup is now
-synchronous.
+The setup invocation mechanism must: prevent any setup code from running on
+`podman start` of a persistent container (so the executor can install nft
+first); run the setup body synchronously via `podman exec` after
+`install_nft_deny_or_die`, before the user command; leave one-shot
+`podman run --rm` containers functional; and make `image/setup.sh` the sole
+setup script (the former `entrypoint.sh` is deleted, and the SPEC contract
+that placed it on `PATH` has been removed).
+
+The selected design extracts the setup body into `image/setup.sh` and removes
+the image `ENTRYPOINT` so the planner-supplied `sleep infinity` is PID 1
+directly for persistent containers. This was chosen over the alternative of
+overriding `--entrypoint` per persistent planner and re-invoking the existing
+`entrypoint.sh` via exec (which would have left `entrypoint.sh` in place as a
+combined setup-and-exec script) because it gives setup a named,
+single-purpose script with a clean separation of concerns, at the cost of
+updating the one-shot paths to invoke `setup.sh` explicitly.
+
+The prior design for entrypoint readiness synchronization (a tmpfs `/run/talkbox`
+sentinel written by the entrypoint and polled by `wait_for_entrypoint`) is
+superseded for persistent containers by this refactor: the sentinel/poll
+mechanism is removed because setup is now synchronous.
 
 ## Aspects of the specification implemented
 
-- `SPEC.md` L196 — "Whenever one of these containers starts, the script
-  `entrypoint.sh` copies these into `/home/dev/`": **updated** to reflect that
-  for persistent containers the setup (now factored into `setup.sh`, invoked by
-  `entrypoint.sh`) runs via a host-driven `podman exec` after the deny list is
-  enforced, rather than automatically on `podman start`. The dotfiles-copy
-  behaviour and project-overrides-global precedence are unchanged.
-- `SPEC.md` L198 — "The script `entrypoint.sh` is on `PATH` inside the
-  containers so that the user can call it manually": **unchanged**.
-  `entrypoint.sh` remains in the image and on `PATH`; it sources/calls
-  `setup.sh` then `exec`s the supplied command, preserving manual and one-shot
-  use.
-- `SPEC.md` "network" / deny list contract: the deny list is now enforced
-  before any trusted setup code runs, strengthening the contract.
+`SPEC.md` has been updated to agree with this phase's design; the implementation
+must conform to the updated wording.
+
+- `SPEC.md` L196 — now states that after a container has been started,
+  `image/setup.sh` is invoked with `podman exec` to install the dotfiles, and
+  for `onbox`/`netbox` this happens after `nft` has been configured. The
+  dotfiles-copy behaviour and project-overrides-global precedence are unchanged.
+- `SPEC.md` L198 — the prior sentence "The script `entrypoint.sh` is on `PATH`
+  inside the containers so that the user can call it manually" has been
+  **removed**. `entrypoint.sh` is no longer part of the documented contract;
+  `image/setup.sh` is the sole setup script, and `image/entrypoint.sh` is
+  deleted by this phase.
+- `SPEC.md` network section — now states that for `onbox`/`netbox` the
+  restrictions are enforced via `nft` before `image/setup.sh` is invoked,
+  codifying the ordering invariant this phase implements.
+- `SPEC.md` Containerfile section — now lists `image/setup.sh` (installation of
+  dotfiles, configuration of git identity, initialisation of the container's git
+  directory) in place of the former `entrypoint.sh` entry.
 
 ## Aspects deferred
 
@@ -99,30 +117,27 @@ synchronous.
   block (global then project), the git-identity global-config writes, and the
   gitdir-init block (`git init`, `remote add`/`set-url host /host/git/`,
   `git fetch host`, `git reset --mixed`). Mode `0755`. Installed into the image
-  by a new `COPY` in the Containerfile (alongside the existing `entrypoint.sh`
+  by a new `COPY` in the Containerfile (replacing the former `entrypoint.sh`
   `COPY`), and also reachable at runtime via the Phase 14b read-only bind mount
   convention if desired (or via the image layer). The script exits 0 on
   completion (no `exec`).
 
 ## Files to be modified
 
-- [`image/entrypoint.sh`](../../../image/entrypoint.sh) — becomes a thin
-  wrapper: sources or invokes `setup.sh`, then `exec bash -c "$*"` if args were
-  supplied (one-shot/manual path) or `exec /bin/bash` if no args (interactive
-  manual use). The setup body is removed from this file (it now lives in
-  `setup.sh`). The sentinel-write block (`/run/talkbox/ready`) is removed
-  (obsolete). The script remains on `PATH` per SPEC L198.
-- [`image/Containerfile`](../../../image/Containerfile) — add a
-  `COPY --chmod=755 setup.sh /usr/local/bin/setup.sh` alongside the existing
-  `entrypoint.sh` `COPY` (L25). Remove the `ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]`
-  directive (L35) so that the planner-supplied command (`sleep infinity`) is
-  PID 1 directly for persistent containers, and one-shot containers invoke
-  their command (with setup) via the explicit `setup.sh && <command>` pattern
-  in their plan. (If removing `ENTRYPOINT` entirely is undesirable for
-  one-shot ergonomics, the implementing agent may instead set a trivial
-  `ENTRYPOINT` like `exec sleep infinity` and have one-shot plans override it —
-  but the selected option's intent is a trivial/absent ENTRYPOINT with setup
-  driven explicitly.)
+- [`image/entrypoint.sh`](../../../image/entrypoint.sh) — **deleted**. Its
+  setup body moves to `image/setup.sh`; the `exec` tail and the sentinel-write
+  block (`/run/talkbox/ready`) are removed with it. The image no longer
+  references `entrypoint.sh` (no `COPY`, no `ENTRYPOINT`), matching the updated
+  SPEC which dropped the "entrypoint.sh on PATH" contract. One-shot and manual
+  use now invoke `setup.sh` directly.
+- [`image/Containerfile`](../../../image/Containerfile) — replace the
+  `COPY` of `entrypoint.sh` (L25) with `COPY --chmod=755 setup.sh
+  /usr/local/bin/setup.sh`. Remove the `ENTRYPOINT
+  ["/usr/local/bin/entrypoint.sh"]` directive (L35) so that the
+  planner-supplied command (`sleep infinity`) is PID 1 directly for persistent
+  containers, and one-shot containers invoke their command (with setup) via
+  the explicit `setup.sh && <command>` pattern in their plan. The image thus
+  has no `ENTRYPOINT` and no `entrypoint.sh`.
 - [`lib/containers.sh`](../../../lib/containers.sh) —
   - The three persistent planners (`plan_onbox` L59-108, `plan_netbox` L353-403,
     `plan_offbox` L405-455): remove the `--tmpfs /run/talkbox` entries (the
@@ -162,7 +177,7 @@ synchronous.
 ## Relevant files to read during implementation
 
 - [`image/entrypoint.sh`](../../../image/entrypoint.sh) — the setup body to
-  extract (L4-34) and the exec tail (L42-45) to keep in the wrapper.
+  extract (L4-34) before deleting the file.
 - [`image/Containerfile`](../../../image/Containerfile) — L25 (`COPY
   entrypoint.sh`), L35 (`ENTRYPOINT`).
 - [`lib/containers.sh`](../../../lib/containers.sh) — the planners and executors
@@ -184,8 +199,6 @@ synchronous.
   for the new ordering.
 - [`.llm/gen/choices/entrypoint-readiness-sync.gen.md`](../choices/entrypoint-readiness-sync.gen.md)
   — the superseded choice.
-- [`.llm/gen/choices/post-nft-setup-invocation.gen.md`](../choices/post-nft-setup-invocation.gen.md)
-  — the selected choice.
 - [`.llm/gen/plans/phase-11a-entrypoint-readiness-sync.gen.md`](phase-11a-entrypoint-readiness-sync.gen.md)
   — the prior phase that introduced the sentinel; its tests are now superseded.
 
@@ -195,9 +208,8 @@ synchronous.
   writes, gitdir init; exits 0 on success, non-zero on failure. Idempotent
   (safe to re-run, as the current entrypoint body already is: `git init` is
   guarded by `rev-parse`, `remote add`/`set-url` is conditional).
-- `image/entrypoint.sh` (modified) — thin wrapper: invokes `setup.sh`, then
-  `exec bash -c "$*"` (args present) or `exec /bin/bash` (no args). Retained
-  for manual/one-shot use per SPEC L198.
+- `image/entrypoint.sh` — deleted; its setup body moves to `setup.sh`. The
+  image has no `ENTRYPOINT` and no `entrypoint.sh`.
 - The persistent executors' startup contract changes from
   `podman start` → `wait_for_entrypoint` → `install_nft_deny_or_die` → `podman exec`
   to
@@ -205,8 +217,9 @@ synchronous.
   (onbox/netbox); offbox omits the nft step.
 - `wait_for_entrypoint` — removed (obsolete).
 - The `--tmpfs /run/talkbox` planner entries — removed (obsolete).
-- `SPEC.md` L196 — wording updated to describe post-start, post-deny-list setup
-  via `setup.sh`/`entrypoint.sh` for persistent containers.
+- `SPEC.md` L196 / network section — already updated to describe post-start,
+  post-deny-list setup via `image/setup.sh` for persistent containers; the
+  implementation conforms.
 
 ## Tests
 
@@ -273,9 +286,5 @@ index of reviews is maintained.
   — the preceding phase (Option F).
 - [Review: entrypoint-before-nft ordering](../reviews/entrypoint-before-nft-ordering.gen.md)
   — Option B is the basis for this phase.
-- [Choice: post-nft entrypoint setup invocation mechanism](../choices/post-nft-setup-invocation.gen.md)
-  — Option B (extract `setup.sh`) selected.
-- [Choice: entrypoint readiness synchronization](../choices/entrypoint-readiness-sync.gen.md)
-  — superseded for persistent containers.
 - [Phase 11a: entrypoint readiness synchronization](phase-11a-entrypoint-readiness-sync.gen.md)
   — the prior sentinel phase whose tests are rewritten here.
