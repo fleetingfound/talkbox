@@ -22,7 +22,7 @@ RUN groupadd -g 1000 dev && \
     chmod 0440 /etc/sudoers.d/dev && \
     visudo -cf /etc/sudoers.d/dev
 
-COPY --chmod=755 entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY --chmod=755 setup.sh /usr/local/bin/setup.sh
 
 RUN install -d -o dev -g dev /working
 
@@ -31,5 +31,3 @@ USER dev
 RUN mkdir -p /home/dev/.local/share/opencode
 
 WORKDIR /working
-
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

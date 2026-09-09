@@ -32,14 +32,3 @@ if [[ -d /host/git ]]; then
 		git -C "$repo" remote set-url host /host/git/ 2>/dev/null || git -C "$repo" remote add host /host/git/ 2>/dev/null || true
 	fi
 fi
-
-if [[ -d /run/talkbox ]]; then
-	if ! touch /run/talkbox/ready 2>/dev/null; then
-		sudo -n touch /run/talkbox/ready 2>/dev/null || true
-	fi
-fi
-
-if [[ $# -gt 0 ]]; then
-	exec bash -c "$*"
-fi
-exec /bin/bash

@@ -1,21 +1,5 @@
 target: test-unit
-started: '2026-09-09T19:02:03Z'
-exit: 1
-totals: { total: 251, pass: 235, fail: 16, skip: 0 }
+started: '2026-09-09T19:13:16Z'
+exit: 0
+totals: { total: 251, pass: 251, fail: 0, skip: 0 }
 fail:
- - 'test/unit/containers.bats :: onbox plan does not mount a tmpfs at /run/talkbox'
- - 'test/unit/containers.bats :: onbox recontain plan does not emit a /run/talkbox tmpfs'
- - 'test/unit/containers.bats :: onbox rebuild plan does not emit a /run/talkbox tmpfs'
- - 'test/unit/containers.bats :: run_onbox applies the nft deny rules before running setup.sh and runs setup.sh before the user command'
- - 'test/unit/containers.bats :: run_onbox stops the container and raises a talkbox error when the setup.sh exec fails'
- - 'test/unit/git-transport.bats :: container_sync_cmd assembles a no-network temporary podman run for a stopped container'
- - 'test/unit/netbox-offbox.bats :: netbox plan does not mount a tmpfs at /run/talkbox'
- - 'test/unit/netbox-offbox.bats :: offbox plan does not mount a tmpfs at /run/talkbox'
- - 'test/unit/netbox-offbox.bats :: netbox recontain plan does not emit a /run/talkbox tmpfs'
- - 'test/unit/netbox-offbox.bats :: offbox recontain plan does not emit a /run/talkbox tmpfs'
- - 'test/unit/netbox-offbox.bats :: netbox rebuild plan does not emit a /run/talkbox tmpfs'
- - 'test/unit/netbox-offbox.bats :: offbox rebuild plan does not emit a /run/talkbox tmpfs'
- - 'test/unit/netbox-offbox.bats :: run_netbox applies the nft deny rules before running setup.sh and runs setup.sh before the user command'
- - 'test/unit/netbox-offbox.bats :: run_offbox runs setup.sh after start and before the user command, with no nft step'
- - 'test/unit/netbox-offbox.bats :: run_netbox recontain and rebuild run setup.sh after the nft deny install and before stopping the container'
- - 'test/unit/netbox-offbox.bats :: run_offbox recontain and rebuild run setup.sh after start and before stopping the container, with no nft step'

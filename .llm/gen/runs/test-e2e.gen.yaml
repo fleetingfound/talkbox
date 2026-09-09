@@ -1,9 +1,5 @@
 target: test-e2e
-started: '2026-09-09T18:53:07Z'
-exit: 1
-totals: { total: 76, pass: 72, fail: 4, skip: 0 }
+started: '2026-09-09T19:15:12Z'
+exit: 0
+totals: { total: 76, pass: 76, fail: 0, skip: 0 }
 fail:
- - 'test/e2e/deny-allow.bats :: onbox --deny-ip blocks a deny-listed connection attempted during setup'
- - 'test/e2e/git-identity.bats :: a git command in a freshly started container runs only after setup.sh has run'
- - 'test/e2e/netbox-offbox.bats :: netbox --recontain recreates the container with setup.sh available'
- - 'test/e2e/onbox.bats :: onbox container provides the setup.sh script'

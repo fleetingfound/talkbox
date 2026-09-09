@@ -76,7 +76,6 @@ plan_onbox() {
 	_plan_out+=("--cap-drop=NET_ADMIN")
 	_plan_out+=("--cap-drop=NET_RAW")
 	_plan_out+=("--init")
-	_plan_out+=("--tmpfs" "/run/talkbox")
 	if [[ "$TALKBOX_GPU" == yes ]]; then
 		_plan_out+=("--device" "nvidia.com/gpu=all")
 		_plan_out+=("--group-add" "keep-groups")
@@ -90,7 +89,7 @@ plan_onbox() {
 		_plan_out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro")
 		plan_git_identity_env "${!_plan_out}" "$project"
 	fi
-	_plan_out+=("-v" "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro")
+	_plan_out+=("-v" "$TALKBOX_ROOT/image/setup.sh:/usr/local/bin/setup.sh:ro")
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
 	fi
@@ -186,10 +185,19 @@ container_running() {
 	[[ "$(podman inspect -f '{{.State.Running}}' "$ctr" 2>/dev/null)" == true ]]
 }
 
-wait_for_entrypoint() {
+install_nft_deny_or_die() {
 	local ctr="$1"
-	if ! podman exec "$ctr" bash -c 'for ((i = 0; i < 150; i++)); do [[ -f /run/talkbox/ready ]] && exit 0; sleep 0.1; done; exit 1'; then
-		die "container $ctr did not signal entrypoint readiness within 15 seconds" 1
+	if ! install_nft_deny "$@"; then
+		podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
+		die "cannot apply nftables deny/allow rules in container $ctr; deny list left unenforced" 1
+	fi
+}
+
+run_setup_in_container() {
+	local ctr="$1"
+	if ! podman exec "$ctr" setup.sh; then
+		podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
+		die "cannot run setup.sh in container $ctr; setup failed" 1
 	fi
 }
 
@@ -203,14 +211,6 @@ image_in_use() {
 		fi
 	done
 	return 1
-}
-
-install_nft_deny_or_die() {
-	local ctr="$1"
-	if ! install_nft_deny "$@"; then
-		podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
-		die "cannot apply nftables deny/allow rules in container $ctr; deny list left unenforced" 1
-	fi
 }
 
 run_onbox() {
@@ -228,8 +228,8 @@ run_onbox() {
 		podman create "${create_args[@]}"
 	fi
 	podman start "$ctr"
-	wait_for_entrypoint "$ctr"
 	install_nft_deny_or_die "$ctr" "$4" "$5"
+	run_setup_in_container "$ctr"
 	local -a exec_args=()
 	if [[ "$interactive" == yes ]]; then
 		exec_args+=("--interactive" "--tty")
@@ -372,7 +372,6 @@ plan_netbox() {
 	_plan_out+=("--cap-drop=NET_ADMIN")
 	_plan_out+=("--cap-drop=NET_RAW")
 	_plan_out+=("--init")
-	_plan_out+=("--tmpfs" "/run/talkbox")
 	if [[ "$TALKBOX_GPU" == yes ]]; then
 		_plan_out+=("--device" "nvidia.com/gpu=all")
 		_plan_out+=("--group-add" "keep-groups")
@@ -386,7 +385,7 @@ plan_netbox() {
 		_plan_out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro")
 		plan_git_identity_env "${!_plan_out}" "$project"
 	fi
-	_plan_out+=("-v" "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro")
+	_plan_out+=("-v" "$TALKBOX_ROOT/image/setup.sh:/usr/local/bin/setup.sh:ro")
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
 	fi
@@ -425,7 +424,6 @@ plan_offbox() {
 	_plan_out+=("--cap-drop=NET_ADMIN")
 	_plan_out+=("--cap-drop=NET_RAW")
 	_plan_out+=("--init")
-	_plan_out+=("--tmpfs" "/run/talkbox")
 	if [[ "$TALKBOX_GPU" == yes ]]; then
 		_plan_out+=("--device" "nvidia.com/gpu=all")
 		_plan_out+=("--group-add" "keep-groups")
@@ -439,7 +437,7 @@ plan_offbox() {
 		_plan_out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro")
 		plan_git_identity_env "${!_plan_out}" "$project"
 	fi
-	_plan_out+=("-v" "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro")
+	_plan_out+=("-v" "$TALKBOX_ROOT/image/setup.sh:/usr/local/bin/setup.sh:ro")
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
 	fi
@@ -695,8 +693,8 @@ run_netbox() {
 		create_netbox "$project" "$interactive" "$1" "$2" "$3" "$4" "$5"
 	fi
 	podman start "$ctr"
-	wait_for_entrypoint "$ctr"
 	install_nft_deny_or_die "$ctr" "$6" "$7"
+	run_setup_in_container "$ctr"
 	local -a exec_args=()
 	if [[ "$interactive" == yes ]]; then
 		exec_args+=("--interactive" "--tty")
@@ -721,7 +719,7 @@ run_offbox() {
 		create_offbox "$project" "$interactive" "$1" "$2" "$3" "$4" "$5"
 	fi
 	podman start "$ctr"
-	wait_for_entrypoint "$ctr"
+	run_setup_in_container "$ctr"
 	local -a exec_args=()
 	if [[ "$interactive" == yes ]]; then
 		exec_args+=("--interactive" "--tty")
@@ -750,6 +748,7 @@ run_netbox_recontain() {
 	plan_netbox_recontain plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$source"
 	execute_plan "${plan[@]}"
 	install_nft_deny_or_die "$ctr" "$6" "$7"
+	run_setup_in_container "$ctr"
 	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 }
 
@@ -766,6 +765,7 @@ run_offbox_recontain() {
 	local -a plan=()
 	plan_offbox_recontain plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$source"
 	execute_plan "${plan[@]}"
+	run_setup_in_container "$ctr"
 	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 }
 
@@ -780,6 +780,7 @@ run_netbox_rebuild() {
 	plan_netbox_rebuild plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$source"
 	execute_plan "${plan[@]}"
 	install_nft_deny_or_die "$ctr" "$6" "$7"
+	run_setup_in_container "$ctr"
 	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 }
 
@@ -793,6 +794,7 @@ run_offbox_rebuild() {
 	local -a plan=()
 	plan_offbox_rebuild plan "$project" "$interactive" "$1" "$2" "$3" "$4" "$5" "$source"
 	execute_plan "${plan[@]}"
+	run_setup_in_container "$ctr"
 	podman stop -t "$STOP_GRACE_SECONDS" "$ctr" >/dev/null 2>&1 || true
 }
 
@@ -866,7 +868,7 @@ container_sync_cmd() {
 		_cmd_out+=("podman" "exec" "--workdir=/working/$base" "$ctr" "bash" "-c" "$script" "_")
 		_cmd_out+=("${branches[@]}")
 	else
-		_cmd_out+=("podman" "run" "--rm" "--network=none" "--userns=keep-id:uid=1000,gid=1000" "--workdir=/working/$base" "--entrypoint=/bin/bash")
+		_cmd_out+=("podman" "run" "--rm" "--network=none" "--userns=keep-id:uid=1000,gid=1000" "--workdir=/working/$base")
 		_cmd_out+=("-v" "$(gitdir_volume "$project" "$container"):/working/$base/.git")
 		case "$container" in
 		onbox) _cmd_out+=("-v" "$project:/working/$base") ;;
@@ -875,7 +877,8 @@ container_sync_cmd() {
 		esac
 		_cmd_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
 		_cmd_out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro")
-		_cmd_out+=("$(base_image_name)" "-c" "$script" "_")
+		# shellcheck disable=SC2016 # $0 and $@ expand inside the container at run time
+		_cmd_out+=("$(base_image_name)" "bash" "-c" 'setup.sh && exec bash -c "$0" _ "$@"' "$script")
 		_cmd_out+=("${branches[@]}")
 	fi
 }
