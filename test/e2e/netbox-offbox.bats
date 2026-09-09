@@ -164,15 +164,14 @@ teardown() {
 	[[ "$status" -ne 0 ]]
 }
 
-@test "netbox --recontain re-applies the trusted entrypoint after a tampering attempt" {
+@test "netbox --recontain recreates the container with setup.sh available" {
 	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'true'
 	[[ "$status" -eq 0 ]]
-	run run_talkbox "$PROJECT" "$TALKBOX" netbox -c --noninteractive 'if echo tampered | sudo tee /usr/local/bin/entrypoint.sh >/dev/null 2>&1; then echo TAMPER-OK; else echo TAMPER-BLOCKED; fi'
+	run run_talkbox "$PROJECT" "$TALKBOX" netbox -c --noninteractive 'true'
 	[[ "$status" -eq 0 ]]
-	[[ "$output" == *'TAMPER-BLOCKED'* ]]
 	run run_talkbox "$PROJECT" "$TALKBOX" netbox --recontain
 	[[ "$status" -eq 0 ]]
-	run run_talkbox "$PROJECT" "$TALKBOX" netbox -c --noninteractive 'head -n 1 /usr/local/bin/entrypoint.sh'
+	run run_talkbox "$PROJECT" "$TALKBOX" netbox -c --noninteractive 'head -n 1 /usr/local/bin/setup.sh'
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'#!/usr/bin/env bash'* ]]
 }

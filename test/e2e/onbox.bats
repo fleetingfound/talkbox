@@ -45,14 +45,8 @@ teardown() {
 	[[ "$status" -ne 0 ]]
 }
 
-@test "onbox entrypoint is a read-only bind mount that resists tampering" {
-	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'echo tampered > /usr/local/bin/entrypoint.sh'
-	[[ "$status" -ne 0 ]]
-	[[ "$output" == *'Read-only file system'* ]]
-	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'echo tampered | sudo tee /usr/local/bin/entrypoint.sh >/dev/null'
-	[[ "$status" -ne 0 ]]
-	[[ "$output" == *'Read-only file system'* ]]
-	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'head -n 1 /usr/local/bin/entrypoint.sh'
+@test "onbox container provides the setup.sh script" {
+	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'head -n 1 /usr/local/bin/setup.sh'
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'#!/usr/bin/env bash'* ]]
 }

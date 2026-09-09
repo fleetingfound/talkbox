@@ -194,20 +194,6 @@ setup() {
 	array_contains "$img" "${args[@]}"
 }
 
-@test "netbox plan bind-mounts the host entrypoint read-only" {
-	load_netbox_plan
-	local args=()
-	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
-}
-
-@test "offbox plan bind-mounts the host entrypoint read-only" {
-	load_netbox_plan
-	local args=()
-	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
-}
-
 @test "offbox plan mounts the worktree volume and names the container" {
 	load_netbox_plan
 	local args=()
@@ -466,106 +452,191 @@ setup() {
 	array_contains 'TALKBOX_CONTAINER_TYPE=offbox' "${args[@]}"
 }
 
-@test "netbox plan mounts a tmpfs at /run/talkbox for the entrypoint readiness sentinel" {
+@test "netbox plan does not mount a tmpfs at /run/talkbox" {
 	load_netbox_plan
-	local img args=() tmpfs_at=-1 img_at=-1 i
-	img="$(base_image_name)"
-	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$img"
-	for ((i = 0; i < ${#args[@]}; i++)); do
-		if [[ "${args[$i]}" == --tmpfs ]]; then
-			tmpfs_at=$i
-		fi
-		if [[ "${args[$i]}" == "$img" ]]; then
-			img_at=$i
-		fi
-	done
-	[[ $tmpfs_at -ge 0 ]]
-	[[ "${args[$((tmpfs_at + 1))]}" == /run/talkbox ]]
-	[[ $tmpfs_at -lt $img_at ]]
+	local args=()
+	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_has_none '--tmpfs' "${args[@]}"
+	array_has_none '/run/talkbox' "${args[@]}"
 }
 
-@test "offbox plan mounts a tmpfs at /run/talkbox for the entrypoint readiness sentinel" {
+@test "offbox plan does not mount a tmpfs at /run/talkbox" {
 	load_netbox_plan
-	local img args=() tmpfs_at=-1 img_at=-1 i
-	img="$(base_image_name)"
-	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$img"
-	for ((i = 0; i < ${#args[@]}; i++)); do
-		if [[ "${args[$i]}" == --tmpfs ]]; then
-			tmpfs_at=$i
-		fi
-		if [[ "${args[$i]}" == "$img" ]]; then
-			img_at=$i
-		fi
-	done
-	[[ $tmpfs_at -ge 0 ]]
-	[[ "${args[$((tmpfs_at + 1))]}" == /run/talkbox ]]
-	[[ $tmpfs_at -lt $img_at ]]
+	local args=()
+	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
+	array_has_none '--tmpfs' "${args[@]}"
+	array_has_none '/run/talkbox' "${args[@]}"
 }
 
-@test "netbox recontain plan propagates the /run/talkbox tmpfs to podman create" {
+@test "netbox recontain plan does not emit a /run/talkbox tmpfs" {
 	load_netbox_plan
 	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
 	local -a srcs=() dsts=() args=()
 	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_contains '--tmpfs' "${args[@]}"
-	array_contains '/run/talkbox' "${args[@]}"
+	array_has_none '--tmpfs' "${args[@]}"
+	array_has_none '/run/talkbox' "${args[@]}"
 }
 
-@test "offbox recontain plan propagates the /run/talkbox tmpfs to podman create" {
+@test "offbox recontain plan does not emit a /run/talkbox tmpfs" {
 	load_netbox_plan
 	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
 	local -a srcs=() dsts=() args=()
 	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_contains '--tmpfs' "${args[@]}"
-	array_contains '/run/talkbox' "${args[@]}"
+	array_has_none '--tmpfs' "${args[@]}"
+	array_has_none '/run/talkbox' "${args[@]}"
 }
 
-@test "netbox rebuild plan propagates the /run/talkbox tmpfs to podman create" {
+@test "netbox rebuild plan does not emit a /run/talkbox tmpfs" {
 	load_netbox_plan
 	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
 	local -a srcs=() dsts=() args=()
 	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_contains '--tmpfs' "${args[@]}"
-	array_contains '/run/talkbox' "${args[@]}"
+	array_has_none '--tmpfs' "${args[@]}"
+	array_has_none '/run/talkbox' "${args[@]}"
 }
 
-@test "offbox rebuild plan propagates the /run/talkbox tmpfs to podman create" {
+@test "offbox rebuild plan does not emit a /run/talkbox tmpfs" {
 	load_netbox_plan
 	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
 	local -a srcs=() dsts=() args=()
 	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_contains '--tmpfs' "${args[@]}"
-	array_contains '/run/talkbox' "${args[@]}"
+	array_has_none '--tmpfs' "${args[@]}"
+	array_has_none '/run/talkbox' "${args[@]}"
 }
 
-@test "netbox recontain plan propagates the entrypoint read-only bind mount to podman create" {
+@test "run_netbox applies the nft deny rules before running setup.sh and runs setup.sh before the user command" {
 	load_netbox_plan
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local -a srcs=() dsts=() args=()
-	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
+	local shimdir log ctr
+	shimdir="$BATS_TEST_TMPDIR/shim"
+	log="$BATS_TEST_TMPDIR/podman.log"
+	mkdir -p "$shimdir"
+	cat >"$shimdir/podman" <<EOF
+#!/usr/bin/env bash
+cat >/dev/null 2>&1 || true
+printf '%s\n' "\$*" >>'$log'
+if [[ "\$*" == *'inspect -f {{.State.Pid}}'* ]]; then
+	printf '12345\n'
+fi
+exit 0
+EOF
+	chmod +x "$shimdir/podman"
+	ctr="$(netbox_container_name "$PROJECT")"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a deny=(1.1.1.1) allow=() srcs=() dsts=()
+	PATH="$shimdir:$PATH" run run_netbox "$PROJECT" 'echo hi' no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS deny allow
+	[[ "$status" -eq 0 ]]
+	local start_line nft_line setup_line cmd_line
+	start_line="$(grep -n "^start $ctr$" "$log" | head -n 1 | cut -d: -f1)"
+	nft_line="$(grep -n 'unshare.*nsenter.*nft' "$log" | head -n 1 | cut -d: -f1)"
+	setup_line="$(grep -n "exec $ctr setup.sh$" "$log" | head -n 1 | cut -d: -f1)"
+	cmd_line="$(grep -n 'bash -c echo hi' "$log" | head -n 1 | cut -d: -f1)"
+	[[ -n "$start_line" && -n "$nft_line" && -n "$setup_line" && -n "$cmd_line" ]]
+	[[ "$start_line" -lt "$nft_line" ]]
+	[[ "$nft_line" -lt "$setup_line" ]]
+	[[ "$setup_line" -lt "$cmd_line" ]]
 }
 
-@test "offbox recontain plan propagates the entrypoint read-only bind mount to podman create" {
+@test "run_offbox runs setup.sh after start and before the user command, with no nft step" {
 	load_netbox_plan
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local -a srcs=() dsts=() args=()
-	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
+	local shimdir log ctr
+	shimdir="$BATS_TEST_TMPDIR/shim"
+	log="$BATS_TEST_TMPDIR/podman.log"
+	mkdir -p "$shimdir"
+	cat >"$shimdir/podman" <<EOF
+#!/usr/bin/env bash
+cat >/dev/null 2>&1 || true
+printf '%s\n' "\$*" >>'$log'
+exit 0
+EOF
+	chmod +x "$shimdir/podman"
+	ctr="$(offbox_container_name "$PROJECT")"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a deny=(1.1.1.1) allow=() srcs=() dsts=()
+	PATH="$shimdir:$PATH" run run_offbox "$PROJECT" 'echo hi' no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS deny allow
+	[[ "$status" -eq 0 ]]
+	local start_line setup_line cmd_line
+	start_line="$(grep -n "^start $ctr$" "$log" | head -n 1 | cut -d: -f1)"
+	setup_line="$(grep -n "exec $ctr setup.sh$" "$log" | head -n 1 | cut -d: -f1)"
+	cmd_line="$(grep -n 'bash -c echo hi' "$log" | head -n 1 | cut -d: -f1)"
+	[[ -n "$start_line" && -n "$setup_line" && -n "$cmd_line" ]]
+	[[ "$start_line" -lt "$setup_line" ]]
+	[[ "$setup_line" -lt "$cmd_line" ]]
+	[[ "$(grep -c 'nsenter' "$log" || true)" -eq 0 ]]
 }
 
-@test "netbox rebuild plan propagates the entrypoint read-only bind mount to podman create" {
+@test "run_netbox recontain and rebuild run setup.sh after the nft deny install and before stopping the container" {
 	load_netbox_plan
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local -a srcs=() dsts=() args=()
-	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
+	local shimdir log ctr
+	shimdir="$BATS_TEST_TMPDIR/shim"
+	log="$BATS_TEST_TMPDIR/podman.log"
+	mkdir -p "$shimdir"
+	cat >"$shimdir/podman" <<EOF
+#!/usr/bin/env bash
+cat >/dev/null 2>&1 || true
+printf '%s\n' "\$*" >>'$log'
+if [[ "\$*" == *'inspect -f {{.State.Pid}}'* ]]; then
+	printf '12345\n'
+fi
+exit 0
+EOF
+	chmod +x "$shimdir/podman"
+	ctr="$(netbox_container_name "$PROJECT")"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a deny=(1.1.1.1) allow=() srcs=() dsts=()
+	local nft_line setup_line stop_line
+	PATH="$shimdir:$PATH" run run_netbox_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS deny allow
+	[[ "$status" -eq 0 ]]
+	nft_line="$(grep -n 'unshare.*nsenter.*nft' "$log" | head -n 1 | cut -d: -f1)"
+	setup_line="$(grep -n "exec $ctr setup.sh$" "$log" | head -n 1 | cut -d: -f1)"
+	stop_line="$(grep -n "^stop " "$log" | head -n 1 | cut -d: -f1)"
+	[[ -n "$nft_line" && -n "$setup_line" && -n "$stop_line" ]]
+	[[ "$nft_line" -lt "$setup_line" ]]
+	[[ "$setup_line" -lt "$stop_line" ]]
+	: >"$log"
+	PATH="$shimdir:$PATH" run run_netbox_rebuild "$PROJECT" no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS deny allow
+	[[ "$status" -eq 0 ]]
+	nft_line="$(grep -n 'unshare.*nsenter.*nft' "$log" | head -n 1 | cut -d: -f1)"
+	setup_line="$(grep -n "exec $ctr setup.sh$" "$log" | head -n 1 | cut -d: -f1)"
+	stop_line="$(grep -n "^stop " "$log" | head -n 1 | cut -d: -f1)"
+	[[ -n "$nft_line" && -n "$setup_line" && -n "$stop_line" ]]
+	[[ "$nft_line" -lt "$setup_line" ]]
+	[[ "$setup_line" -lt "$stop_line" ]]
 }
 
-@test "offbox rebuild plan propagates the entrypoint read-only bind mount to podman create" {
+@test "run_offbox recontain and rebuild run setup.sh after start and before stopping the container, with no nft step" {
 	load_netbox_plan
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local -a srcs=() dsts=() args=()
-	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
+	local shimdir log ctr
+	shimdir="$BATS_TEST_TMPDIR/shim"
+	log="$BATS_TEST_TMPDIR/podman.log"
+	mkdir -p "$shimdir"
+	cat >"$shimdir/podman" <<EOF
+#!/usr/bin/env bash
+cat >/dev/null 2>&1 || true
+printf '%s\n' "\$*" >>'$log'
+exit 0
+EOF
+	chmod +x "$shimdir/podman"
+	ctr="$(offbox_container_name "$PROJECT")"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a deny=(1.1.1.1) allow=() srcs=() dsts=()
+	local start_line setup_line stop_line
+	PATH="$shimdir:$PATH" run run_offbox_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS deny allow
+	[[ "$status" -eq 0 ]]
+	start_line="$(grep -n "^start $ctr$" "$log" | head -n 1 | cut -d: -f1)"
+	setup_line="$(grep -n "exec $ctr setup.sh$" "$log" | head -n 1 | cut -d: -f1)"
+	stop_line="$(grep -n "^stop " "$log" | head -n 1 | cut -d: -f1)"
+	[[ -n "$start_line" && -n "$setup_line" && -n "$stop_line" ]]
+	[[ "$start_line" -lt "$setup_line" ]]
+	[[ "$setup_line" -lt "$stop_line" ]]
+	[[ "$(grep -c 'nsenter' "$log" || true)" -eq 0 ]]
+	: >"$log"
+	PATH="$shimdir:$PATH" run run_offbox_rebuild "$PROJECT" no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS deny allow
+	[[ "$status" -eq 0 ]]
+	start_line="$(grep -n "^start $ctr$" "$log" | head -n 1 | cut -d: -f1)"
+	setup_line="$(grep -n "exec $ctr setup.sh$" "$log" | head -n 1 | cut -d: -f1)"
+	stop_line="$(grep -n "^stop " "$log" | head -n 1 | cut -d: -f1)"
+	[[ -n "$start_line" && -n "$setup_line" && -n "$stop_line" ]]
+	[[ "$start_line" -lt "$setup_line" ]]
+	[[ "$setup_line" -lt "$stop_line" ]]
+	[[ "$(grep -c 'nsenter' "$log" || true)" -eq 0 ]]
 }

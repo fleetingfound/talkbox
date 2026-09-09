@@ -52,11 +52,11 @@ teardown() {
 	[[ "$output" == *'talkbox-test <test@example.com>'* ]]
 }
 
-@test "a git command in a freshly started container runs only after the entrypoint readiness sentinel appears" {
+@test "a git command in a freshly started container runs only after setup.sh has run" {
 	local shimdir log real
 	shimdir="$BATS_TEST_TMPDIR/shim"
-	mkdir -p "$shimdir"
 	log="$BATS_TEST_TMPDIR/podman.log"
+	mkdir -p "$shimdir"
 	real="$(command -v podman)"
 	cat >"$shimdir/podman" <<EOF
 #!/usr/bin/env bash
@@ -65,13 +65,15 @@ exec '$real' "\$@"
 EOF
 	chmod +x "$shimdir/podman"
 	# shellcheck disable=SC2016 # $0/$1/$2 expand inside the wrapped bash -c
-	run sdrun bash -c 'cd "$1" && PATH="$2:$PATH" "$0/talkbox.sh" onbox -c --noninteractive "git log --format=%s -1 && echo GIT-SUCCEEDED"' "$TALKBOX" "$PROJECT" "$shimdir"
+	run sdrun bash -c 'cd "$1" && PATH="$2:$PATH" "$0/talkbox.sh" onbox -c --noninteractive "git config user.name && git config user.email && git log --format=%s -1 && echo GIT-SUCCEEDED"' "$TALKBOX" "$PROJECT" "$shimdir"
 	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'talkbox-test'* ]]
+	[[ "$output" == *'test@example.com'* ]]
 	[[ "$output" == *'GIT-SUCCEEDED'* ]]
-	local poll_line cmd_line
-	poll_line="$(grep -n '/run/talkbox/ready' "$log" | head -n 1 | cut -d: -f1)"
+	local setup_line cmd_line
+	setup_line="$(grep -n 'exec.*setup\.sh' "$log" | head -n 1 | cut -d: -f1)"
 	cmd_line="$(grep -n 'GIT-SUCCEEDED' "$log" | head -n 1 | cut -d: -f1)"
-	[[ -n "$poll_line" ]]
+	[[ -n "$setup_line" ]]
 	[[ -n "$cmd_line" ]]
-	[[ "$poll_line" -lt "$cmd_line" ]]
+	[[ "$setup_line" -lt "$cmd_line" ]]
 }

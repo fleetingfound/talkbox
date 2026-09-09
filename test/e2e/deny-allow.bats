@@ -158,3 +158,39 @@ EOF
 	[[ "$output" == *'ALLOW-REACHABLE'* ]]
 	[[ "$output" != *'talkbox:'* ]]
 }
+
+@test "onbox --deny-ip blocks a deny-listed connection attempted during setup" {
+	require_nft_and_internet
+	local base vol cfg upsh
+	base="$(basename "$PROJECT")"
+	vol="$PROJECT_SLUG.onbox.gitdir"
+	if ! sdrun podman image exists talkbox/base:latest >/dev/null 2>&1; then
+		sdrun podman build -t talkbox/base:latest -f "$TALKBOX/image/Containerfile" "$TALKBOX/image" >/dev/null
+	fi
+	sdrun podman volume rm -f "$vol" >/dev/null 2>&1 || true
+	sdrun podman volume create "$vol" >/dev/null
+	cfg="$(mktemp)"
+	upsh="$PROJECT/uploadpack-hook.sh"
+	printf '[remote "host"]\n\tuploadpack = /bin/sh /working/%s/uploadpack-hook.sh\n' "$base" >"$cfg"
+	cat >"$upsh" <<EOF
+#!/bin/sh
+if curl -sS --max-time 5 -o /dev/null http://1.1.1.1/ 2>/dev/null; then
+  echo REACHED > /working/$base/hook-result.txt
+else
+  echo BLOCKED > /working/$base/hook-result.txt
+fi
+exec git-upload-pack "\$@"
+EOF
+	chmod +x "$upsh"
+	# The pre-planted gitdir config makes the gitdir-init `git fetch host` run
+	# the uploadpack script inside the container; the connection attempt thus
+	# happens during setup (entrypoint today, setup.sh after the refactor).
+	sdrun podman run --rm -i --network=none --userns=keep-id:uid=1000,gid=1000 \
+		-v "$vol:/v" -v "$cfg:/cfg:ro" talkbox/base:latest cp /cfg /v/config
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox --deny-ip 1.1.1.1 -c --noninteractive 'cat hook-result.txt'
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'BLOCKED'* ]]
+	[[ "$output" != *'REACHED'* ]]
+	[[ "$output" != *'talkbox:'* ]]
+	rm -f "$cfg"
+}

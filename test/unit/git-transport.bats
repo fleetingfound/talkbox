@@ -103,15 +103,20 @@ setup() {
 	[[ "${cmd[1]}" == run ]]
 	[[ " ${cmd[*]} " == *' --rm --network=none '* ]]
 	[[ " ${cmd[*]} " == *" --workdir=/working/$base "* ]]
-	[[ " ${cmd[*]} " == *" --entrypoint=/bin/bash "* ]]
 	[[ " ${cmd[*]} " == *" proj.onbox.gitdir:/working/$base/.git "* ]]
 	[[ " ${cmd[*]} " == *" $resolved:/working/$base "* ]]
 	[[ " ${cmd[*]} " == *" $resolved/.git:/host/git:ro "* ]]
 	[[ " ${cmd[*]} " == *"/talkbox/lib/merge.sh:ro"* ]]
 	[[ " ${cmd[*]} " == *" talkbox/base:latest "* ]]
-	[[ " ${cmd[*]} " == *" -c $script _ "* ]]
-	[[ "${cmd[${#cmd[@]} - 2]}" == master ]]
-	[[ "${cmd[${#cmd[@]} - 1]}" == feature ]]
+	local joined setup_prefix script_prefix
+	joined="${cmd[*]}"
+	setup_prefix="${joined%%setup.sh*}"
+	script_prefix="${joined%%"$script"*}"
+	[[ "$setup_prefix" != "$joined" ]]
+	[[ "$script_prefix" != "$joined" ]]
+	[[ "${#setup_prefix}" -lt "${#script_prefix}" ]]
+	[[ " $joined " == *' master '* ]]
+	[[ " $joined " == *' feature '* ]]
 }
 
 @test "plan_fetch fills separate bundle and fetch command arrays with no token leakage" {

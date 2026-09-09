@@ -125,13 +125,6 @@ setup() {
 	array_has_none 'dotfiles.project' "${args[@]}"
 }
 
-@test "onbox plan bind-mounts the host entrypoint read-only" {
-	load_onbox_plan
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
-}
-
 @test "onbox plan appends the GPU device and group options when TALKBOX_GPU is yes" {
 	load_onbox_plan
 	# shellcheck disable=SC2034 # global consumed by plan_onbox
@@ -343,84 +336,86 @@ setup() {
 	array_contains 'TALKBOX_CONTAINER_TYPE=onbox' "${args[@]}"
 }
 
-@test "onbox plan mounts a tmpfs at /run/talkbox for the entrypoint readiness sentinel" {
+@test "onbox plan does not mount a tmpfs at /run/talkbox" {
 	load_onbox_plan
-	local img args=() tmpfs_at=-1 img_at=-1 i
-	img="$(base_image_name)"
+	local args=()
 	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	for ((i = 0; i < ${#args[@]}; i++)); do
-		if [[ "${args[$i]}" == --tmpfs ]]; then
-			tmpfs_at=$i
-		fi
-		if [[ "${args[$i]}" == "$img" ]]; then
-			img_at=$i
-		fi
-	done
-	[[ $tmpfs_at -ge 0 ]]
-	[[ "${args[$((tmpfs_at + 1))]}" == /run/talkbox ]]
-	[[ $tmpfs_at -lt $img_at ]]
+	array_has_none '--tmpfs' "${args[@]}"
+	array_has_none '/run/talkbox' "${args[@]}"
 }
 
-@test "onbox recontain plan propagates the /run/talkbox tmpfs to podman create" {
+@test "onbox recontain plan does not emit a /run/talkbox tmpfs" {
 	load_onbox_plan
 	local args=()
 	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains '--tmpfs' "${args[@]}"
-	array_contains '/run/talkbox' "${args[@]}"
+	array_has_none '--tmpfs' "${args[@]}"
+	array_has_none '/run/talkbox' "${args[@]}"
 }
 
-@test "onbox rebuild plan propagates the /run/talkbox tmpfs to podman create" {
+@test "onbox rebuild plan does not emit a /run/talkbox tmpfs" {
 	load_onbox_plan
 	local args=()
 	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains '--tmpfs' "${args[@]}"
-	array_contains '/run/talkbox' "${args[@]}"
+	array_has_none '--tmpfs' "${args[@]}"
+	array_has_none '/run/talkbox' "${args[@]}"
 }
 
-@test "onbox recontain plan propagates the entrypoint read-only bind mount to podman create" {
+@test "run_onbox applies the nft deny rules before running setup.sh and runs setup.sh before the user command" {
 	load_onbox_plan
-	local args=()
-	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
-}
-
-@test "onbox rebuild plan propagates the entrypoint read-only bind mount to podman create" {
-	load_onbox_plan
-	local args=()
-	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains "$TALKBOX_ROOT/image/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" "${args[@]}"
-}
-
-@test "wait_for_entrypoint returns success once podman exec reports the sentinel file" {
-	load_onbox_plan
-	local shimdir log
+	local shimdir log ctr
 	shimdir="$BATS_TEST_TMPDIR/shim"
 	log="$BATS_TEST_TMPDIR/podman.log"
 	mkdir -p "$shimdir"
 	cat >"$shimdir/podman" <<EOF
 #!/usr/bin/env bash
+cat >/dev/null 2>&1 || true
 printf '%s\n' "\$*" >>'$log'
+if [[ "\$*" == *'inspect -f {{.State.Pid}}'* ]]; then
+	printf '12345\n'
+fi
 exit 0
 EOF
 	chmod +x "$shimdir/podman"
-	PATH="$shimdir:$PATH" run wait_for_entrypoint talkbox-proj.onbox
+	ctr="$(onbox_container_name "$PROJECT")"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a deny=(1.1.1.1) allow=()
+	PATH="$shimdir:$PATH" run run_onbox "$PROJECT" 'echo hi' no READ_MOUNTS WRITE_MOUNTS PORTS deny allow
 	[[ "$status" -eq 0 ]]
-	[[ -f "$log" ]]
-	[[ "$(cat "$log")" == *'exec'* ]]
-	[[ "$(cat "$log")" == *'/run/talkbox/ready'* ]]
+	local start_line nft_line setup_line cmd_line
+	start_line="$(grep -n "^start $ctr$" "$log" | head -n 1 | cut -d: -f1)"
+	nft_line="$(grep -n 'unshare.*nsenter.*nft' "$log" | head -n 1 | cut -d: -f1)"
+	setup_line="$(grep -n "exec $ctr setup.sh$" "$log" | head -n 1 | cut -d: -f1)"
+	cmd_line="$(grep -n 'bash -c echo hi' "$log" | head -n 1 | cut -d: -f1)"
+	[[ -n "$start_line" && -n "$nft_line" && -n "$setup_line" && -n "$cmd_line" ]]
+	[[ "$start_line" -lt "$nft_line" ]]
+	[[ "$nft_line" -lt "$setup_line" ]]
+	[[ "$setup_line" -lt "$cmd_line" ]]
 }
 
-@test "wait_for_entrypoint dies with a talkbox error when the sentinel never appears" {
+@test "run_onbox stops the container and raises a talkbox error when the setup.sh exec fails" {
 	load_onbox_plan
-	local shimdir
+	local shimdir log ctr
 	shimdir="$BATS_TEST_TMPDIR/shim"
+	log="$BATS_TEST_TMPDIR/podman.log"
 	mkdir -p "$shimdir"
-	cat >"$shimdir/podman" <<'EOF'
+	cat >"$shimdir/podman" <<EOF
 #!/usr/bin/env bash
-exit 1
+cat >/dev/null 2>&1 || true
+printf '%s\n' "\$*" >>'$log'
+if [[ "\$*" == *'inspect -f {{.State.Pid}}'* ]]; then
+	printf '12345\n'
+fi
+if [[ "\$*" == *setup.sh* ]]; then
+	exit 1
+fi
+exit 0
 EOF
 	chmod +x "$shimdir/podman"
-	PATH="$shimdir:$PATH" run wait_for_entrypoint talkbox-proj.onbox
+	ctr="$(onbox_container_name "$PROJECT")"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a deny=(1.1.1.1) allow=()
+	PATH="$shimdir:$PATH" run run_onbox "$PROJECT" 'echo hi' no READ_MOUNTS WRITE_MOUNTS PORTS deny allow
 	[[ "$status" -ne 0 ]]
 	[[ "$output" == *'talkbox:'* ]]
+	[[ "$(grep -c "^stop " "$log")" -ge 1 ]]
 }
