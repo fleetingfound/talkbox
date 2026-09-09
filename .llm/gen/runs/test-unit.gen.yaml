@@ -1,5 +1,14 @@
 target: test-unit
-started: '2026-09-09T19:13:16Z'
-exit: 0
-totals: { total: 251, pass: 251, fail: 0, skip: 0 }
+started: '2026-09-09T19:33:35Z'
+exit: 1
+totals: { total: 262, pass: 253, fail: 9, skip: 0 }
 fail:
+ - 'test/unit/common.bats :: strip_comment removes everything from the first'
+ - 'test/unit/common.bats :: strip_comment does not trim leading or trailing whitespace'
+ - 'test/unit/common.bats :: strip_comment leaves a string without a'
+ - 'test/unit/common.bats :: strip_comment empties a line whose first character is a #'
+ - 'test/unit/mounts.bats :: mount_entries strips an inline comment from a file line and parses the source spec'
+ - 'test/unit/mounts.bats :: mount_entries strips an inline comment from a file line and parses the source : dest spec'
+ - 'test/unit/mounts.bats :: mount_entries strips an inline comment from CLI --read and --write specs'
+ - 'test/unit/network.bats :: port_args strips an inline comment and keeps the port value'
+ - 'test/unit/network.bats :: deny_allow_args strips inline comments from both deny and allow file entries'

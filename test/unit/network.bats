@@ -25,6 +25,24 @@ setup() {
 	[[ "${out[*]}" == '-T,8080' ]]
 }
 
+@test "port_args strips an inline comment and keeps the port value" {
+	load_lib network.sh
+	local file="$BATS_TEST_TMPDIR/ports"
+	printf '8080  # web server\n' >"$file"
+	local out=()
+	port_args out "$file"
+	[[ "${out[*]}" == '-T,8080' ]]
+}
+
+@test "port_args yields no entry for a line that is only an inline comment" {
+	load_lib network.sh
+	local file="$BATS_TEST_TMPDIR/ports"
+	printf '   # only a comment\n' >"$file"
+	local out=()
+	port_args out "$file"
+	[[ ${#out[@]} -eq 0 ]]
+}
+
 @test "port_args yields no ports when the defaults file is absent" {
 	load_lib network.sh
 	local out=()
@@ -94,6 +112,26 @@ setup() {
 	: >"$ALLOW_FILE"
 	deny_allow_args deny_out allow_out "$DENY_FILE" "$ALLOW_FILE" deny_cli allow_cli
 	[[ "${deny_out[*]}" == '10.0.0.0/8' ]]
+}
+
+@test "deny_allow_args strips inline comments from both deny and allow file entries" {
+	load_lib network.sh
+	local deny_out=() allow_out=() deny_cli=() allow_cli=()
+	printf '10.0.0.0/8  # Private-Use RFC 1918\n' >"$DENY_FILE"
+	printf '192.168.1.1  # lab host\n' >"$ALLOW_FILE"
+	deny_allow_args deny_out allow_out "$DENY_FILE" "$ALLOW_FILE" deny_cli allow_cli
+	[[ "${deny_out[*]}" == '10.0.0.0/8' ]]
+	[[ "${allow_out[*]}" == '192.168.1.1 127.0.0.0/8 169.254.1.1/32 ::1' ]]
+}
+
+@test "deny_allow_args yields no entry for a line that is only an inline comment" {
+	load_lib network.sh
+	local deny_out=() allow_out=() deny_cli=() allow_cli=()
+	printf '   # only a comment\n' >"$DENY_FILE"
+	printf '   # only a comment\n' >"$ALLOW_FILE"
+	deny_allow_args deny_out allow_out "$DENY_FILE" "$ALLOW_FILE" deny_cli allow_cli
+	[[ ${#deny_out[@]} -eq 0 ]]
+	[[ "${allow_out[*]}" == '127.0.0.0/8 169.254.1.1/32 ::1' ]]
 }
 
 @test "deny_allow_args yields an empty deny set for absent or empty files" {

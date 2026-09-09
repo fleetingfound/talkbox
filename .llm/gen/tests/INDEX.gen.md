@@ -31,3 +31,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 14a: `install_nft_deny` fails hard when the deny set cannot be enforced](phase-14a-nft-deny-fail-hard.gen.md)
 - [Phase 14b: read-only bind-mount the entrypoint from the host](phase-14b-entrypoint-readonly-bindmount.gen.md)
 - [Phase 14c: install nft ruleset before entrypoint setup runs](phase-14c-nft-before-entrypoint-setup.gen.md)
+- [Phase 15a: inline comments in config files](phase-15a-inline-config-comments.gen.md)

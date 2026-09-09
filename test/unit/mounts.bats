@@ -44,6 +44,33 @@ setup() {
 	[[ "${out[*]}" == "-v /a:/host/read/a:ro" ]]
 }
 
+@test "mount_entries strips an inline comment from a file line and parses the source spec" {
+	load_lib mounts.sh
+	local file="$BATS_TEST_TMPDIR/read.mounts"
+	printf '/a  # a comment\n' >"$file"
+	local out=()
+	mount_args out read "$file" "$PROJECT" "$HOME_FAKE"
+	[[ "${out[*]}" == "-v /a:/host/read/a:ro" ]]
+}
+
+@test "mount_entries strips an inline comment from a file line and parses the source : dest spec" {
+	load_lib mounts.sh
+	local file="$BATS_TEST_TMPDIR/read.mounts"
+	printf '/src : /a/b  # a comment\n' >"$file"
+	local out=()
+	mount_args out read "$file" "$PROJECT" "$HOME_FAKE"
+	[[ "${out[*]}" == "-v /src:/a/b:ro" ]]
+}
+
+@test "mount_entries strips an inline comment from CLI --read and --write specs" {
+	load_lib mounts.sh
+	local r=() w=()
+	mount_args r read "$ABSENT" "$PROJECT" "$HOME_FAKE" '/a  # a comment'
+	mount_args w write "$ABSENT" "$PROJECT" "$HOME_FAKE" '/a  # a comment'
+	[[ "${r[*]}" == "-v /a:/host/read/a:ro" ]]
+	[[ "${w[*]}" == "-v /a:/host/write/a" ]]
+}
+
 @test "mount_args yields no mounts when the defaults file is absent" {
 	load_lib mounts.sh
 	local out=()
