@@ -37,4 +37,4 @@ Implementation plan for `SPEC.md`, in recommended order. Each phase builds on th
 - [x] [Phase 14a: `install_nft_deny` fails hard when the deny set cannot be enforced](phase-14a-nft-deny-fail-hard.gen.md) #flow/redgreen #model/default
 - [x] [Phase 14b: Read-only bind-mount the entrypoint from the host](phase-14b-entrypoint-readonly-bindmount.gen.md) #flow/redgreen #model/default
 - [x] [Phase 14c: Install nft ruleset before entrypoint setup runs](phase-14c-nft-before-entrypoint-setup.gen.md) #flow/redgreen #model/default
-- [ ] [Phase 15a: Inline comments in config files](phase-15a-inline-config-comments.gen.md) #flow/redgreen #model/default
+- [x] [Phase 15a: Inline comments in config files](phase-15a-inline-config-comments.gen.md) #flow/redgreen #model/default

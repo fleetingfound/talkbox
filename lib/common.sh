@@ -6,6 +6,11 @@ die() {
 	exit "$code"
 }
 
+strip_comment() {
+	local s="$1"
+	printf '%s' "${s%%#*}"
+}
+
 trim() {
 	local s="$1"
 	s="${s#"${s%%[![:space:]]*}"}"

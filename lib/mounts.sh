@@ -57,8 +57,9 @@ mount_entries() {
 	local line src dst spec
 	if [[ -f "$file" ]]; then
 		while IFS= read -r line || [[ -n "$line" ]]; do
+			line="$(strip_comment "$line")"
 			line="$(trim "$line")"
-			[[ -z "$line" || "$line" == '#'* ]] && continue
+			[[ -z "$line" ]] && continue
 			mount_spec src dst "$line"
 			expand_mount "$mode" "$src" "$dst" "$project" "$home" src dst
 			lsrcs+=("$src")
@@ -66,8 +67,9 @@ mount_entries() {
 		done <"$file"
 	fi
 	for spec in "${cli_specs[@]}"; do
+		spec="$(strip_comment "$spec")"
 		spec="$(trim "$spec")"
-		[[ -z "$spec" || "$spec" == '#'* ]] && continue
+		[[ -z "$spec" ]] && continue
 		mount_spec src dst "$spec"
 		expand_mount "$mode" "$src" "$dst" "$project" "$home" src dst
 		lsrcs+=("$src")

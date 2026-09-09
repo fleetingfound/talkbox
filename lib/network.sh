@@ -13,8 +13,9 @@ port_args() {
 	local line
 	if [[ -f "$file" ]]; then
 		while IFS= read -r line || [[ -n "$line" ]]; do
+			line="$(strip_comment "$line")"
 			line="$(trim "$line")"
-			[[ -z "$line" || "$line" == '#'* ]] && continue
+			[[ -z "$line" ]] && continue
 			list+=("$line")
 		done <"$file"
 	fi
@@ -38,16 +39,18 @@ deny_allow_args() {
 	local line
 	if [[ -f "$deny_file" ]]; then
 		while IFS= read -r line || [[ -n "$line" ]]; do
+			line="$(strip_comment "$line")"
 			line="$(trim "$line")"
-			[[ -z "$line" || "$line" == '#'* ]] && continue
+			[[ -z "$line" ]] && continue
 			deny+=("$line")
 		done <"$deny_file"
 	fi
 	deny+=("${_deny_cli[@]}")
 	if [[ -f "$allow_file" ]]; then
 		while IFS= read -r line || [[ -n "$line" ]]; do
+			line="$(strip_comment "$line")"
 			line="$(trim "$line")"
-			[[ -z "$line" || "$line" == '#'* ]] && continue
+			[[ -z "$line" ]] && continue
 			allow+=("$line")
 		done <"$allow_file"
 	fi

@@ -31,3 +31,4 @@
 - [Phase 14a: `install_nft_deny` fails hard when the deny set cannot be enforced](.llm/gen/builds/phase-14a-nft-deny-fail-hard.gen.md)
 - [Phase 14b: Read-only bind-mount the entrypoint from the host](.llm/gen/builds/phase-14b-entrypoint-readonly-bindmount.gen.md)
 - [Phase 14c: Install nft ruleset before entrypoint setup runs](.llm/gen/builds/phase-14c-nft-before-entrypoint-setup.gen.md)
+- [Phase 15a: Inline comments in config files](.llm/gen/builds/phase-15a-inline-config-comments.gen.md)
