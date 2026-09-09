@@ -19,3 +19,4 @@
 - [x] [IPv6 deny/allow does not perform CIDR range carving](ipv6-deny-allow-no-cidr-carving.gen.md) — resolved by [Phase 12d](../plans/phase-12d-ipv6-deny-allow-nft-set-difference.gen.md)
 - [x] [Dead `_deny` nameref parameter in plan functions](dead-deny-nameref-in-plan-functions.gen.md) — resolved by [Phase 13a](../plans/phase-13a-remove-dead-deny-nameref.gen.md)
 - [x] [`install_nft_deny` has no test for the non-empty deny install path or its warning](install-nft-deny-no-nonempty-test.gen.md) — resolved by [Phase 14a](../plans/phase-14a-nft-deny-fail-hard.gen.md)
+- [ ] [Agent-modified entrypoint runs before nft deny enforcement](agent-modified-entrypoint-pre-nft.gen.md)
