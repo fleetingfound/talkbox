@@ -371,3 +371,134 @@ setup() {
 	[[ ${#args[@]} -eq 0 ]]
 	[[ -z "$(plan_subcommands args)" ]]
 }
+
+@test "prune_external_image_containers queries external containers by ancestor and force-removes each returned ID" {
+	load_lifecycle_plan
+	local shimdir log
+	shimdir="$BATS_TEST_TMPDIR/shim"
+	log="$BATS_TEST_TMPDIR/podman.log"
+	mkdir -p "$shimdir"
+	cat >"$shimdir/podman" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >>'$log'
+if [[ "\$*" == *'ps -a --external'* ]]; then
+	printf 'ext1\n'
+	printf 'ext2\n'
+fi
+exit 0
+EOF
+	chmod +x "$shimdir/podman"
+	PATH="$shimdir:$PATH" run prune_external_image_containers "$(base_image_name)"
+	[[ "$status" -eq 0 ]]
+	[[ "$(grep -c -- '--external --filter ancestor=talkbox/base:latest' "$log")" -ge 1 ]]
+	[[ "$(grep -c '^rm -f ext1$' "$log")" -eq 1 ]]
+	[[ "$(grep -c '^rm -f ext2$' "$log")" -eq 1 ]]
+}
+
+@test "prune_external_image_containers silently succeeds when no external working containers match" {
+	load_lifecycle_plan
+	local shimdir log
+	shimdir="$BATS_TEST_TMPDIR/shim"
+	log="$BATS_TEST_TMPDIR/podman.log"
+	mkdir -p "$shimdir"
+	cat >"$shimdir/podman" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >>'$log'
+exit 0
+EOF
+	chmod +x "$shimdir/podman"
+	PATH="$shimdir:$PATH" run prune_external_image_containers "$(base_image_name)"
+	[[ "$status" -eq 0 ]]
+	[[ "$(grep -c -- '--external --filter ancestor=talkbox/base:latest' "$log")" -ge 1 ]]
+	[[ "$(grep -c '^rm ' "$log" || true)" -eq 0 ]]
+}
+
+@test "run_rm_image prunes external working containers before removing the base image" {
+	load_lifecycle_plan
+	local shimdir log ctr
+	shimdir="$BATS_TEST_TMPDIR/shim"
+	log="$BATS_TEST_TMPDIR/podman.log"
+	mkdir -p "$shimdir"
+	ctr="$(onbox_container_name "$PROJECT")"
+	cat >"$shimdir/podman" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >>'$log'
+if [[ "\$*" == *'ps -a --external'* ]]; then
+	printf 'ext1\n'
+fi
+if [[ "\$*" == *"container exists $ctr"* ]]; then
+	exit 1
+fi
+exit 0
+EOF
+	chmod +x "$shimdir/podman"
+	PATH="$shimdir:$PATH" run run_rm_image "$PROJECT"
+	[[ "$status" -eq 0 ]]
+	local ext_line rm_line rmi_line
+	ext_line="$(grep -n -- '--external --filter ancestor=talkbox/base:latest' "$log" | head -n 1 | cut -d: -f1)"
+	rm_line="$(grep -n '^rm -f ext1$' "$log" | head -n 1 | cut -d: -f1)"
+	rmi_line="$(grep -n '^rmi talkbox/base:latest$' "$log" | head -n 1 | cut -d: -f1)"
+	[[ -n "$ext_line" && -n "$rm_line" && -n "$rmi_line" ]]
+	[[ "$ext_line" -lt "$rm_line" ]]
+	[[ "$rm_line" -lt "$rmi_line" ]]
+}
+
+@test "run_netbox_rm_image prunes external working containers before removing the base image" {
+	load_lifecycle_plan
+	local shimdir log ctr
+	shimdir="$BATS_TEST_TMPDIR/shim"
+	log="$BATS_TEST_TMPDIR/podman.log"
+	mkdir -p "$shimdir"
+	ctr="$(netbox_container_name "$PROJECT")"
+	cat >"$shimdir/podman" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >>'$log'
+if [[ "\$*" == *'ps -a --external'* ]]; then
+	printf 'ext1\n'
+fi
+if [[ "\$*" == *"container exists $ctr"* ]]; then
+	exit 1
+fi
+exit 0
+EOF
+	chmod +x "$shimdir/podman"
+	PATH="$shimdir:$PATH" run run_netbox_rm_image "$PROJECT"
+	[[ "$status" -eq 0 ]]
+	local ext_line rm_line rmi_line
+	ext_line="$(grep -n -- '--external --filter ancestor=talkbox/base:latest' "$log" | head -n 1 | cut -d: -f1)"
+	rm_line="$(grep -n '^rm -f ext1$' "$log" | head -n 1 | cut -d: -f1)"
+	rmi_line="$(grep -n '^rmi talkbox/base:latest$' "$log" | head -n 1 | cut -d: -f1)"
+	[[ -n "$ext_line" && -n "$rm_line" && -n "$rmi_line" ]]
+	[[ "$ext_line" -lt "$rm_line" ]]
+	[[ "$rm_line" -lt "$rmi_line" ]]
+}
+
+@test "run_offbox_rm_image prunes external working containers before removing the base image" {
+	load_lifecycle_plan
+	local shimdir log ctr
+	shimdir="$BATS_TEST_TMPDIR/shim"
+	log="$BATS_TEST_TMPDIR/podman.log"
+	mkdir -p "$shimdir"
+	ctr="$(offbox_container_name "$PROJECT")"
+	cat >"$shimdir/podman" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >>'$log'
+if [[ "\$*" == *'ps -a --external'* ]]; then
+	printf 'ext1\n'
+fi
+if [[ "\$*" == *"container exists $ctr"* ]]; then
+	exit 1
+fi
+exit 0
+EOF
+	chmod +x "$shimdir/podman"
+	PATH="$shimdir:$PATH" run run_offbox_rm_image "$PROJECT"
+	[[ "$status" -eq 0 ]]
+	local ext_line rm_line rmi_line
+	ext_line="$(grep -n -- '--external --filter ancestor=talkbox/base:latest' "$log" | head -n 1 | cut -d: -f1)"
+	rm_line="$(grep -n '^rm -f ext1$' "$log" | head -n 1 | cut -d: -f1)"
+	rmi_line="$(grep -n '^rmi talkbox/base:latest$' "$log" | head -n 1 | cut -d: -f1)"
+	[[ -n "$ext_line" && -n "$rm_line" && -n "$rmi_line" ]]
+	[[ "$ext_line" -lt "$rm_line" ]]
+	[[ "$rm_line" -lt "$rmi_line" ]]
+}
