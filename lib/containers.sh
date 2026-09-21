@@ -213,6 +213,15 @@ image_in_use() {
 	return 1
 }
 
+prune_external_image_containers() {
+	local image="$1" id
+	local ids
+	ids="$(podman ps -a --external --filter "ancestor=$image" --format '{{.ID}}')"
+	for id in $ids; do
+		podman rm -f "$id"
+	done
+}
+
 run_onbox() {
 	local project="$1" command="$2" interactive="$3"
 	shift 3
@@ -279,6 +288,7 @@ run_rm_image() {
 		die "cannot remove base image: it is in use by other containers" 1
 	fi
 	container_exists "$ctr" && podman rm -f --volumes "$ctr"
+	prune_external_image_containers "$(base_image_name)"
 	local -a plan=()
 	plan_rm_image plan "$project" no
 	execute_plan "${plan[@]}"
@@ -838,6 +848,7 @@ run_netbox_rm_image() {
 		die "cannot remove base image: it is in use by other containers" 1
 	fi
 	container_exists "$ctr" && podman rm -f --volumes "$ctr"
+	prune_external_image_containers "$(base_image_name)"
 	local -a plan=()
 	plan_netbox_rm_image plan "$project" no
 	execute_plan "${plan[@]}"
@@ -851,6 +862,7 @@ run_offbox_rm_image() {
 		die "cannot remove base image: it is in use by other containers" 1
 	fi
 	container_exists "$ctr" && podman rm -f --volumes "$ctr"
+	prune_external_image_containers "$(base_image_name)"
 	local -a plan=()
 	plan_offbox_rm_image plan "$project" no
 	execute_plan "${plan[@]}"

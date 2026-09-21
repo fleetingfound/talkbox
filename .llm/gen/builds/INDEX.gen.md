@@ -32,3 +32,4 @@
 - [Phase 14b: Read-only bind-mount the entrypoint from the host](.llm/gen/builds/phase-14b-entrypoint-readonly-bindmount.gen.md)
 - [Phase 14c: Install nft ruleset before entrypoint setup runs](.llm/gen/builds/phase-14c-nft-before-entrypoint-setup.gen.md)
 - [Phase 15a: Inline comments in config files](.llm/gen/builds/phase-15a-inline-config-comments.gen.md)
+- [Phase 16a: Prune external working containers before `--rm-image`](.llm/gen/builds/phase-16a-rm-image-prune-external-working-containers.gen.md)
