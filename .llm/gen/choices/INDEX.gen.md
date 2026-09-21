@@ -82,3 +82,7 @@
 ## Inline comments in config files
 
 - [x] [Inline-comment scope](inline-comment-scope.gen.md) - whether inline `#` comments are supported only in `deny.ip`/`allow.ip` or uniformly across all config files (`read.mounts`, `write.mounts`, `ports`, `deny.ip`, `allow.ip`).
+
+## `--rm-image` blocked by external working containers
+
+- [x] [External working container handling for `--rm-image`](external-working-container-handling.gen.md) - whether to prune external buildah working containers before `rmi`, make `image_in_use` detect them, or prune them after every `podman build`.

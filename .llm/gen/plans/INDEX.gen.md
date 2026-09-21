@@ -38,3 +38,4 @@ Implementation plan for `SPEC.md`, in recommended order. Each phase builds on th
 - [x] [Phase 14b: Read-only bind-mount the entrypoint from the host](phase-14b-entrypoint-readonly-bindmount.gen.md) #flow/redgreen #model/default
 - [x] [Phase 14c: Install nft ruleset before entrypoint setup runs](phase-14c-nft-before-entrypoint-setup.gen.md) #flow/redgreen #model/default
 - [x] [Phase 15a: Inline comments in config files](phase-15a-inline-config-comments.gen.md) #flow/redgreen #model/default
+- [ ] [Phase 16a: Prune external working containers before `--rm-image`](phase-16a-rm-image-prune-external-working-containers.gen.md) #flow/redgreen #model/default
