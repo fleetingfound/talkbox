@@ -33,3 +33,4 @@
 - [Phase 14c: Install nft ruleset before entrypoint setup runs](.llm/gen/builds/phase-14c-nft-before-entrypoint-setup.gen.md)
 - [Phase 15a: Inline comments in config files](.llm/gen/builds/phase-15a-inline-config-comments.gen.md)
 - [Phase 16a: Prune external working containers before `--rm-image`](.llm/gen/builds/phase-16a-rm-image-prune-external-working-containers.gen.md)
+- [Phase 16b: Eliminate e2e shared-image inter-test coupling via a reusable `ensure_base_image_e2e` helper](.llm/gen/builds/phase-16b-e2e-shared-image-coupling-helper.gen.md)

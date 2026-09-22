@@ -3,6 +3,7 @@ load helpers
 setup() {
 	PROJECT="$(mk_project)"
 	TALKBOX="$(mk_talkbox)"
+	ensure_base_image_e2e "$TALKBOX"
 	PROJECT_BASE="$(basename "$PROJECT")"
 	CTR="$(onbox_ctr_name "$PROJECT")"
 }

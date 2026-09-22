@@ -7,6 +7,7 @@ setup() {
 	export PATH="/usr/sbin:/sbin:$PATH"
 	PROJECT="$(mk_project)"
 	TALKBOX="$(mk_talkbox)"
+	ensure_base_image_e2e "$TALKBOX"
 	PROJECT_SLUG="$(project_slug_e2e "$PROJECT")"
 	HOST_SRV_PID=""
 }
@@ -164,9 +165,7 @@ EOF
 	local base vol cfg upsh
 	base="$(basename "$PROJECT")"
 	vol="$PROJECT_SLUG.onbox.gitdir"
-	if ! sdrun podman image exists talkbox/base:latest >/dev/null 2>&1; then
-		sdrun podman build -t talkbox/base:latest -f "$TALKBOX/image/Containerfile" "$TALKBOX/image" >/dev/null
-	fi
+	ensure_base_image_e2e "$TALKBOX"
 	sdrun podman volume rm -f "$vol" >/dev/null 2>&1 || true
 	sdrun podman volume create "$vol" >/dev/null
 	cfg="$(mktemp)"

@@ -64,6 +64,18 @@ teardown_talkbox() {
 	done
 }
 
+ensure_base_image_e2e() {
+	local talkbox="$1"
+	if ! sdrun podman image exists talkbox/base:latest >/dev/null 2>&1; then
+		sdrun podman build -t talkbox/base:latest -f "$talkbox/image/Containerfile" "$talkbox/image" >/dev/null || return 1
+	fi
+	local id ids
+	ids="$(sdrun podman ps -a --external --filter 'ancestor=talkbox/base:latest' --format '{{.ID}}')"
+	for id in $ids; do
+		sdrun podman rm -f "$id" >/dev/null 2>&1 || true
+	done
+}
+
 project_slug_e2e() {
 	local base
 	base="$(basename "$1")"

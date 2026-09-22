@@ -3,6 +3,7 @@ load helpers
 setup() {
 	PROJECT="$(mk_project)"
 	TALKBOX="$(mk_talkbox)"
+	ensure_base_image_e2e "$TALKBOX"
 	PROJECT_SLUG="$(project_slug_e2e "$PROJECT")"
 	NETBOX_CTR="$PROJECT_SLUG.netbox"
 	OFFBOX_CTR="$PROJECT_SLUG.offbox"
