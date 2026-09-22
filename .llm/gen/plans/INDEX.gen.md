@@ -39,3 +39,4 @@ Implementation plan for `SPEC.md`, in recommended order. Each phase builds on th
 - [x] [Phase 14c: Install nft ruleset before entrypoint setup runs](phase-14c-nft-before-entrypoint-setup.gen.md) #flow/redgreen #model/default
 - [x] [Phase 15a: Inline comments in config files](phase-15a-inline-config-comments.gen.md) #flow/redgreen #model/default
 - [x] [Phase 16a: Prune external working containers before `--rm-image`](phase-16a-rm-image-prune-external-working-containers.gen.md) #flow/redgreen #model/default
+- [ ] [Phase 16b: Eliminate e2e shared-image inter-test coupling via a reusable `ensure_base_image_e2e` helper](phase-16b-e2e-shared-image-coupling-helper.gen.md) #flow/unified #model/default

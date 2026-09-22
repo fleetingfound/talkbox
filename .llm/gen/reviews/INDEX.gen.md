@@ -7,4 +7,5 @@
 - [nftables deny/allow install failure — warning, test gap, and fail-hard consideration](nftables-deny-install-warning.gen.md)
 - [Entrypoint-before-nft ordering and agent-modified entrypoint risk](entrypoint-before-nft-ordering.gen.md)
 - [Recurring `netbox --rm-image` e2e failure — two failure modes](rm-image-e2e-failure.gen.md)
+- [Test-suite order, image, and container dependencies](test-suite-order-image-container-deps.gen.md)
 

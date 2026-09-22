@@ -86,3 +86,7 @@
 ## `--rm-image` blocked by external working containers
 
 - [x] [External working container handling for `--rm-image`](external-working-container-handling.gen.md) - whether to prune external buildah working containers before `rmi`, make `image_in_use` detect them, or prune them after every `podman build`.
+
+## E2e shared-image inter-test coupling elimination
+
+- [x] [E2e shared-image inter-test coupling elimination](e2e-shared-image-coupling-elimination.gen.md) - how to eliminate (not mask) the shared `talkbox/base:latest` image coupling between `deny-allow.bats` (rebuilds) and `netbox-offbox.bats` (destroys): a shared `ensure_base_image_e2e` helper called by each e2e test's setup, making the image-existence precondition explicit per-test.
