@@ -93,6 +93,9 @@ plan_onbox() {
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
 	fi
+	if [[ -d "$TALKBOX_ROOT/defaults/art" ]]; then
+		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/art:/talkbox/art:ro")
+	fi
 	if [[ -d "$project/.dotfiles" ]]; then
 		_plan_out+=("-v" "$project/.dotfiles:/talkbox/dotfiles.project:ro")
 	fi
@@ -399,6 +402,9 @@ plan_netbox() {
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
 	fi
+	if [[ -d "$TALKBOX_ROOT/defaults/art" ]]; then
+		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/art:/talkbox/art:ro")
+	fi
 	if [[ -d "$project/.dotfiles" ]]; then
 		_plan_out+=("-v" "$project/.dotfiles:/talkbox/dotfiles.project:ro")
 	fi
@@ -450,6 +456,9 @@ plan_offbox() {
 	_plan_out+=("-v" "$TALKBOX_ROOT/image/setup.sh:/usr/local/bin/setup.sh:ro")
 	if [[ -d "$TALKBOX_ROOT/defaults/dotfiles" ]]; then
 		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro")
+	fi
+	if [[ -d "$TALKBOX_ROOT/defaults/art" ]]; then
+		_plan_out+=("-v" "$TALKBOX_ROOT/defaults/art:/talkbox/art:ro")
 	fi
 	if [[ -d "$project/.dotfiles" ]]; then
 		_plan_out+=("-v" "$project/.dotfiles:/talkbox/dotfiles.project:ro")

@@ -15,6 +15,12 @@ parse_git_branch() {
   git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null
 }
 
+if [[ -z "${_TALKBOX_BANNER_SHOWN:-}" ]] && [[ -n "${TALKBOX_CONTAINER_TYPE:-}" ]] && [[ -f "/talkbox/art/${TALKBOX_CONTAINER_TYPE}.txt" ]]; then
+  printf '%b' "$(cat "/talkbox/art/${TALKBOX_CONTAINER_TYPE}.txt")"
+  printf '\n'
+  export _TALKBOX_BANNER_SHOWN=1
+fi
+
 PS1="\n${yellow}[\t]${reset} ${bold}${magenta}\u@${TALKBOX_PROJECT_SLUG:-}.${TALKBOX_CONTAINER_TYPE:-}${reset} ${bold}${blue}\w${reset} ${bold}${green}\$(parse_git_branch)${reset}${red}\n❯${reset} "
 
 PROMPT_COMMAND='echo -ne "\033]0;${TALKBOX_PROJECT_SLUG:-}.${TALKBOX_CONTAINER_TYPE:-}: ${PWD##*/}\007"'
