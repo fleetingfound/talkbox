@@ -10,4 +10,5 @@
 - [Test-suite order, image, and container dependencies](test-suite-order-image-container-deps.gen.md)
 - [`parse_tap()` name-recording investigation — empty-description failures dropped from `FAIL_NAMES`](parse-tap-fail-names-investigation.gen.md)
 - [Host-access security review (netbox) — can the container reach the host?](host-access-review.gen.md)
+- [Offbox sandbox escape review — host and internet access](offbox-escape-review.gen.md)
 
