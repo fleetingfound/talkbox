@@ -90,3 +90,8 @@
 ## E2e shared-image inter-test coupling elimination
 
 - [x] [E2e shared-image inter-test coupling elimination](e2e-shared-image-coupling-elimination.gen.md) - how to eliminate (not mask) the shared `talkbox/base:latest` image coupling between `deny-allow.bats` (rebuilds) and `netbox-offbox.bats` (destroys): a shared `ensure_base_image_e2e` helper called by each e2e test's setup, making the image-existence precondition explicit per-test.
+
+## ASCII art on container startup
+
+- [x] [ASCII art display location](ascii-art-display-location.gen.md) - whether the art is printed by the host-side executor before `podman exec` or from inside the container by `.bashrc`.
+- [x] [ASCII art file format and storage](ascii-art-file-format.gen.md) - where the art files are stored in the repo and how ANSI SGR escape sequences are represented in those files.
