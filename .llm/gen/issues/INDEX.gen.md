@@ -21,3 +21,4 @@
 - [x] [`install_nft_deny` has no test for the non-empty deny install path or its warning](install-nft-deny-no-nonempty-test.gen.md) — resolved by [Phase 14a](../plans/phase-14a-nft-deny-fail-hard.gen.md)
 - [x] [Agent-modified entrypoint runs before nft deny enforcement](agent-modified-entrypoint-pre-nft.gen.md) — resolved by [Phase 14b](../plans/phase-14b-entrypoint-readonly-bindmount.gen.md) and [Phase 14c](../plans/phase-14c-nft-before-entrypoint-setup.gen.md)
 - [x] [`--rm-image` blocked by external working containers](rm-image-blocked-by-external-working-containers.gen.md) — resolved by [Phase 16a](../plans/phase-16a-rm-image-prune-external-working-containers.gen.md)
+- [ ] [`parse_tap()` drops failing tests with empty descriptions from `FAIL_NAMES`](parse-tap-empty-desc-drops-fail-name.gen.md) — resolved by [Phase 16c](../plans/phase-16c-parse-tap-empty-desc.gen.md)
