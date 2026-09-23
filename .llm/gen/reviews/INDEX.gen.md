@@ -9,4 +9,5 @@
 - [Recurring `netbox --rm-image` e2e failure — two failure modes](rm-image-e2e-failure.gen.md)
 - [Test-suite order, image, and container dependencies](test-suite-order-image-container-deps.gen.md)
 - [`parse_tap()` name-recording investigation — empty-description failures dropped from `FAIL_NAMES`](parse-tap-fail-names-investigation.gen.md)
+- [Host-access security review (netbox) — can the container reach the host?](host-access-review.gen.md)
 
