@@ -34,3 +34,4 @@
 - [Phase 15a: Inline comments in config files](.llm/gen/builds/phase-15a-inline-config-comments.gen.md)
 - [Phase 16a: Prune external working containers before `--rm-image`](.llm/gen/builds/phase-16a-rm-image-prune-external-working-containers.gen.md)
 - [Phase 16b: Eliminate e2e shared-image inter-test coupling via a reusable `ensure_base_image_e2e` helper](.llm/gen/builds/phase-16b-e2e-shared-image-coupling-helper.gen.md)
+- [Phase 16c: `parse_tap()` records failing tests with empty descriptions](.llm/gen/builds/phase-16c-parse-tap-empty-desc.gen.md)

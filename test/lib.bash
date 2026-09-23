@@ -24,6 +24,9 @@ parse_tap() {
 			local desc="${line#not ok }"
 			desc="${desc#* }"
 			desc="${desc% # *}"
+			if [[ -z "$desc" ]]; then
+				desc="(unnamed)"
+			fi
 			pending="$desc"
 			;;
 		'# (in test file '* | '#  in test file '*)
