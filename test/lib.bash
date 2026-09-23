@@ -7,7 +7,7 @@ parse_tap() {
 	FAIL=0
 	SKIP=0
 	FAIL_NAMES=()
-	local pending=""
+	local -a pending=()
 	while IFS= read -r line || [[ -n "$line" ]]; do
 		case "$line" in
 		'ok '*)
@@ -27,23 +27,24 @@ parse_tap() {
 			if [[ -z "$desc" ]]; then
 				desc="(unnamed)"
 			fi
-			pending="$desc"
+			pending+=("$desc")
 			;;
 		'# (in test file '* | '#  in test file '*)
-			if [[ -n "$pending" ]]; then
+			if [[ ${#pending[@]} -gt 0 ]]; then
 				local src="${line#\# (in test file }"
 				src="${src#\#  in test file }"
 				src="${src%%, line *}"
 				src="${src#"$PROJECT_ROOT"/}"
-				FAIL_NAMES+=("$src :: $pending")
-				pending=""
+				FAIL_NAMES+=("$src :: ${pending[-1]}")
+				unset 'pending[-1]'
 			fi
 			;;
 		esac
 	done <"$tap_file"
-	if [[ -n "$pending" ]]; then
-		FAIL_NAMES+=("(unknown) :: $pending")
-	fi
+	local desc
+	for desc in "${pending[@]+"${pending[@]}"}"; do
+		FAIL_NAMES+=("(unknown) :: $desc")
+	done
 }
 
 yaml_quote() {
