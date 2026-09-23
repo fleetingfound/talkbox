@@ -8,13 +8,31 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     ca-certificates \
     curl \
     findutils \
+    fzf \
     git \
     less \
+    neovim \
     sudo \
+    tmux \
     tree \
-    vim-tiny \
     wget \
     && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+COPY --from=node:lts-slim /usr/local/bin/node /usr/local/bin/
+COPY --from=node:lts-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
+
+RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
+    ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+
+RUN export UV_PYTHON_INSTALL_DIR=/usr/local/uv/python && \
+    uv python install 3.12 && \
+    uv_python_bin="$(dirname "$(uv python find)")" && \
+    ln -s "$uv_python_bin/python" /usr/local/bin/python && \
+    ln -s "$uv_python_bin/python3" /usr/local/bin/python3
+
+RUN npm install -g --allow-scripts=@anthropic-ai/claude-code,opencode-ai @anthropic-ai/claude-code opencode-ai && \
+    npm install -g --ignore-scripts @earendil-works/pi-coding-agent
 
 RUN groupadd -g 1000 dev && \
     useradd -m -u 1000 -g 1000 -s /bin/bash dev && \
@@ -29,5 +47,7 @@ RUN install -d -o dev -g dev /working
 USER dev
 
 RUN mkdir -p /home/dev/.local/share/opencode
+
+RUN uv tool install --python 3.12 aider-chat
 
 WORKDIR /working

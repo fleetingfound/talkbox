@@ -83,7 +83,10 @@ alias gsw='git switch'
 alias gt='cd "$(git rev-parse --show-cdup)."'
 
 alias gre='git restore'
-alias gun='git restore --source=HEAD'                         # undo to last commit
-alias gus='git restore --staged'                              # unstage
-alias gcl='git clean -f'                                      # remove untracked files
-alias gdd='git restore --source=HEAD -- . && git clean -fd'   # gun && gcl
+alias gun='git restore --source=HEAD'                       # undo to last commit
+alias gus='git restore --staged'                            # unstage
+alias gcl='git clean -f'                                    # remove untracked files
+alias gdd='git restore --source=HEAD -- . && git clean -fd' # gun && gcl
+
+alias cc='claude'
+alias oc='opencode'
