@@ -1,5 +1,5 @@
 > [!WARNING]
-> Language models were used to assist in the development of this code which has not yet been reviewed. Proceed with caution.
+> talkbox is experimental software. Podman containers simplify deployment and support GPU access, but they offer weaker isolation than virtual machines and may be more vulnerable to to security exploits. Do not use talkbox as the only security layer.
 
 # talkbox
 
@@ -34,6 +34,12 @@ The intention of `offbox` is to enable the use of local coding agents and untrus
 
 It is possible to start with `onbox` or `netbox` and then switch to `offbox` in the same repository, in which case installed packages will persist because of a cloned home volume. This enables an `offbox` environment to be prepared with internet access using `onbox` or `netbox`.
 
-## References
+## development
+
+This repository was developed from the specifications given in [SPEC.md](SPEC.md), using the Opencode configuration [zettel-agents](https://github.com/fleetingfound/zettel-agents/), which implements red/green test-driven development.
+
+## references
 
 - [Github - Correct way to create a podman-network that can only communicate to services bound on localhost #22570](https://github.com/podman-container-tools/podman/discussions/22570?utm_source=chatgpt.com#discussioncomment-9438485)
+- [TAAG](https://patorjk.com/software/taag/) by `patorjk` was used to generate the ascii art, with font `Rebel` by Valerie Mates
+- [A field guide to sandboxes for AI](https://www.luiscardoso.dev/blog/sandboxes-for-ai) by Christian Weiss
