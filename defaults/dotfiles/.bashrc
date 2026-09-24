@@ -16,6 +16,7 @@ parse_git_branch() {
 }
 
 if [[ -z "${_TALKBOX_BANNER_SHOWN:-}" ]] && [[ -n "${TALKBOX_CONTAINER_TYPE:-}" ]] && [[ -f "/talkbox/art/${TALKBOX_CONTAINER_TYPE}.txt" ]]; then
+  clear -x
   printf '%b' "$(cat "/talkbox/art/${TALKBOX_CONTAINER_TYPE}.txt")"
   printf '\n'
   export _TALKBOX_BANNER_SHOWN=1
