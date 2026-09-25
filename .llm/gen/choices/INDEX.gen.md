@@ -95,3 +95,9 @@
 
 - [x] [ASCII art display location](ascii-art-display-location.gen.md) - whether the art is printed by the host-side executor before `podman exec` or from inside the container by `.bashrc`.
 - [x] [ASCII art file format and storage](ascii-art-file-format.gen.md) - where the art files are stored in the repo and how ANSI SGR escape sequences are represented in those files.
+
+## Minimal test Containerfile
+
+- [x] [Test base-image tag isolation](minimal-test-image-tag-isolation.gen.md) - how the e2e suite targets a base image tag distinct from the production `talkbox/base:latest` (env-var override in `base_image_name()`, shared production tag, or rewriting the copied `lib/naming.sh`).
+- [x] [Minimal test Containerfile placement and selection](minimal-test-containerfile-placement.gen.md) - where the minimal Containerfile lives and how every test-reachable build path (`ensure_base_image`, `--rebuild` planners) comes to use it.
+- [x] [Minimal test image content](minimal-test-image-content.gen.md) - what the minimal test image contains (Debian-slim with git/curl/ca-certificates, a multi-stage target in the production Containerfile, or an Alpine base).

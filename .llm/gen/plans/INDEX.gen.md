@@ -43,3 +43,4 @@ Implementation plan for `SPEC.md`, in recommended order. Each phase builds on th
 - [x] [Phase 16c: `parse_tap()` records failing tests with empty descriptions](phase-16c-parse-tap-empty-desc.gen.md) #flow/unified #model/default
 - [x] [Phase 16d: `parse_tap()` records every `not ok` failure when diagnostics are absent](phase-16d-parse-tap-fallback-multiple-failures.gen.md) #flow/unified #model/default
 - [x] [Phase 17a: ASCII art banner on container startup](phase-17a-ascii-art-banner.gen.md) #flow/unified #model/default
+- [ ] [Phase 18: Minimal test Containerfile for the e2e suite](phase-18-minimal-test-image.gen.md) #flow/unified #model/default
