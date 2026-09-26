@@ -30,6 +30,12 @@ require_nft_and_internet() {
 require_nft_ipv6() {
 	command -v nft >/dev/null 2>&1 || skip "nft is required for the deny/allow enforcement e2e tests"
 	command -v python3 >/dev/null 2>&1 || skip "python3 is required for the IPv6 deny/allow e2e test"
+	# pasta enables IPv6 (and only then binds forwarded ports on the container's
+	# ::1) when the host's outbound interface has a global IPv6 address, so a
+	# bind-only check of ::1 is not sufficient to run these tests.
+	if [[ -z "$(ip -6 addr show scope global 2>/dev/null)" ]]; then
+		skip "host has no global IPv6 address; skipping the IPv6 deny/allow e2e test"
+	fi
 	if ! python3 -c 'import socket; s = socket.socket(socket.AF_INET6); s.bind(("::1", 0))' >/dev/null 2>&1; then
 		skip "host has no IPv6 loopback connectivity; skipping the IPv6 deny/allow e2e test"
 	fi
@@ -185,7 +191,7 @@ EOF
 	# the uploadpack script inside the container; the connection attempt thus
 	# happens during setup (entrypoint today, setup.sh after the refactor).
 	sdrun podman run --rm -i --network=none --userns=keep-id:uid=1000,gid=1000 \
-		-v "$vol:/v" -v "$cfg:/cfg:ro" talkbox/base:latest cp /cfg /v/config
+		-v "$vol:/v" -v "$cfg:/cfg:ro" "$E2E_BASE_IMAGE" cp /cfg /v/config
 	run run_talkbox "$PROJECT" "$TALKBOX" onbox --deny-ip 1.1.1.1 -c --noninteractive 'cat hook-result.txt'
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'BLOCKED'* ]]

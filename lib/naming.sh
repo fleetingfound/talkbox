@@ -21,7 +21,7 @@ project_slug() {
 }
 
 base_image_name() {
-	printf '%s\n' 'talkbox/base:latest'
+	printf '%s\n' "${TALKBOX_BASE_IMAGE:-talkbox/base:latest}"
 }
 
 onbox_container_name() {

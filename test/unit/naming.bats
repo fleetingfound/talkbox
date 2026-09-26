@@ -35,6 +35,15 @@ load helpers
 	[[ "$(base_image_name)" == 'talkbox/base:latest' ]]
 }
 
+@test "base_image_name honours the TALKBOX_BASE_IMAGE override and the default when unset" {
+	load_lib naming.sh
+	# shellcheck disable=SC2034 # TALKBOX_BASE_IMAGE is read by the sourced base_image_name
+	TALKBOX_BASE_IMAGE='custom/base:v9'
+	[[ "$(base_image_name)" == 'custom/base:v9' ]]
+	unset TALKBOX_BASE_IMAGE
+	[[ "$(base_image_name)" == 'talkbox/base:latest' ]]
+}
+
 @test "onbox_container_name returns the project slug with a .onbox suffix" {
 	load_lib naming.sh
 	[[ "$(onbox_container_name '/tmp/My Project')" == 'my-project.onbox' ]]

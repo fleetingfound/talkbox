@@ -157,11 +157,11 @@ teardown() {
 @test "netbox --rm-image removes the base image" {
 	run run_talkbox "$PROJECT" "$TALKBOX" netbox -c --noninteractive 'true'
 	[[ "$status" -eq 0 ]]
-	run sdrun podman image exists talkbox/base:latest
+	run sdrun podman image exists "$E2E_BASE_IMAGE"
 	[[ "$status" -eq 0 ]]
 	run run_talkbox "$PROJECT" "$TALKBOX" netbox --rm-image
 	[[ "$status" -eq 0 ]]
-	run sdrun podman image exists talkbox/base:latest
+	run sdrun podman image exists "$E2E_BASE_IMAGE"
 	[[ "$status" -ne 0 ]]
 }
 

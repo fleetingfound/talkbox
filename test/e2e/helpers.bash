@@ -4,11 +4,14 @@ INDIVIDUAL_TEST_TIMEOUT="${INDIVIDUAL_TEST_TIMEOUT:-60}"
 SD_TIMEOUT="${SD_TIMEOUT:-$((INDIVIDUAL_TEST_TIMEOUT - 5))}"
 ((SD_TIMEOUT > 0)) || SD_TIMEOUT=1
 
+E2E_BASE_IMAGE='talkbox/base-e2e:latest'
+
 sdrun() {
 	systemd-run --user --wait --collect --pipe \
 		-p "RuntimeMaxSec=$SD_TIMEOUT" \
 		-p KillMode=control-group \
 		-E "PATH=$PATH" \
+		-E "TALKBOX_BASE_IMAGE=$E2E_BASE_IMAGE" \
 		-- "$@"
 }
 
@@ -30,6 +33,11 @@ mk_talkbox() {
 		fi
 	done
 	chmod +x "$dest/talkbox.sh" 2>/dev/null || true
+	# Every test-reachable build path reads $TALKBOX_ROOT/image/Containerfile
+	# (ensure_base_image, plan_rebuild, the netbox/offbox rebuild planners), so
+	# swap in the minimal test image definition after the tree copy; the image/
+	# context still provides setup.sh for the COPY.
+	cp "$PROJECT_ROOT/image/Containerfile.minimal" "$dest/image/Containerfile"
 	mkdir -p "$dest/defaults/dotfiles"
 	printf 'talkbox-e2e-global-marker\n' >"$dest/defaults/dotfiles/talkbox_marker"
 	printf 'global\n' >"$dest/defaults/dotfiles/conf.txt"
@@ -66,11 +74,11 @@ teardown_talkbox() {
 
 ensure_base_image_e2e() {
 	local talkbox="$1"
-	if ! sdrun podman image exists talkbox/base:latest >/dev/null 2>&1; then
-		sdrun podman build -t talkbox/base:latest -f "$talkbox/image/Containerfile" "$talkbox/image" >/dev/null || return 1
+	if ! sdrun podman image exists "$E2E_BASE_IMAGE" >/dev/null 2>&1; then
+		sdrun podman build -t "$E2E_BASE_IMAGE" -f "$talkbox/image/Containerfile" "$talkbox/image" >/dev/null || return 1
 	fi
 	local id ids
-	ids="$(sdrun podman ps -a --external --filter 'ancestor=talkbox/base:latest' --format '{{.ID}}')"
+	ids="$(sdrun podman ps -a --external --filter "ancestor=$E2E_BASE_IMAGE" --format '{{.ID}}')"
 	for id in $ids; do
 		sdrun podman rm -f "$id" >/dev/null 2>&1 || true
 	done
