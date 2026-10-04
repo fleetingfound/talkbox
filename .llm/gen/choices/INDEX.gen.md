@@ -101,3 +101,7 @@
 - [x] [Test base-image tag isolation](minimal-test-image-tag-isolation.gen.md) - how the e2e suite targets a base image tag distinct from the production `talkbox/base:latest` (env-var override in `base_image_name()`, shared production tag, or rewriting the copied `lib/naming.sh`).
 - [x] [Minimal test Containerfile placement and selection](minimal-test-containerfile-placement.gen.md) - where the minimal Containerfile lives and how every test-reachable build path (`ensure_base_image`, `--rebuild` planners) comes to use it.
 - [x] [Minimal test image content](minimal-test-image-content.gen.md) - what the minimal test image contains (Debian-slim with git/curl/ca-certificates, a multi-stage target in the production Containerfile, or an Alpine base).
+
+## `lib/containers.sh` consolidation (Phase 19)
+
+- [x] [Consolidation boundary and unit-test surface](containers-consolidation-boundary.gen.md) - which interfaces survive the Phase 19 consolidation (the `run_*` executors as delegates over unified cores with executor-level unit tests, or full parameterization with CLI-level unit tests). Selected: executor-surface preservation.
