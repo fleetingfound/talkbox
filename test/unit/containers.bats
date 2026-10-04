@@ -8,356 +8,284 @@ load_onbox_plan() {
 	load_lib containers.sh
 }
 
-array_contains() {
-	local value="$1"
-	shift
-	local element
-	for element in "$@"; do
-		if [[ "$element" == "$value" ]]; then
-			return 0
-		fi
-	done
-	return 1
-}
-
-array_has() {
-	local needle="$1"
-	shift
-	local element
-	for element in "$@"; do
-		if [[ "$element" == *"$needle"* ]]; then
-			return 0
-		fi
-	done
-	return 1
-}
-
-array_has_none() {
-	local needle="$1"
-	shift
-	local element
-	for element in "$@"; do
-		if [[ "$element" == *"$needle"* ]]; then
-			return 1
-		fi
-	done
-	return 0
-}
-
-plan_subcommands() {
-	local -n _plan="$1"
-	local i
-	for ((i = 0; i < ${#_plan[@]}; i++)); do
-		if [[ "${_plan[$i]}" == podman ]]; then
-			printf '%s\n' "${_plan[$((i + 1))]}"
-		fi
-	done
-}
-
-# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 setup() {
 	PROJECT="$BATS_TEST_TMPDIR/talkbox-proj"
 	mkdir -p "$PROJECT"
 	READ_MOUNTS=()
 	WRITE_MOUNTS=()
 	PORTS=()
+	DENY=()
+	ALLOW=()
+	SHIM="$BATS_TEST_TMPDIR/shim"
+	LOG="$BATS_TEST_TMPDIR/podman.log"
 }
 
-@test "onbox plan sets the working directory to /working/<project-base>" {
-	load_onbox_plan
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains '--workdir=/working/talkbox-proj' "${args[@]}"
-}
-
-@test "onbox plan maps the host user to container uid/gid 1000" {
-	load_onbox_plan
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains '--userns=keep-id:uid=1000,gid=1000' "${args[@]}"
-}
-
-@test "onbox plan uses rootless pasta networking without host-port forwarding" {
-	load_onbox_plan
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains '--network=pasta:--dns-forward,169.254.1.1,--map-guest-addr,none' "${args[@]}"
-	[[ "${args[*]}" != *'-T,'* ]]
-}
-
-@test "onbox plan drops NET_ADMIN and NET_RAW capabilities" {
-	load_onbox_plan
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains '--cap-drop=NET_ADMIN' "${args[@]}"
-	array_contains '--cap-drop=NET_RAW' "${args[@]}"
-}
-
-@test "onbox plan bind-mounts the host worktree read-write" {
-	load_onbox_plan
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains "$PROJECT:/working/talkbox-proj" "${args[@]}"
-	if array_contains "$PROJECT:/working/talkbox-proj:ro" "${args[@]}"; then
-		return 1
-	fi
-}
-
-@test "onbox plan bind-mounts global dotfiles read-only" {
-	load_onbox_plan
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro" "${args[@]}"
-}
-
-@test "onbox plan bind-mounts project dotfiles read-only when they exist" {
-	load_onbox_plan
-	mkdir -p "$PROJECT/.dotfiles"
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains "$PROJECT/.dotfiles:/talkbox/dotfiles.project:ro" "${args[@]}"
-}
-
-@test "onbox plan omits the project dotfiles bind-mount when .dotfiles is absent" {
-	load_onbox_plan
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_has_none 'dotfiles.project' "${args[@]}"
-}
-
-@test "onbox plan appends the GPU device and group options when TALKBOX_GPU is yes" {
-	load_onbox_plan
-	# shellcheck disable=SC2034 # global consumed by plan_onbox
-	TALKBOX_GPU=yes
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_has 'nvidia.com/gpu=all' "${args[@]}"
-	array_has 'keep-groups' "${args[@]}"
-}
-
-@test "onbox recontain plan passes the GPU options to podman create when TALKBOX_GPU is yes" {
-	load_onbox_plan
-	# shellcheck disable=SC2034 # global consumed by plan_onbox
-	TALKBOX_GPU=yes
-	local args=()
-	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_has 'nvidia.com/gpu=all' "${args[@]}"
-	array_has 'keep-groups' "${args[@]}"
-}
-
-@test "onbox rebuild plan passes the GPU options to podman create when TALKBOX_GPU is yes" {
-	load_onbox_plan
-	# shellcheck disable=SC2034 # global consumed by plan_onbox
-	TALKBOX_GPU=yes
-	local args=()
-	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_has 'nvidia.com/gpu=all' "${args[@]}"
-	array_has 'keep-groups' "${args[@]}"
-}
-
-@test "onbox plan emits --init for the persistent container" {
-	load_onbox_plan
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains '--init' "${args[@]}"
-}
-
-@test "onbox plan emits --init ahead of the image name and the sleep command" {
-	load_onbox_plan
-	local img args=() init_at=-1 img_at=-1 i
+use_podman_shim() {
+	make_podman_shim "$SHIM"
+	PATH="$SHIM:$PATH"
+	export PODMAN_LOG="$LOG"
+	local img
 	img="$(base_image_name)"
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	for ((i = 0; i < ${#args[@]}; i++)); do
-		if [[ "${args[$i]}" == --init ]]; then
-			init_at=$i
-		fi
-		if [[ "${args[$i]}" == "$img" ]]; then
-			img_at=$i
-		fi
-	done
-	[[ $init_at -ge 0 ]]
-	[[ $init_at -lt $img_at ]]
+	export PODMAN_IMAGES="$img"
 }
 
-@test "onbox recontain plan propagates --init to podman create" {
+@test "run_onbox creates the container with the workdir, userns and capability drops, probing no image" {
 	load_onbox_plan
-	local args=()
-	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains '--init' "${args[@]}"
+	use_podman_shim
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	[[ -n "$create" ]]
+	line_has_token "$create" '--workdir=/working/talkbox-proj'
+	line_has_token "$create" '--userns=keep-id:uid=1000,gid=1000'
+	line_has_token "$create" '--cap-drop=NET_ADMIN'
+	line_has_token "$create" '--cap-drop=NET_RAW'
+	[[ "$(podman_count 'image exists')" -eq 0 ]]
+	[[ "$(podman_count '^build ')" -eq 0 ]]
 }
 
-@test "onbox rebuild plan propagates --init to podman create" {
+@test "run_onbox uses the pasta network with the DNS-forward suffix and no host-port forwarding by default" {
 	load_onbox_plan
-	local args=()
-	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains '--init' "${args[@]}"
+	use_podman_shim
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	line_has_token "$create" '--network=pasta:--dns-forward,169.254.1.1,--map-guest-addr,none'
+	[[ "$create" != *'-T,'* ]]
 }
 
-@test "onbox plan runs the shared base image" {
+@test "run_onbox forwards pasta -T ports and applies read mounts read-only and write mounts as bind-mounts" {
 	load_onbox_plan
-	local img args=()
-	img="$(base_image_name)"
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains "$img" "${args[@]}"
-}
-
-@test "onbox plan names the persistent container <project-slug>.onbox" {
-	load_onbox_plan
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains '--name=talkbox-proj.onbox' "${args[@]}"
-}
-
-@test "onbox plan does not emit --rm for the persistent normal run" {
-	load_onbox_plan
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_has_none '--rm' "${args[@]}"
-}
-
-@test "onbox plan applies default mounts and pasta -T ports" {
-	load_onbox_plan
+	use_podman_shim
 	local home="$BATS_TEST_TMPDIR/home"
 	mkdir -p "$home"
 	printf '/host/etc\n' >"$BATS_TEST_TMPDIR/read.mounts"
 	printf '/host/var\n' >"$BATS_TEST_TMPDIR/write.mounts"
 	printf '8080\n' >"$BATS_TEST_TMPDIR/ports"
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
-	local read_mounts=() write_mounts=() ports=() args=()
+	local -a read_mounts=() write_mounts=() ports=()
 	mount_args read_mounts read "$BATS_TEST_TMPDIR/read.mounts" "$PROJECT" "$home"
 	mount_args write_mounts write "$BATS_TEST_TMPDIR/write.mounts" "$PROJECT" "$home"
 	port_args ports "$BATS_TEST_TMPDIR/ports" 9090
-	plan_onbox args "$PROJECT" yes read_mounts write_mounts ports
-	array_contains '/host/etc:/host/read/etc:ro' "${args[@]}"
-	array_contains '/host/var:/host/write/var' "${args[@]}"
-	array_contains '--network=pasta:-T,8080,-T,9090,--dns-forward,169.254.1.1,--map-guest-addr,none' "${args[@]}"
+	run run_onbox "$PROJECT" 'true' no read_mounts write_mounts ports DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	line_has_token "$create" '--network=pasta:-T,8080,-T,9090,--dns-forward,169.254.1.1,--map-guest-addr,none'
+	line_has_token "$create" '/host/etc:/host/read/etc:ro'
+	line_has_token "$create" '/host/var:/host/write/var'
 }
 
-@test "onbox interactive plan allocates a terminal" {
+@test "run_onbox bind-mounts the host worktree read-write" {
 	load_onbox_plan
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains '--interactive' "${args[@]}"
-	array_contains '--tty' "${args[@]}"
+	use_podman_shim
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	line_has_token "$create" "$PROJECT:/working/talkbox-proj"
+	line_lacks_token "$create" "$PROJECT:/working/talkbox-proj:ro"
 }
 
-@test "onbox noninteractive plan does not allocate a terminal" {
+@test "run_onbox bind-mounts global dotfiles and art read-only and project dotfiles when they exist" {
 	load_onbox_plan
-	local args=()
-	plan_onbox args "$PROJECT" no READ_MOUNTS WRITE_MOUNTS PORTS
-	if array_contains '--interactive' "${args[@]}" || array_contains '--tty' "${args[@]}"; then
-		return 1
-	fi
+	use_podman_shim
+	mkdir -p "$PROJECT/.dotfiles"
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	line_has_token "$create" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro"
+	line_has_token "$create" "$TALKBOX_ROOT/defaults/art:/talkbox/art:ro"
+	line_has_token "$create" "$PROJECT/.dotfiles:/talkbox/dotfiles.project:ro"
 }
 
-@test "onbox plan omits the global dotfiles bind-mount when defaults/dotfiles is absent" {
+@test "run_onbox omits the dotfiles and art bind-mounts when absent" {
 	load_onbox_plan
+	use_podman_shim
 	TALKBOX_ROOT="$BATS_TEST_TMPDIR/talkbox-root-no-dotfiles"
 	mkdir -p "$TALKBOX_ROOT"
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_has_none 'dotfiles.global' "${args[@]}"
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	[[ "$create" != *'dotfiles.global'* ]]
+	[[ "$create" != *'dotfiles.project'* ]]
+	[[ "$create" != *'/talkbox/art'* ]]
 }
 
-@test "onbox plan adds the git mounts for a git-tracked project and omits them for a non-git project" {
+@test "run_onbox names the container, runs the base image with sleep infinity behind --init, without --rm or tmpfs" {
 	load_onbox_plan
+	use_podman_shim
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create img init_at img_at sleep_at
+	create="$(podman_create_line)"
+	img="$(base_image_name)"
+	line_has_token "$create" '--init'
+	line_has_token "$create" '--name=talkbox-proj.onbox'
+	line_has_token "$create" "$img"
+	line_has_token "$create" 'sleep'
+	line_has_token "$create" 'infinity'
+	init_at="$(line_token_at "$create" --init)"
+	img_at="$(line_token_at "$create" "$img")"
+	sleep_at="$(line_token_at "$create" sleep)"
+	[[ "$init_at" -gt 0 ]]
+	[[ "$init_at" -lt "$img_at" ]]
+	[[ "$img_at" -lt "$sleep_at" ]]
+	line_lacks_token "$create" '--rm'
+	line_lacks_token "$create" '--tmpfs'
+	[[ "$create" != *'/run/talkbox'* ]]
+}
+
+@test "run_onbox interactive create allocates a terminal and noninteractive does not" {
+	load_onbox_plan
+	use_podman_shim
+	run run_onbox "$PROJECT" 'true' yes READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	line_has_token "$create" '--interactive'
+	line_has_token "$create" '--tty'
+	: >"$LOG"
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	create="$(podman_create_line)"
+	line_lacks_token "$create" '--interactive'
+	line_lacks_token "$create" '--tty'
+}
+
+@test "run_onbox adds the git mounts and creates the gitdir volume for a git-tracked project only" {
+	load_onbox_plan
+	use_podman_shim
 	mkdir -p "$PROJECT/.git"
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains "$PROJECT/.git:/host/git:ro" "${args[@]}"
-	array_contains 'talkbox-proj.onbox.gitdir:/working/talkbox-proj/.git' "${args[@]}"
-	local plain
-	plain="$BATS_TEST_TMPDIR/plain"
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	line_has_token "$create" "$PROJECT/.git:/host/git:ro"
+	line_has_token "$create" 'talkbox-proj.onbox.gitdir:/working/talkbox-proj/.git'
+	line_has_token "$create" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro"
+	line_has_token "$create" "$TALKBOX_ROOT/image/setup.sh:/usr/local/bin/setup.sh:ro"
+	[[ -n "$(podman_line '^volume create talkbox-proj.onbox.gitdir$')" ]]
+	[[ "$(podman_line_no '^volume create talkbox-proj.onbox.gitdir$')" -lt "$(podman_line_no '^create ')" ]]
+	local plain="$BATS_TEST_TMPDIR/plain"
 	mkdir -p "$plain"
-	args=()
-	plan_onbox args "$plain" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_has_none '/host/git' "${args[@]}"
-	array_has_none '.gitdir' "${args[@]}"
+	: >"$LOG"
+	run run_onbox "$plain" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	create="$(podman_create_line)"
+	[[ "$create" != *'/host/git'* ]]
+	[[ "$create" != *'.gitdir'* ]]
+	[[ -z "$(podman_line '^volume create ')" ]]
 }
 
-@test "onbox plan emits git identity env vars for a git-tracked project but not for a non-git project" {
+@test "run_onbox emits git identity env vars for a git-tracked project but not for a non-git project" {
 	load_onbox_plan
+	use_podman_shim
 	git -C "$PROJECT" init -q
 	git -C "$PROJECT" config user.name host-user
 	git -C "$PROJECT" config user.email host@example.com
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_has 'TALKBOX_GIT_USER_NAME=host-user' "${args[@]}"
-	array_has 'TALKBOX_GIT_USER_EMAIL=host@example.com' "${args[@]}"
-	local plain
-	plain="$BATS_TEST_TMPDIR/plain"
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	line_has_token "$create" 'TALKBOX_GIT_USER_NAME=host-user'
+	line_has_token "$create" 'TALKBOX_GIT_USER_EMAIL=host@example.com'
+	local plain="$BATS_TEST_TMPDIR/plain"
 	mkdir -p "$plain"
-	args=()
-	plan_onbox args "$plain" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_has_none 'TALKBOX_GIT_USER' "${args[@]}"
+	: >"$LOG"
+	run run_onbox "$plain" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	create="$(podman_create_line)"
+	[[ "$create" != *'TALKBOX_GIT_USER'* ]]
 }
 
-@test "onbox plan omits a git identity env var for a field the host has not configured" {
+@test "run_onbox omits a git identity env var for a field the host has not configured" {
 	load_onbox_plan
+	use_podman_shim
 	export HOME="$BATS_TEST_TMPDIR/home"
 	export GIT_CONFIG_NOSYSTEM=1
+	mkdir -p "$HOME"
 	git -C "$PROJECT" init -q
 	git -C "$PROJECT" config user.email host@example.com
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_has_none 'TALKBOX_GIT_USER_NAME' "${args[@]}"
-	array_has 'TALKBOX_GIT_USER_EMAIL=host@example.com' "${args[@]}"
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	[[ "$create" != *'TALKBOX_GIT_USER_NAME'* ]]
+	line_has_token "$create" 'TALKBOX_GIT_USER_EMAIL=host@example.com'
 }
 
-@test "onbox plan emits the prompt host env vars for git-tracked and non-git projects" {
+@test "run_onbox emits the prompt host env vars for git-tracked and non-git projects" {
 	load_onbox_plan
+	use_podman_shim
 	git -C "$PROJECT" init -q
-	git -C "$PROJECT" config user.name host-user
-	git -C "$PROJECT" config user.email host@example.com
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
-	array_contains 'TALKBOX_CONTAINER_TYPE=onbox' "${args[@]}"
-	array_has 'TALKBOX_GIT_USER_NAME=host-user' "${args[@]}"
-	local plain
-	plain="$BATS_TEST_TMPDIR/plain"
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	line_has_token "$create" 'TALKBOX_PROJECT_SLUG=talkbox-proj'
+	line_has_token "$create" 'TALKBOX_CONTAINER_TYPE=onbox'
+	local plain="$BATS_TEST_TMPDIR/plain"
 	mkdir -p "$plain"
-	args=()
-	plan_onbox args "$plain" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains 'TALKBOX_PROJECT_SLUG=plain' "${args[@]}"
-	array_contains 'TALKBOX_CONTAINER_TYPE=onbox' "${args[@]}"
-	array_has_none 'TALKBOX_GIT_USER' "${args[@]}"
+	: >"$LOG"
+	run run_onbox "$plain" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	create="$(podman_create_line)"
+	line_has_token "$create" 'TALKBOX_PROJECT_SLUG=plain'
+	line_has_token "$create" 'TALKBOX_CONTAINER_TYPE=onbox'
 }
 
-@test "onbox recontain and rebuild plans propagate the prompt host env vars to podman create" {
+@test "run_onbox appends the GPU device and group options when TALKBOX_GPU is yes" {
 	load_onbox_plan
-	local args=()
-	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
-	array_contains 'TALKBOX_CONTAINER_TYPE=onbox' "${args[@]}"
-	args=()
-	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
-	array_contains 'TALKBOX_CONTAINER_TYPE=onbox' "${args[@]}"
+	use_podman_shim
+	# shellcheck disable=SC2034 # global consumed by the sourced containers.sh
+	TALKBOX_GPU=yes
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	line_has_token "$create" 'nvidia.com/gpu=all'
+	line_has_token "$create" 'keep-groups'
 }
 
-@test "onbox plan does not mount a tmpfs at /run/talkbox" {
+@test "run_onbox starts an interactive /bin/bash when no command is given and stops the container afterwards" {
 	load_onbox_plan
-	local args=()
-	plan_onbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_has_none '--tmpfs' "${args[@]}"
-	array_has_none '/run/talkbox' "${args[@]}"
+	use_podman_shim
+	run run_onbox "$PROJECT" '' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local exec_line stop_line
+	exec_line="$(podman_line_no '^exec --interactive --tty talkbox-proj.onbox /bin/bash$')"
+	stop_line="$(podman_line_no '^stop -t 5 talkbox-proj.onbox$')"
+	[[ -n "$exec_line" && -n "$stop_line" ]]
+	[[ "$exec_line" -lt "$stop_line" ]]
 }
 
-@test "onbox recontain plan does not emit a /run/talkbox tmpfs" {
+@test "run_onbox runs a non-empty command via bash -c, returns its exit status and stops best-effort" {
 	load_onbox_plan
-	local args=()
-	plan_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_has_none '--tmpfs' "${args[@]}"
-	array_has_none '/run/talkbox' "${args[@]}"
+	use_podman_shim
+	export PODMAN_FAIL_PATTERN='bash -c exit 3'
+	export PODMAN_FAIL_CODE=7
+	run run_onbox "$PROJECT" 'exit 3' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 7 ]]
+	local exec_line stop_line
+	exec_line="$(podman_line_no '^exec talkbox-proj.onbox bash -c exit 3$')"
+	stop_line="$(podman_line_no '^stop -t 5 talkbox-proj.onbox$')"
+	[[ -n "$exec_line" && -n "$stop_line" ]]
+	[[ "$exec_line" -lt "$stop_line" ]]
 }
 
-@test "onbox rebuild plan does not emit a /run/talkbox tmpfs" {
+@test "run_onbox succeeds even when the best-effort stop fails" {
 	load_onbox_plan
-	local args=()
-	plan_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS
-	array_has_none '--tmpfs' "${args[@]}"
-	array_has_none '/run/talkbox' "${args[@]}"
+	use_podman_shim
+	export PODMAN_FAIL_PATTERN='stop -t 5'
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ -n "$(podman_line '^stop -t 5 talkbox-proj.onbox$')" ]]
 }
 
 @test "run_onbox applies the nft deny rules before running setup.sh and runs setup.sh before the user command" {

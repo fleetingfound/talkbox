@@ -1,3 +1,4 @@
+# shellcheck disable=SC2030,SC2031 # bats runs each test in a subshell; the PODMAN_* exports are scoped to their own test
 load helpers
 
 load_netbox_plan() {
@@ -13,18 +14,6 @@ array_contains() {
 	local element
 	for element in "$@"; do
 		if [[ "$element" == "$value" ]]; then
-			return 0
-		fi
-	done
-	return 1
-}
-
-array_has() {
-	local needle="$1"
-	shift
-	local element
-	for element in "$@"; do
-		if [[ "$element" == *"$needle"* ]]; then
 			return 0
 		fi
 	done
@@ -53,13 +42,28 @@ plan_subcommands() {
 	done
 }
 
-# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
+# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 setup() {
 	PROJECT="$BATS_TEST_TMPDIR/talkbox-proj"
 	mkdir -p "$PROJECT"
 	READ_MOUNTS=()
 	WRITE_MOUNTS=()
+	SRCS=()
+	DSTS=()
 	PORTS=()
+	DENY=()
+	ALLOW=()
+	SHIM="$BATS_TEST_TMPDIR/shim"
+	LOG="$BATS_TEST_TMPDIR/podman.log"
+}
+
+use_podman_shim() {
+	make_podman_shim "$SHIM"
+	PATH="$SHIM:$PATH"
+	export PODMAN_LOG="$LOG"
+	local img
+	img="$(base_image_name)"
+	export PODMAN_IMAGES="$img"
 }
 
 @test "inheritance planner uses the base image when no source container exists" {
@@ -77,7 +81,7 @@ setup() {
 	load_netbox_plan
 	[[ "$(inherit_source offbox yes yes no no '')" == netbox ]]
 	[[ "$(inherit_source offbox no yes no no '')" == netbox ]]
-	[[ "$(inherit_source offbox yes no no no '')" == onbox ]]
+	[[ "$(inherit_source offbox yes no no '')" == onbox ]]
 	[[ "$(inherit_source offbox no no no no '')" == base ]]
 }
 
@@ -134,374 +138,359 @@ setup() {
 	array_contains 'cp' "${args[@]}"
 }
 
-@test "netbox plan mounts the worktree volume and names the container" {
+@test "netbox populate copies the worktree and write mounts from the host but never touches the gitdir volume" {
 	load_netbox_plan
-	local args=()
-	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_contains 'talkbox-proj.netbox.worktree:/working/talkbox-proj' "${args[@]}"
-	array_contains '--name=talkbox-proj.netbox' "${args[@]}"
-}
-
-@test "netbox plan keeps read mounts read-only and write mounts as volumes" {
-	load_netbox_plan
-	local home="$BATS_TEST_TMPDIR/home" args=()
-	mkdir -p "$home"
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local read_mounts=() write_mounts=()
-	mount_args read_mounts read "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
-	mount_volume_args write_mounts netbox "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
-	plan_netbox args "$PROJECT" yes read_mounts write_mounts PORTS "$(base_image_name)"
-	array_contains '/host/data:/talkbox/wdata:ro' "${args[@]}"
-	array_contains 'talkbox-proj.netbox.write.talkbox-wdata:/talkbox/wdata' "${args[@]}"
-	array_has_none 'talkbox-proj.netbox.write.talkbox-wdata:/talkbox/wdata:ro' "${args[@]}"
-}
-
-@test "netbox plan uses pasta networking without loopback restriction and drops caps" {
-	load_netbox_plan
-	local args=()
-	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_contains '--network=pasta:--dns-forward,169.254.1.1,--map-guest-addr,none' "${args[@]}"
-	array_has_none '-i,lo' "${args[@]}"
-	array_contains '--cap-drop=NET_ADMIN' "${args[@]}"
-	array_contains '--cap-drop=NET_RAW' "${args[@]}"
-}
-
-@test "netbox plan appends the GPU device and group options when TALKBOX_GPU is yes" {
-	load_netbox_plan
-	# shellcheck disable=SC2034 # global consumed by plan_netbox
-	TALKBOX_GPU=yes
-	local args=()
-	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_has 'nvidia.com/gpu=all' "${args[@]}"
-	array_has 'keep-groups' "${args[@]}"
-}
-
-@test "netbox plan forwards -T ports on pasta" {
-	load_netbox_plan
-	# shellcheck disable=SC2054 # -T,<port> tokens are single array elements
-	# shellcheck disable=SC2034 # ports is consumed by nameref planner parameter
-	local -a ports=(-T,8080 -T,9090) args=()
-	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS ports "$(base_image_name)"
-	array_contains '--network=pasta:-T,8080,-T,9090,--dns-forward,169.254.1.1,--map-guest-addr,none' "${args[@]}"
-}
-
-@test "netbox plan binds dotfiles read-only and runs the supplied image" {
-	load_netbox_plan
-	local img args=()
-	img="$(netbox_root_image "$PROJECT")"
-	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$img"
-	array_contains "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro" "${args[@]}"
-	array_contains "$img" "${args[@]}"
-}
-
-@test "offbox plan mounts the worktree volume and names the container" {
-	load_netbox_plan
-	local args=()
-	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_contains 'talkbox-proj.offbox.worktree:/working/talkbox-proj' "${args[@]}"
-	array_contains '--name=talkbox-proj.offbox' "${args[@]}"
-}
-
-@test "offbox plan restricts pasta to loopback and excludes talkbox0" {
-	load_netbox_plan
-	local args=()
-	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_contains '--network=pasta:-i,lo,-I,talkbox0' "${args[@]}"
-	array_contains '--cap-drop=NET_ADMIN' "${args[@]}"
-	array_contains '--cap-drop=NET_RAW' "${args[@]}"
-}
-
-@test "offbox plan appends the GPU device and group options when TALKBOX_GPU is yes" {
-	load_netbox_plan
-	# shellcheck disable=SC2034 # global consumed by plan_offbox
-	TALKBOX_GPU=yes
-	local args=()
-	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_has 'nvidia.com/gpu=all' "${args[@]}"
-	array_has 'keep-groups' "${args[@]}"
-}
-
-@test "offbox plan forwards -T ports alongside the loopback restriction" {
-	load_netbox_plan
-	# shellcheck disable=SC2054 # -T,<port> tokens are single array elements
-	# shellcheck disable=SC2034 # ports is consumed by nameref planner parameter
-	local -a ports=(-T,8080) args=()
-	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS ports "$(base_image_name)"
-	array_contains '--network=pasta:-T,8080,-i,lo,-I,talkbox0' "${args[@]}"
-}
-
-@test "offbox plan emits write-mount volumes and read-only read mounts" {
-	load_netbox_plan
-	local home="$BATS_TEST_TMPDIR/home" args=()
-	mkdir -p "$home"
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local read_mounts=() write_mounts=()
-	mount_args read_mounts read "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
-	mount_volume_args write_mounts offbox "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
-	plan_offbox args "$PROJECT" yes read_mounts write_mounts PORTS "$(base_image_name)"
-	array_contains '/host/data:/talkbox/wdata:ro' "${args[@]}"
-	array_contains 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/wdata' "${args[@]}"
-	array_has_none 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/wdata:ro' "${args[@]}"
-}
-
-@test "netbox plan emits git identity env vars for a git-tracked project but not for a non-git project" {
-	load_netbox_plan
-	git -C "$PROJECT" init -q
-	git -C "$PROJECT" config user.name host-user
-	git -C "$PROJECT" config user.email host@example.com
-	local args=()
-	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_has 'TALKBOX_GIT_USER_NAME=host-user' "${args[@]}"
-	array_has 'TALKBOX_GIT_USER_EMAIL=host@example.com' "${args[@]}"
-	local plain
-	plain="$BATS_TEST_TMPDIR/plain"
-	mkdir -p "$plain"
-	args=()
-	plan_netbox args "$plain" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_has_none 'TALKBOX_GIT_USER' "${args[@]}"
-}
-
-@test "offbox plan emits git identity env vars for a git-tracked project but not for a non-git project" {
-	load_netbox_plan
-	git -C "$PROJECT" init -q
-	git -C "$PROJECT" config user.name host-user
-	git -C "$PROJECT" config user.email host@example.com
-	local args=()
-	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_has 'TALKBOX_GIT_USER_NAME=host-user' "${args[@]}"
-	array_has 'TALKBOX_GIT_USER_EMAIL=host@example.com' "${args[@]}"
-	local plain
-	plain="$BATS_TEST_TMPDIR/plain"
-	mkdir -p "$plain"
-	args=()
-	plan_offbox args "$plain" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_has_none 'TALKBOX_GIT_USER' "${args[@]}"
-}
-
-@test "netbox plan emits --init for the persistent container" {
-	load_netbox_plan
-	local img args=()
-	img="$(base_image_name)"
-	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$img"
-	array_contains '--init' "${args[@]}"
-}
-
-@test "netbox plan emits --init ahead of the image name and the sleep command" {
-	load_netbox_plan
-	local img args=() init_at=-1 img_at=-1 i
-	img="$(base_image_name)"
-	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$img"
-	for ((i = 0; i < ${#args[@]}; i++)); do
-		if [[ "${args[$i]}" == --init ]]; then
-			init_at=$i
-		fi
-		if [[ "${args[$i]}" == "$img" ]]; then
-			img_at=$i
-		fi
-	done
-	[[ $init_at -ge 0 ]]
-	[[ $init_at -lt $img_at ]]
-}
-
-@test "offbox plan emits --init for the persistent container" {
-	load_netbox_plan
-	local img args=()
-	img="$(base_image_name)"
-	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$img"
-	array_contains '--init' "${args[@]}"
-}
-
-@test "offbox plan emits --init ahead of the image name and the sleep command" {
-	load_netbox_plan
-	local img args=() init_at=-1 img_at=-1 i
-	img="$(base_image_name)"
-	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$img"
-	for ((i = 0; i < ${#args[@]}; i++)); do
-		if [[ "${args[$i]}" == --init ]]; then
-			init_at=$i
-		fi
-		if [[ "${args[$i]}" == "$img" ]]; then
-			img_at=$i
-		fi
-	done
-	[[ $init_at -ge 0 ]]
-	[[ $init_at -lt $img_at ]]
-}
-
-@test "netbox recontain plan propagates --init to podman create" {
-	load_netbox_plan
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local -a srcs=() dsts=() args=()
-	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_contains '--init' "${args[@]}"
-}
-
-@test "offbox recontain plan propagates --init to podman create" {
-	load_netbox_plan
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local -a srcs=() dsts=() args=()
-	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_contains '--init' "${args[@]}"
-}
-
-@test "netbox rebuild plan propagates --init to podman create" {
-	load_netbox_plan
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local -a srcs=() dsts=() args=()
-	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_contains '--init' "${args[@]}"
-}
-
-@test "offbox rebuild plan propagates --init to podman create" {
-	load_netbox_plan
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local -a srcs=() dsts=() args=()
-	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_contains '--init' "${args[@]}"
-}
-
-@test "netbox plan adds the git mounts and the populate leaves the gitdir volume empty" {
-	load_netbox_plan
-	mkdir -p "$PROJECT/.git"
-	local args=()
-	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_contains "$PROJECT/.git:/host/git:ro" "${args[@]}"
-	array_contains 'talkbox-proj.netbox.gitdir:/working/talkbox-proj/.git' "${args[@]}"
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local srcs=() dsts=() plan=()
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a srcs=('/host/data') dsts=('/talkbox/wdata') plan=()
 	plan_netbox_populate plan "$PROJECT" srcs dsts
+	[[ "$(plan_subcommands plan)" == $'run\nrun' ]]
 	array_has_none 'talkbox-proj.netbox.gitdir' "${plan[@]}"
 }
 
-@test "offbox plan adds the git mounts and the populate leaves the gitdir volume empty" {
+@test "offbox populate copies from the host when the root source is base and never touches the gitdir volume" {
 	load_netbox_plan
-	mkdir -p "$PROJECT/.git"
-	local args=()
-	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_contains "$PROJECT/.git:/host/git:ro" "${args[@]}"
-	array_contains 'talkbox-proj.offbox.gitdir:/working/talkbox-proj/.git' "${args[@]}"
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local srcs=() dsts=() plan=()
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a srcs=('/host/data') dsts=('/talkbox/wdata') plan=()
 	plan_offbox_populate plan "$PROJECT" base srcs dsts
+	[[ "$(plan_subcommands plan)" == $'run\nrun' ]]
 	array_has_none 'talkbox-proj.offbox.gitdir' "${plan[@]}"
 }
 
-@test "netbox plan emits the prompt host env vars for git-tracked and non-git projects" {
+@test "run_netbox uses the base image and populates the worktree from the host when no source container exists" {
 	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ "$(podman_count '^commit ')" -eq 0 ]]
+	[[ "$(podman_count '^build ')" -eq 0 ]]
+	[[ "$(podman_count 'gitdir:/talkbox')" -eq 0 ]]
+	local create populate
+	create="$(podman_create_line)"
+	line_has_token "$create" "$(base_image_name)"
+	populate="$(podman_line 'talkbox-proj.netbox.worktree:/talkbox/target')"
+	line_has_token "$populate" '--network=none'
+	line_has_token "$populate" "$PROJECT:/talkbox/source:ro"
+	[[ "$(podman_line_no 'talkbox-proj.netbox.worktree:/talkbox/target')" -lt "$(podman_line_no '^create ')" ]]
+	[[ "$(podman_line_no '^volume create talkbox-proj.netbox.gitdir$')" -lt "$(podman_line_no '^create ')" ]]
+	[[ -n "$(podman_line '^start talkbox-proj.netbox$')" ]]
+}
+
+@test "run_netbox commits the onbox container as the netbox root image when onbox exists" {
+	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_CONTAINERS="talkbox-proj.onbox"
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ -n "$(podman_line '^commit talkbox-proj.onbox talkbox-proj.netbox.root$')" ]]
+	[[ "$(podman_line_no '^commit ')" -lt "$(podman_line_no 'talkbox-proj.netbox.worktree:/talkbox/target')" ]]
+	[[ "$(podman_line_no '^commit ')" -lt "$(podman_line_no '^create ')" ]]
+	[[ "$(podman_count 'image exists')" -eq 0 ]]
+	line_has_token "$(podman_create_line)" 'talkbox-proj.netbox.root'
+}
+
+@test "run_netbox create args mount the worktree volume, name the container, use pasta with the DNS-forward suffix and drop caps" {
+	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	line_has_token "$create" 'talkbox-proj.netbox.worktree:/working/talkbox-proj'
+	line_has_token "$create" '--name=talkbox-proj.netbox'
+	line_has_token "$create" '--workdir=/working/talkbox-proj'
+	line_has_token "$create" '--userns=keep-id:uid=1000,gid=1000'
+	line_has_token "$create" '--network=pasta:--dns-forward,169.254.1.1,--map-guest-addr,none'
+	[[ "$create" != *'-i,lo'* ]]
+	line_has_token "$create" '--cap-drop=NET_ADMIN'
+	line_has_token "$create" '--cap-drop=NET_RAW'
+}
+
+@test "run_netbox forwards pasta -T ports" {
+	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	# shellcheck disable=SC2054 # -T,<port> tokens are single array elements
+	# shellcheck disable=SC2034 # ports is consumed by nameref parameters
+	local -a ports=(-T,8080 -T,9090)
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS ports DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	line_has_token "$(podman_create_line)" '--network=pasta:-T,8080,-T,9090,--dns-forward,169.254.1.1,--map-guest-addr,none'
+}
+
+@test "run_netbox keeps read mounts read-only and write mounts as volumes, populating them from the host" {
+	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	local home="$BATS_TEST_TMPDIR/home"
+	mkdir -p "$home"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a read_mounts=() write_mounts=() srcs=() dsts=()
+	mount_args read_mounts read "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
+	mount_volume_args write_mounts netbox "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
+	srcs=('/host/data')
+	dsts=('/talkbox/wdata')
+	run run_netbox "$PROJECT" 'true' no read_mounts write_mounts srcs dsts PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create populate
+	create="$(podman_create_line)"
+	line_has_token "$create" '/host/data:/talkbox/wdata:ro'
+	line_has_token "$create" 'talkbox-proj.netbox.write.talkbox-wdata:/talkbox/wdata'
+	line_lacks_token "$create" 'talkbox-proj.netbox.write.talkbox-wdata:/talkbox/wdata:ro'
+	populate="$(podman_line 'talkbox-proj.netbox.write.talkbox-wdata:/talkbox/target')"
+	line_has_token "$populate" '/host/data:/talkbox/source:ro'
+}
+
+@test "run_netbox create args include GPU options, --init ahead of the image, dotfiles, prompt env vars, and no tmpfs" {
+	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	# shellcheck disable=SC2034 # global consumed by the sourced containers.sh
+	TALKBOX_GPU=yes
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create img init_at img_at
+	create="$(podman_create_line)"
+	img="$(base_image_name)"
+	line_has_token "$create" 'nvidia.com/gpu=all'
+	line_has_token "$create" 'keep-groups'
+	line_has_token "$create" '--init'
+	init_at="$(line_token_at "$create" --init)"
+	img_at="$(line_token_at "$create" "$img")"
+	[[ "$init_at" -gt 0 ]]
+	[[ "$init_at" -lt "$img_at" ]]
+	line_has_token "$create" "$TALKBOX_ROOT/defaults/dotfiles:/talkbox/dotfiles.global:ro"
+	line_has_token "$create" 'TALKBOX_PROJECT_SLUG=talkbox-proj'
+	line_has_token "$create" 'TALKBOX_CONTAINER_TYPE=netbox'
+	line_has_token "$create" 'sleep'
+	line_has_token "$create" 'infinity'
+	line_lacks_token "$create" '--tmpfs'
+	line_lacks_token "$create" '--rm'
+	[[ "$create" != *'/run/talkbox'* ]]
+}
+
+@test "run_netbox adds the git mounts and git identity env vars for a git-tracked project only" {
+	load_netbox_plan
+	use_podman_shim
 	git -C "$PROJECT" init -q
 	git -C "$PROJECT" config user.name host-user
 	git -C "$PROJECT" config user.email host@example.com
-	local args=()
-	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
-	array_contains 'TALKBOX_CONTAINER_TYPE=netbox' "${args[@]}"
-	array_has 'TALKBOX_GIT_USER_NAME=host-user' "${args[@]}"
-	local plain
-	plain="$BATS_TEST_TMPDIR/plain"
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	line_has_token "$create" "$PROJECT/.git:/host/git:ro"
+	line_has_token "$create" 'talkbox-proj.netbox.gitdir:/working/talkbox-proj/.git'
+	line_has_token "$create" 'TALKBOX_GIT_USER_NAME=host-user'
+	line_has_token "$create" 'TALKBOX_GIT_USER_EMAIL=host@example.com'
+	local plain="$BATS_TEST_TMPDIR/plain"
 	mkdir -p "$plain"
-	args=()
-	plan_netbox args "$plain" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_contains 'TALKBOX_PROJECT_SLUG=plain' "${args[@]}"
-	array_contains 'TALKBOX_CONTAINER_TYPE=netbox' "${args[@]}"
-	array_has_none 'TALKBOX_GIT_USER' "${args[@]}"
+	: >"$LOG"
+	run run_netbox "$plain" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	create="$(podman_create_line)"
+	[[ "$create" != *'/host/git'* ]]
+	[[ "$create" != *'.gitdir'* ]]
+	[[ "$create" != *'TALKBOX_GIT_USER'* ]]
 }
 
-@test "offbox plan emits the prompt host env vars for git-tracked and non-git projects" {
+@test "run_offbox create args restrict pasta to loopback, exclude talkbox0, mount the worktree volume and drop caps" {
 	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	run run_offbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	line_has_token "$create" '--network=pasta:-i,lo,-I,talkbox0'
+	line_has_token "$create" 'talkbox-proj.offbox.worktree:/working/talkbox-proj'
+	line_has_token "$create" '--name=talkbox-proj.offbox'
+	line_has_token "$create" '--cap-drop=NET_ADMIN'
+	line_has_token "$create" '--cap-drop=NET_RAW'
+}
+
+@test "run_offbox forwards pasta -T ports alongside the loopback restriction" {
+	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	# shellcheck disable=SC2054 # -T,<port> tokens are single array elements
+	# shellcheck disable=SC2034 # ports is consumed by nameref parameters
+	local -a ports=(-T,8080)
+	run run_offbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS ports DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	line_has_token "$(podman_create_line)" '--network=pasta:-T,8080,-i,lo,-I,talkbox0'
+}
+
+@test "run_offbox emits write-mount volumes and read-only read mounts, populating from the host" {
+	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	local home="$BATS_TEST_TMPDIR/home"
+	mkdir -p "$home"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a read_mounts=() write_mounts=() srcs=() dsts=()
+	mount_args read_mounts read "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
+	mount_volume_args write_mounts offbox "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
+	srcs=('/host/data')
+	dsts=('/talkbox/wdata')
+	run run_offbox "$PROJECT" 'true' no read_mounts write_mounts srcs dsts PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create populate
+	create="$(podman_create_line)"
+	line_has_token "$create" '/host/data:/talkbox/wdata:ro'
+	line_has_token "$create" 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/wdata'
+	line_lacks_token "$create" 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/wdata:ro'
+	populate="$(podman_line 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/target')"
+	line_has_token "$populate" '/host/data:/talkbox/source:ro'
+}
+
+@test "run_offbox create args include GPU options, --init, prompt env vars and no tmpfs" {
+	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	# shellcheck disable=SC2034 # global consumed by the sourced containers.sh
+	TALKBOX_GPU=yes
+	run run_offbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create img init_at img_at
+	create="$(podman_create_line)"
+	img="$(base_image_name)"
+	line_has_token "$create" 'nvidia.com/gpu=all'
+	line_has_token "$create" 'keep-groups'
+	line_has_token "$create" '--init'
+	init_at="$(line_token_at "$create" --init)"
+	img_at="$(line_token_at "$create" "$img")"
+	[[ "$init_at" -gt 0 ]]
+	[[ "$init_at" -lt "$img_at" ]]
+	line_has_token "$create" 'TALKBOX_PROJECT_SLUG=talkbox-proj'
+	line_has_token "$create" 'TALKBOX_CONTAINER_TYPE=offbox'
+	line_lacks_token "$create" '--tmpfs'
+	[[ "$create" != *'/run/talkbox'* ]]
+}
+
+@test "run_offbox emits git identity env vars for a git-tracked project but not for a non-git project" {
+	load_netbox_plan
+	use_podman_shim
 	git -C "$PROJECT" init -q
 	git -C "$PROJECT" config user.name host-user
 	git -C "$PROJECT" config user.email host@example.com
-	local args=()
-	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
-	array_contains 'TALKBOX_CONTAINER_TYPE=offbox' "${args[@]}"
-	array_has 'TALKBOX_GIT_USER_NAME=host-user' "${args[@]}"
-	local plain
-	plain="$BATS_TEST_TMPDIR/plain"
+	run run_offbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	line_has_token "$create" 'TALKBOX_GIT_USER_NAME=host-user'
+	line_has_token "$create" 'TALKBOX_GIT_USER_EMAIL=host@example.com'
+	local plain="$BATS_TEST_TMPDIR/plain"
 	mkdir -p "$plain"
-	args=()
-	plan_offbox args "$plain" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_contains 'TALKBOX_PROJECT_SLUG=plain' "${args[@]}"
-	array_contains 'TALKBOX_CONTAINER_TYPE=offbox' "${args[@]}"
-	array_has_none 'TALKBOX_GIT_USER' "${args[@]}"
+	: >"$LOG"
+	run run_offbox "$plain" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	create="$(podman_create_line)"
+	[[ "$create" != *'TALKBOX_GIT_USER'* ]]
 }
 
-@test "netbox recontain and rebuild plans propagate the prompt host env vars to podman create" {
+@test "run_offbox commits netbox, else onbox, else uses the base image and populates from the host" {
 	load_netbox_plan
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local -a srcs=() dsts=() args=()
-	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
-	array_contains 'TALKBOX_CONTAINER_TYPE=netbox' "${args[@]}"
-	args=()
-	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
-	array_contains 'TALKBOX_CONTAINER_TYPE=netbox' "${args[@]}"
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a srcs=('/host/data') dsts=('/talkbox/wdata')
+	export PODMAN_CONTAINERS="talkbox-proj.onbox talkbox-proj.netbox"
+	run run_offbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ -n "$(podman_line '^commit talkbox-proj.netbox talkbox-proj.offbox.root$')" ]]
+	: >"$LOG"
+	export PODMAN_CONTAINERS="talkbox-proj.onbox"
+	run run_offbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ -n "$(podman_line '^commit talkbox-proj.onbox talkbox-proj.offbox.root$')" ]]
+	: >"$LOG"
+	export PODMAN_CONTAINERS=""
+	run run_offbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ "$(podman_count '^commit ')" -eq 0 ]]
+	line_has_token "$(podman_create_line)" "$(base_image_name)"
+	local populate
+	populate="$(podman_line 'talkbox-proj.offbox.worktree:/talkbox/target')"
+	line_has_token "$populate" "$PROJECT:/talkbox/source:ro"
 }
 
-@test "offbox recontain and rebuild plans propagate the prompt host env vars to podman create" {
+@test "TALKBOX_FRESH skips the commit and uses the base image even when source containers exist" {
 	load_netbox_plan
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local -a srcs=() dsts=() args=()
-	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
-	array_contains 'TALKBOX_CONTAINER_TYPE=offbox' "${args[@]}"
-	args=()
-	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_contains 'TALKBOX_PROJECT_SLUG=talkbox-proj' "${args[@]}"
-	array_contains 'TALKBOX_CONTAINER_TYPE=offbox' "${args[@]}"
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_CONTAINERS="talkbox-proj.onbox"
+	# shellcheck disable=SC2034 # globals consumed by the sourced containers.sh
+	TALKBOX_FRESH=yes
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ "$(podman_count '^commit ')" -eq 0 ]]
+	line_has_token "$(podman_create_line)" "$(base_image_name)"
+	: >"$LOG"
+	run run_offbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ "$(podman_count '^commit ')" -eq 0 ]]
+	line_has_token "$(podman_create_line)" "$(base_image_name)"
 }
 
-@test "netbox plan does not mount a tmpfs at /run/talkbox" {
+@test "TALKBOX_INHERIT selects the commit source" {
 	load_netbox_plan
-	local args=()
-	plan_netbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_has_none '--tmpfs' "${args[@]}"
-	array_has_none '/run/talkbox' "${args[@]}"
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_CONTAINERS="talkbox-proj.onbox talkbox-proj.offbox"
+	# shellcheck disable=SC2034 # global consumed by the sourced containers.sh
+	TALKBOX_INHERIT=offbox
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ -n "$(podman_line '^commit talkbox-proj.offbox talkbox-proj.netbox.root$')" ]]
+	: >"$LOG"
+	export PODMAN_CONTAINERS="talkbox-proj.onbox talkbox-proj.netbox"
+	# shellcheck disable=SC2034 # global consumed by the sourced containers.sh
+	TALKBOX_INHERIT=onbox
+	run run_offbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ -n "$(podman_line '^commit talkbox-proj.onbox talkbox-proj.offbox.root$')" ]]
+	local populate
+	populate="$(podman_line 'talkbox-proj.offbox.worktree:/talkbox/target')"
+	line_has_token "$populate" "$PROJECT:/talkbox/source:ro"
 }
 
-@test "offbox plan does not mount a tmpfs at /run/talkbox" {
+@test "run_offbox populates from the netbox volumes when inheriting from netbox and they exist" {
 	load_netbox_plan
-	local args=()
-	plan_offbox args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS PORTS "$(base_image_name)"
-	array_has_none '--tmpfs' "${args[@]}"
-	array_has_none '/run/talkbox' "${args[@]}"
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_CONTAINERS="talkbox-proj.netbox"
+	export PODMAN_VOLUMES="talkbox-proj.netbox.worktree talkbox-proj.netbox.write.talkbox-wdata"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a srcs=('/host/data') dsts=('/talkbox/wdata')
+	run run_offbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local populate
+	populate="$(podman_line 'talkbox-proj.offbox.worktree:/talkbox/target')"
+	line_has_token "$populate" 'talkbox-proj.netbox.worktree:/talkbox/source'
+	line_lacks_token "$populate" 'talkbox-proj.netbox.worktree:/talkbox/source:ro'
+	populate="$(podman_line 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/target')"
+	line_has_token "$populate" 'talkbox-proj.netbox.write.talkbox-wdata:/talkbox/source'
+	line_lacks_token "$populate" 'talkbox-proj.netbox.write.talkbox-wdata:/talkbox/source:ro'
 }
 
-@test "netbox recontain plan does not emit a /run/talkbox tmpfs" {
+@test "run_offbox falls back to host sources per volume when the netbox volumes are missing" {
 	load_netbox_plan
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local -a srcs=() dsts=() args=()
-	plan_netbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_has_none '--tmpfs' "${args[@]}"
-	array_has_none '/run/talkbox' "${args[@]}"
-}
-
-@test "offbox recontain plan does not emit a /run/talkbox tmpfs" {
-	load_netbox_plan
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local -a srcs=() dsts=() args=()
-	plan_offbox_recontain args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_has_none '--tmpfs' "${args[@]}"
-	array_has_none '/run/talkbox' "${args[@]}"
-}
-
-@test "netbox rebuild plan does not emit a /run/talkbox tmpfs" {
-	load_netbox_plan
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local -a srcs=() dsts=() args=()
-	plan_netbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_has_none '--tmpfs' "${args[@]}"
-	array_has_none '/run/talkbox' "${args[@]}"
-}
-
-@test "offbox rebuild plan does not emit a /run/talkbox tmpfs" {
-	load_netbox_plan
-	# shellcheck disable=SC2034 # arrays are consumed by nameref planner parameters
-	local -a srcs=() dsts=() args=()
-	plan_offbox_rebuild args "$PROJECT" yes READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS base
-	array_has_none '--tmpfs' "${args[@]}"
-	array_has_none '/run/talkbox' "${args[@]}"
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_CONTAINERS="talkbox-proj.netbox"
+	export PODMAN_VOLUMES="talkbox-proj.netbox.worktree"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a srcs=('/host/data') dsts=('/talkbox/wdata')
+	run run_offbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local populate
+	populate="$(podman_line 'talkbox-proj.offbox.worktree:/talkbox/target')"
+	line_has_token "$populate" 'talkbox-proj.netbox.worktree:/talkbox/source'
+	populate="$(podman_line 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/target')"
+	line_has_token "$populate" '/host/data:/talkbox/source:ro'
 }
 
 @test "run_netbox applies the nft deny rules before running setup.sh and runs setup.sh before the user command" {

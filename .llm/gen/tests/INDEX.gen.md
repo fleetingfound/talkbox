@@ -33,3 +33,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 14c: install nft ruleset before entrypoint setup runs](phase-14c-nft-before-entrypoint-setup.gen.md)
 - [Phase 15a: inline comments in config files](phase-15a-inline-config-comments.gen.md)
 - [Phase 16a: prune external working containers before `--rm-image`](phase-16a-rm-image-prune-external-working-containers.gen.md)
+- [Phase 19: consolidation of repeated container logic in `lib/containers.sh`](phase-19-containers-sh-consolidation.gen.md)
