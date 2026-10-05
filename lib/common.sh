@@ -1,4 +1,5 @@
 # shellcheck shell=bash
+# shellcheck disable=SC2178 # nameref parameters refer to caller-declared arrays
 
 die() {
 	local message="$1" code="$2"
@@ -60,4 +61,9 @@ dedup_last_ordered() {
 	for ((e = ${#uniq[@]} - 1; e >= 0; e--)); do
 		_out+=("${uniq[$e]}")
 	done
+}
+
+plan_no_net_run() {
+	local -n _out="$1"
+	_out+=("podman" "run" "--rm" "--network=none" "--userns=keep-id:uid=1000,gid=1000")
 }

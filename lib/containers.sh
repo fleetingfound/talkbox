@@ -130,9 +130,7 @@ plan_container() {
 	_plan_out+=("--env" "TALKBOX_CONTAINER_TYPE=$container")
 	_plan_out+=("-v" "$(worktree_volume_of "$container" "$project"):/working/$base")
 	if git_mounts_enabled "$project"; then
-		_plan_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
-		_plan_out+=("-v" "$(gitdir_volume "$project" "$container"):/working/$base/.git")
-		_plan_out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro")
+		plan_git_mounts "${!_plan_out}" "$project" "$container" hostgit gitdir merge
 		plan_git_identity_env "${!_plan_out}" "$project"
 	fi
 	_plan_out+=("-v" "$TALKBOX_ROOT/image/setup.sh:/usr/local/bin/setup.sh:ro")
@@ -159,7 +157,7 @@ plan_container() {
 plan_volume_populate() {
 	local -n _plan_out="$1"
 	local target="$2" source_kind="$3" source="$4"
-	_plan_out+=("podman" "run" "--rm" "--network=none" "--userns=keep-id:uid=1000,gid=1000")
+	plan_no_net_run "${!_plan_out}"
 	if [[ "$source_kind" == volume ]]; then
 		_plan_out+=("-v" "$source:/talkbox/source")
 	else
@@ -586,11 +584,11 @@ container_sync_cmd() {
 		_cmd_out+=("podman" "exec" "--workdir=/working/$base" "$ctr" "bash" "-c" "$script" "_")
 		_cmd_out+=("${branches[@]}")
 	else
-		_cmd_out+=("podman" "run" "--rm" "--network=none" "--userns=keep-id:uid=1000,gid=1000" "--workdir=/working/$base")
-		_cmd_out+=("-v" "$(gitdir_volume "$project" "$container"):/working/$base/.git")
+		plan_no_net_run "${!_cmd_out}"
+		_cmd_out+=("--workdir=/working/$base")
+		plan_git_mounts "${!_cmd_out}" "$project" "$container" gitdir
 		_cmd_out+=("-v" "$(worktree_volume_of "$container" "$project"):/working/$base")
-		_cmd_out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro")
-		_cmd_out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro")
+		plan_git_mounts "${!_cmd_out}" "$project" "$container" hostgit merge
 		# shellcheck disable=SC2016 # $0 and $@ expand inside the container at run time
 		_cmd_out+=("$(base_image_name)" "bash" "-c" 'setup.sh && exec bash -c "$0" _ "$@"' "$script")
 		_cmd_out+=("${branches[@]}")

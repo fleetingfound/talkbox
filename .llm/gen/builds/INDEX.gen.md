@@ -42,3 +42,4 @@
 - [Phase 20a: shared list-file reading and ordered dedup helpers](.llm/gen/builds/phase-20a-list-file-and-dedup-helpers.gen.md)
 - [Phase 20b: shared slug normalisation helper in `lib/naming.sh`](.llm/gen/builds/phase-20b-slugify-helper.gen.md)
 - [Phase 20c: shared git bundle lifecycle and git-history probe in `lib/git.sh`](.llm/gen/builds/phase-20c-git-bundle-lifecycle.gen.md)
+- [Phase 20d: shared no-network run prefix and git-mount plan tokens](.llm/gen/builds/phase-20d-no-net-run-and-git-mount-helpers.gen.md)

@@ -95,10 +95,25 @@ prepare_git_host() {
 	absorb_submodules "$project"
 }
 
+plan_git_mounts() {
+	local -n _out="$1"
+	local project="$2" container="$3"
+	shift 3
+	local base mount
+	base="$(project_base "$project")"
+	for mount in "$@"; do
+		case "$mount" in
+		hostgit) _out+=("-v" "$(resolve_git_dir "$project"):/host/git:ro") ;;
+		gitdir) _out+=("-v" "$(gitdir_volume "$project" "$container"):/working/$base/.git") ;;
+		merge) _out+=("-v" "$TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro") ;;
+		esac
+	done
+}
+
 gitdir_bundle_cmd() {
 	local -n _out="$1"
 	local project="$2" container="$3" bundle="$4"
-	_out+=("podman" "run" "--rm" "--network=none" "--userns=keep-id:uid=1000,gid=1000")
+	plan_no_net_run "${!_out}"
 	_out+=("-v" "$(gitdir_volume "$project" "$container"):/gitdir:ro")
 	_out+=("-v" "$(dirname "$bundle"):/host/bundle")
 	_out+=("-e" "GIT_DIR=/gitdir")
