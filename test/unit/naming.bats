@@ -78,6 +78,38 @@ load helpers
 	[[ "$(dest_slug '/')" == '' ]]
 }
 
+@test "project_slug strips leading and trailing hyphens produced by normalisation" {
+	load_lib naming.sh
+	[[ "$(project_slug '/tmp/!!My Project!!')" == 'my-project' ]]
+}
+
+@test "project_slug returns empty for a base with no alphanumeric characters" {
+	load_lib naming.sh
+	[[ "$(project_slug '/tmp/!!!')" == '' ]]
+}
+
+@test "dest_slug collapses runs of non-alphanumeric characters into one hyphen" {
+	load_lib naming.sh
+	[[ "$(dest_slug '/a  b//c')" == 'a-b-c' ]]
+}
+
+@test "dest_slug strips leading and trailing hyphens produced by normalisation" {
+	load_lib naming.sh
+	[[ "$(dest_slug '/tmp/!')" == 'tmp' ]]
+	[[ "$(dest_slug '!project!')" == 'project' ]]
+}
+
+@test "dest_slug returns empty when normalisation erases every character" {
+	load_lib naming.sh
+	[[ "$(dest_slug '/!')" == '' ]]
+}
+
+@test "dest_slug normalises identically to project_slug for the same string" {
+	load_lib naming.sh
+	[[ "$(dest_slug 'My  Project_v2!')" == "$(project_slug '/tmp/My  Project_v2!')" ]]
+	[[ "$(dest_slug 'My  Project_v2!')" == 'my-project-v2' ]]
+}
+
 @test "netbox_worktree_volume names the netbox worktree volume" {
 	load_lib naming.sh
 	[[ "$(netbox_worktree_volume '/tmp/My Project')" == 'my-project.netbox.worktree' ]]

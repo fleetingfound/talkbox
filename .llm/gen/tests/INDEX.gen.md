@@ -35,3 +35,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 16a: prune external working containers before `--rm-image`](phase-16a-rm-image-prune-external-working-containers.gen.md)
 - [Phase 19: consolidation of repeated container logic in `lib/containers.sh`](phase-19-containers-sh-consolidation.gen.md)
 - [Phase 20a: shared list-file reading and ordered dedup helpers](phase-20a-list-file-and-dedup-helpers.gen.md)
+- [Phase 20b: shared slug normalisation helper in lib/naming.sh](phase-20b-slugify-helper.gen.md)
