@@ -138,6 +138,44 @@ use_podman_shim() {
 	array_contains 'cp' "${args[@]}"
 }
 
+@test "volume-population planner opens the run with the exact no-network prefix tokens" {
+	load_netbox_plan
+	local -a host_args=() volume_args=()
+	plan_volume_populate host_args 'talkbox-proj.netbox.worktree' host "$PROJECT"
+	[[ "${host_args[0]}" == podman ]]
+	[[ "${host_args[1]}" == run ]]
+	[[ "${host_args[2]}" == --rm ]]
+	[[ "${host_args[3]}" == --network=none ]]
+	[[ "${host_args[4]}" == --userns=keep-id:uid=1000,gid=1000 ]]
+	[[ "${host_args[5]}" == -v ]]
+	[[ "${host_args[6]}" == "$PROJECT:/talkbox/source:ro" ]]
+	plan_volume_populate volume_args 'talkbox-proj.offbox.worktree' volume 'talkbox-proj.netbox.worktree'
+	[[ "${volume_args[0]}" == podman ]]
+	[[ "${volume_args[2]}" == --rm ]]
+	[[ "${volume_args[3]}" == --network=none ]]
+	[[ "${volume_args[4]}" == --userns=keep-id:uid=1000,gid=1000 ]]
+	[[ "${volume_args[5]}" == -v ]]
+	[[ "${volume_args[6]}" == 'talkbox-proj.netbox.worktree:/talkbox/source' ]]
+}
+
+@test "netbox and offbox populate plans open every podman run with the exact no-network prefix" {
+	load_netbox_plan
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a srcs=('/host/data') dsts=('/talkbox/wdata') plan=()
+	plan_netbox_populate plan "$PROJECT" srcs dsts
+	plan_offbox_populate plan "$PROJECT" base srcs dsts
+	[[ "$(plan_subcommands plan)" == $'run\nrun\nrun\nrun' ]]
+	local i
+	for ((i = 0; i < ${#plan[@]}; i++)); do
+		if [[ "${plan[i]}" == podman ]]; then
+			[[ "${plan[i + 1]}" == run ]]
+			[[ "${plan[i + 2]}" == --rm ]]
+			[[ "${plan[i + 3]}" == --network=none ]]
+			[[ "${plan[i + 4]}" == --userns=keep-id:uid=1000,gid=1000 ]]
+		fi
+	done
+}
+
 @test "netbox populate copies the worktree and write mounts from the host but never touches the gitdir volume" {
 	load_netbox_plan
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
@@ -294,6 +332,17 @@ use_podman_shim() {
 	[[ "$create" != *'/host/git'* ]]
 	[[ "$create" != *'.gitdir'* ]]
 	[[ "$create" != *'TALKBOX_GIT_USER'* ]]
+}
+
+@test "run_netbox emits the three git mounts as consecutive tokens in the shared order" {
+	load_netbox_plan
+	use_podman_shim
+	git -C "$PROJECT" init -q
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create
+	create="$(podman_create_line)"
+	[[ "$create" == *"-v $PROJECT/.git:/host/git:ro -v talkbox-proj.netbox.gitdir:/working/talkbox-proj/.git -v $TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro"* ]]
 }
 
 @test "run_offbox create args restrict pasta to loopback, exclude talkbox0, mount the worktree volume and drop caps" {

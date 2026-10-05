@@ -131,6 +131,33 @@ setup() {
 	[[ " $joined " == *' feature '* ]]
 }
 
+@test "container_sync_cmd no-network run opens with the exact prefix, --workdir directly after and the git mounts in order" {
+	load_lib containers.sh
+	local project="$BATS_TEST_TMPDIR/proj"
+	mkdir -p "$project"
+	local base resolved script
+	base="$(project_base "$project")"
+	resolved="$(readlink -f "$project")"
+	script='source /talkbox/lib/merge.sh'
+	container_running() { return 1; }
+	local -a cmd=()
+	container_sync_cmd cmd "$project" onbox "$script" master
+	[[ "${cmd[0]}" == podman ]]
+	[[ "${cmd[1]}" == run ]]
+	[[ "${cmd[2]}" == --rm ]]
+	[[ "${cmd[3]}" == --network=none ]]
+	[[ "${cmd[4]}" == --userns=keep-id:uid=1000,gid=1000 ]]
+	[[ "${cmd[5]}" == "--workdir=/working/$base" ]]
+	local -a specs=()
+	local i
+	for ((i = 0; i < ${#cmd[@]}; i++)); do
+		if [[ "${cmd[i]}" == -v ]]; then
+			specs+=("${cmd[i + 1]}")
+		fi
+	done
+	[[ "${specs[*]}" == "proj.onbox.gitdir:/working/$base/.git $resolved:/working/$base $resolved/.git:/host/git:ro $TALKBOX_ROOT/lib/merge.sh:/talkbox/lib/merge.sh:ro" ]]
+}
+
 @test "plan_fetch fills separate bundle and fetch command arrays with no token leakage" {
 	load_lib git.sh
 	local project="$BATS_TEST_TMPDIR/proj"

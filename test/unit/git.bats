@@ -148,3 +148,23 @@ $PROJECT/.git/modules/sub2" ]]
 	[[ "${fetch_cmd[*]}" == *'refs/remotes/netbox'* ]]
 	[[ "${fetch_cmd[*]}" == *'netbox.bundle'* ]]
 }
+
+@test "gitdir_bundle_cmd opens with the exact no-network run prefix before the gitdir and bundle mounts" {
+	load_lib git.sh
+	load_lib naming.sh
+	local bundle="$BATS_TEST_TMPDIR/onbox.bundle" bundle_dir
+	bundle_dir="$(dirname "$bundle")"
+	local -a cmd=()
+	gitdir_bundle_cmd cmd "$PROJECT" onbox "$bundle"
+	[[ "${cmd[0]}" == podman ]]
+	[[ "${cmd[1]}" == run ]]
+	[[ "${cmd[2]}" == --rm ]]
+	[[ "${cmd[3]}" == --network=none ]]
+	[[ "${cmd[4]}" == --userns=keep-id:uid=1000,gid=1000 ]]
+	[[ "${cmd[5]}" == -v ]]
+	[[ "${cmd[6]}" == 'proj.onbox.gitdir:/gitdir:ro' ]]
+	[[ "${cmd[7]}" == -v ]]
+	[[ "${cmd[8]}" == "$bundle_dir:/host/bundle" ]]
+	[[ "${cmd[9]}" == -e ]]
+	[[ "${cmd[10]}" == 'GIT_DIR=/gitdir' ]]
+}
