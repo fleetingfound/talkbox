@@ -23,3 +23,5 @@
 - [x] [`--rm-image` blocked by external working containers](rm-image-blocked-by-external-working-containers.gen.md) — resolved by [Phase 16a](../plans/phase-16a-rm-image-prune-external-working-containers.gen.md)
 - [x] [`parse_tap()` drops failing tests with empty descriptions from `FAIL_NAMES`](parse-tap-empty-desc-drops-fail-name.gen.md) — resolved by [Phase 16c](../plans/phase-16c-parse-tap-empty-desc.gen.md)
 - [x] [`parse_tap()` fallback drops all but the last failure when `not ok` lines lack diagnostics](parse-tap-fallback-drops-multiple-failures.gen.md) — resolved by [Phase 16d](../plans/phase-16d-parse-tap-fallback-multiple-failures.gen.md)
+- [ ] [`make_podman_shim` is shadowed by a different implementation in `network.bats`](make-podman-shim-shadowed-in-network-bats.gen.md)
+- [ ] [`MAP.gen.md` is missing implemented core test files](map-gen-md-missing-test-files.gen.md)
