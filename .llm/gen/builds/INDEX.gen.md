@@ -38,3 +38,4 @@
 - [Phase 16d: `parse_tap()` records every `not ok` failure when diagnostics are absent](.llm/gen/builds/phase-16d-parse-tap-fallback-multiple-failures.gen.md)
 - [Phase 17a: ASCII art banner on container startup](.llm/gen/builds/phase-17a-ascii-art-banner.gen.md)
 - [Phase 18: Minimal test Containerfile for the e2e suite](.llm/gen/builds/phase-18-minimal-test-image.gen.md)
+- [Phase 19: Consolidation of repeated container logic in `lib/containers.sh`](.llm/gen/builds/phase-19-containers-sh-consolidation.gen.md)
