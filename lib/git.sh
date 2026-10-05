@@ -120,6 +120,20 @@ plan_fetch() {
 	host_fetch_cmd _fetch_cmd "$bundle" "$container"
 }
 
+run_bundle_fetch() {
+	local project="$1" container="$2" prefix="$3"
+	local tmp bundle rc=0
+	tmp="$(mktemp -d "${TMPDIR:-/tmp}/talkbox-$prefix.XXXXXX")"
+	bundle="$tmp/$container.bundle"
+	local -a bundle_cmd=() fetch_cmd=()
+	plan_fetch bundle_cmd fetch_cmd "$project" "$container" "$bundle"
+	if ! "${bundle_cmd[@]}" || ! "${fetch_cmd[@]}"; then
+		rc=1
+	fi
+	rm -rf "$tmp"
+	return "$rc"
+}
+
 run_fetch() {
 	local project="$1" container="$2" all="$3"
 	if ! git_tracked "$project"; then
@@ -131,25 +145,18 @@ run_fetch() {
 	else
 		containers=("$container")
 	fi
-	local tmp bundle c rc=0
-	tmp="$(mktemp -d "${TMPDIR:-/tmp}/talkbox-fetch.XXXXXX")"
+	local c rc=0
 	for c in "${containers[@]}"; do
-		if ! podman volume exists "$(gitdir_volume "$project" "$c")" >/dev/null 2>&1; then
-			if [[ "$all" == yes ]]; then
-				continue
-			fi
-			rm -rf "$tmp"
-			die "no git history for $c; create the container first" 1
+		if [[ "$all" == yes ]]; then
+			gitdir_volume_exists "$project" "$c" || continue
+		else
+			require_gitdir_volume "$project" "$c"
 		fi
-		bundle="$tmp/$c.bundle"
-		local -a bundle_cmd=() fetch_cmd=()
-		plan_fetch bundle_cmd fetch_cmd "$project" "$c" "$bundle"
-		if ! "${bundle_cmd[@]}" || ! "${fetch_cmd[@]}"; then
+		if ! run_bundle_fetch "$project" "$c" fetch; then
 			rc=1
 			break
 		fi
 	done
-	rm -rf "$tmp"
 	return "$rc"
 }
 
@@ -186,15 +193,24 @@ resolve_branches() {
 	fi
 }
 
+gitdir_volume_exists() {
+	podman volume exists "$(gitdir_volume "$1" "$2")" >/dev/null 2>&1
+}
+
+require_gitdir_volume() {
+	local project="$1" container="$2"
+	if ! gitdir_volume_exists "$project" "$container"; then
+		die "no git history for $container; create the container first" 1
+	fi
+}
+
 require_git_history() {
 	local project="$1" container="$2" vol mountpoint
 	if ! git_tracked "$project"; then
 		die "not a git repository: $project" 1
 	fi
+	require_gitdir_volume "$project" "$container"
 	vol="$(gitdir_volume "$project" "$container")"
-	if ! podman volume exists "$vol" >/dev/null 2>&1; then
-		die "no git history for $container; create the container first" 1
-	fi
 	mountpoint="$(podman volume inspect --format '{{.Mountpoint}}' "$vol" 2>/dev/null)"
 	if [[ -z "$mountpoint" || ! -e "$mountpoint/HEAD" ]]; then
 		die "no git history in the $container gitdir volume; start the container first" 1
@@ -204,16 +220,7 @@ require_git_history() {
 run_merge() {
 	local project="$1" container="$2" all="$3" branch="$4"
 	require_git_history "$project" "$container"
-	local tmp bundle
-	tmp="$(mktemp -d "${TMPDIR:-/tmp}/talkbox-merge.XXXXXX")"
-	bundle="$tmp/$container.bundle"
-	local -a bundle_cmd=() fetch_cmd=()
-	plan_fetch bundle_cmd fetch_cmd "$project" "$container" "$bundle"
-	if ! "${bundle_cmd[@]}" || ! "${fetch_cmd[@]}"; then
-		rm -rf "$tmp"
-		return 1
-	fi
-	rm -rf "$tmp"
+	run_bundle_fetch "$project" "$container" merge || return 1
 	local -a branches=() b
 	resolve_branches branches "$all" "$branch" "$container"
 	for b in "${branches[@]}"; do
