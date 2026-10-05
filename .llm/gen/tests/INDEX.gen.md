@@ -36,3 +36,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 19: consolidation of repeated container logic in `lib/containers.sh`](phase-19-containers-sh-consolidation.gen.md)
 - [Phase 20a: shared list-file reading and ordered dedup helpers](phase-20a-list-file-and-dedup-helpers.gen.md)
 - [Phase 20b: shared slug normalisation helper in lib/naming.sh](phase-20b-slugify-helper.gen.md)
+- [Phase 20c: shared git bundle lifecycle and git-history probe in lib/git.sh](phase-20c-git-bundle-lifecycle.gen.md)

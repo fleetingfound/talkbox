@@ -3,8 +3,17 @@
 load helpers
 
 setup() {
+	load_lib naming.sh
 	WORK="$BATS_TEST_TMPDIR/work"
 	REMOTE="$BATS_TEST_TMPDIR/origin.git"
+	LOG="$BATS_TEST_TMPDIR/podman.log"
+	PODMAN_LOG="$LOG"
+	VOL="$(gitdir_volume "$WORK" onbox)"
+	CTR_REPO="$BATS_TEST_TMPDIR/ctr-repo"
+	declare -gA PODMAN_MOUNTPOINTS=()
+	PODMAN_VOLUMES=""
+	PODMAN_FAIL_PATTERN=""
+	PODMAN_FAIL_CODE=""
 	git init -q --bare "$REMOTE"
 	git init -q "$WORK"
 	git -C "$WORK" config user.email test@example.com
@@ -17,6 +26,9 @@ setup() {
 	git -C "$WORK" remote add origin "$REMOTE"
 	git -C "$WORK" push -q origin HEAD feature
 	git -C "$WORK" fetch -q origin
+	git clone -q "$WORK" "$CTR_REPO"
+	git -C "$CTR_REPO" config user.email ctr@example.com
+	git -C "$CTR_REPO" config user.name ctr-user
 }
 
 @test "resolve_branches with --all and a remote enumerates the remote branches" {
@@ -161,4 +173,179 @@ setup() {
 	[[ "$captured" == *"container=onbox"* ]]
 	[[ "$captured" == *"script=$script"* ]]
 	[[ "$captured" == *'branches=master feature'* ]]
+}
+
+# Function-based podman mock for exercising run_fetch/run_merge.
+# PODMAN_VOLUMES lists existing volume names; PODMAN_FAIL_PATTERN/PODMAN_FAIL_CODE
+# make matching invocations fail; mock_volume_mountpoint supplies volume mountpoints;
+# mock_container_run executes the `podman run` bundle command.
+podman() {
+	printf '%s\n' "$*" >>"$PODMAN_LOG"
+	if [[ -n "${PODMAN_FAIL_PATTERN:-}" && "$*" == *"$PODMAN_FAIL_PATTERN"* ]]; then
+		return "${PODMAN_FAIL_CODE:-1}"
+	fi
+	case "$1 $2" in
+	"volume exists")
+		# shellcheck disable=SC2086 # word splitting over the volume list is intended
+		local vol
+		for vol in $PODMAN_VOLUMES; do
+			[[ "$vol" == "$3" ]] && return 0
+		done
+		return 1
+		;;
+	"volume inspect")
+		mock_volume_mountpoint "$5"
+		;;
+	"run "*)
+		mock_container_run "$@"
+		;;
+	esac
+	return 0
+}
+
+mock_volume_mountpoint() {
+	printf '%s\n' "${PODMAN_MOUNTPOINTS[$1]:-}"
+}
+
+mock_container_run() {
+	local -a args=("$@")
+	local i spec vol repo="" hostdir="" name=""
+	for ((i = 1; i < ${#args[@]}; i++)); do
+		if [[ "${args[i]}" == -v ]]; then
+			spec="${args[i + 1]}"
+			case "$spec" in
+			*:/gitdir:ro)
+				vol="${spec%:/gitdir:ro}"
+				repo="$(mock_volume_mountpoint "$vol")"
+				;;
+			*:/host/bundle)
+				hostdir="${spec%:/host/bundle}"
+				;;
+			esac
+		elif [[ "${args[i]}" == /host/bundle/* ]]; then
+			name="${args[i]#/host/bundle/}"
+		fi
+	done
+	[[ -n "$repo" && -n "$hostdir" && -n "$name" ]] || return 1
+	git --git-dir="$repo" bundle create "$hostdir/$name" --all
+}
+
+bundle_tmp_dir_from_log() {
+	local line word prev="" dir=""
+	line="$(grep -m1 -- 'bundle create' "$PODMAN_LOG" || true)"
+	# shellcheck disable=SC2086 # the logged command line is tokenised on purpose
+	for word in $line; do
+		if [[ "$prev" == -v && "$word" == *':/host/bundle' ]]; then
+			dir="${word%:/host/bundle}"
+		fi
+		prev="$word"
+	done
+	printf '%s\n' "$dir"
+}
+
+@test "run_fetch dies with the no git history message when the gitdir volume is absent" {
+	load_lib git.sh
+	podman() { return 1; }
+	local tmpbase="$BATS_TEST_TMPDIR/tmpscan"
+	mkdir -p "$tmpbase"
+	export TMPDIR="$tmpbase"
+	run run_fetch "$WORK" onbox no
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox: no git history for onbox; create the container first'* ]]
+	[[ -z "$(find "$tmpbase" -maxdepth 1 -name 'talkbox-fetch.*' -print -quit)" ]]
+}
+
+@test "run_fetch --all skips every container with a missing gitdir volume" {
+	load_lib git.sh
+	PODMAN_VOLUMES=""
+	run run_fetch "$WORK" onbox yes
+	[[ "$status" -eq 0 ]]
+	[[ -z "$(git -C "$WORK" for-each-ref 'refs/remotes/onbox/*' 'refs/remotes/netbox/*' 'refs/remotes/offbox/*')" ]]
+}
+
+@test "run_fetch --all fetches only from containers whose gitdir volume exists" {
+	load_lib git.sh
+	PODMAN_VOLUMES="$VOL"
+	PODMAN_MOUNTPOINTS["$VOL"]="$CTR_REPO/.git"
+	git -C "$CTR_REPO" commit -q --allow-empty -m container-commit
+	cd "$WORK"
+	run run_fetch "$WORK" onbox yes
+	[[ "$status" -eq 0 ]]
+	[[ "$(git rev-parse "refs/remotes/onbox/$BRANCH")" == "$(git -C "$CTR_REPO" rev-parse HEAD)" ]]
+	[[ -z "$(git for-each-ref 'refs/remotes/netbox/*' 'refs/remotes/offbox/*')" ]]
+	local dir
+	dir="$(bundle_tmp_dir_from_log)"
+	[[ "$dir" == *'talkbox-fetch.'* ]]
+	[[ ! -d "$dir" ]]
+}
+
+@test "run_fetch surfaces a failed bundle command as a non-zero result without fetching" {
+	load_lib git.sh
+	PODMAN_VOLUMES="$VOL"
+	PODMAN_FAIL_PATTERN='bundle create'
+	cd "$WORK"
+	run run_fetch "$WORK" onbox no
+	[[ "$status" -ne 0 ]]
+	[[ -z "$(git for-each-ref 'refs/remotes/onbox/*')" ]]
+	local dir
+	dir="$(bundle_tmp_dir_from_log)"
+	[[ "$dir" == *'talkbox-fetch.'* ]]
+	[[ ! -d "$dir" ]]
+}
+
+@test "run_merge dies with the no git history message when the gitdir volume is absent" {
+	load_lib git.sh
+	cd "$WORK"
+	run run_merge "$WORK" onbox no ''
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox: no git history for onbox; create the container first'* ]]
+}
+
+@test "run_merge dies with the start the container first message when the gitdir volume has no HEAD" {
+	load_lib git.sh
+	PODMAN_VOLUMES="$VOL"
+	local empty_mp="$BATS_TEST_TMPDIR/empty-mount"
+	mkdir -p "$empty_mp"
+	PODMAN_MOUNTPOINTS["$VOL"]="$empty_mp"
+	local head_before
+	head_before="$(git -C "$WORK" rev-parse HEAD)"
+	cd "$WORK"
+	run run_merge "$WORK" onbox no ''
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox: no git history in the onbox gitdir volume; start the container first'* ]]
+	[[ "$(git -C "$WORK" rev-parse HEAD)" == "$head_before" ]]
+}
+
+@test "run_merge fetches the container bundle and fast-forwards the current branch" {
+	load_lib git.sh
+	PODMAN_VOLUMES="$VOL"
+	PODMAN_MOUNTPOINTS["$VOL"]="$CTR_REPO/.git"
+	git -C "$CTR_REPO" commit -q --allow-empty -m container-commit
+	local container_head
+	container_head="$(git -C "$CTR_REPO" rev-parse HEAD)"
+	cd "$WORK"
+	run run_merge "$WORK" onbox no ''
+	[[ "$status" -eq 0 ]]
+	[[ "$(git rev-parse HEAD)" == "$container_head" ]]
+	local dir
+	dir="$(bundle_tmp_dir_from_log)"
+	[[ "$dir" == *'talkbox-merge.'* ]]
+	[[ ! -d "$dir" ]]
+}
+
+@test "run_merge surfaces a failed bundle command as a non-zero result without merging" {
+	load_lib git.sh
+	PODMAN_VOLUMES="$VOL"
+	PODMAN_MOUNTPOINTS["$VOL"]="$CTR_REPO/.git"
+	PODMAN_FAIL_PATTERN='bundle create'
+	local head_before
+	head_before="$(git -C "$WORK" rev-parse HEAD)"
+	cd "$WORK"
+	run run_merge "$WORK" onbox no ''
+	[[ "$status" -ne 0 ]]
+	[[ "$(git -C "$WORK" rev-parse HEAD)" == "$head_before" ]]
+	local dir
+	dir="$(bundle_tmp_dir_from_log)"
+	[[ "$dir" == *'talkbox-merge.'* ]]
+	[[ ! -d "$dir" ]]
 }
