@@ -7,17 +7,20 @@ project_base() {
 	printf '%s\n' "${base##*/}"
 }
 
-project_slug() {
-	local base
-	base="$(project_base "$1")"
-	base="${base,,}"
-	base="${base//[^a-z0-9]/-}"
-	while [[ "$base" == *--* ]]; do
-		base="${base//--/-}"
+slugify() {
+	local slug="$1"
+	slug="${slug,,}"
+	slug="${slug//[^a-z0-9]/-}"
+	while [[ "$slug" == *--* ]]; do
+		slug="${slug//--/-}"
 	done
-	base="${base#-}"
-	base="${base%-}"
-	printf '%s\n' "$base"
+	slug="${slug#-}"
+	slug="${slug%-}"
+	printf '%s\n' "$slug"
+}
+
+project_slug() {
+	slugify "$(project_base "$1")"
 }
 
 base_image_name() {
@@ -40,14 +43,7 @@ dest_slug() {
 	local dest="$1"
 	dest="${dest#/}"
 	dest="${dest%/}"
-	dest="${dest,,}"
-	dest="${dest//[^a-z0-9]/-}"
-	while [[ "$dest" == *--* ]]; do
-		dest="${dest//--/-}"
-	done
-	dest="${dest#-}"
-	dest="${dest%-}"
-	printf '%s\n' "$dest"
+	slugify "$dest"
 }
 
 netbox_worktree_volume() {

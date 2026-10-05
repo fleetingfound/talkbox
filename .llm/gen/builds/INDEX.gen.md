@@ -40,3 +40,4 @@
 - [Phase 18: Minimal test Containerfile for the e2e suite](.llm/gen/builds/phase-18-minimal-test-image.gen.md)
 - [Phase 19: Consolidation of repeated container logic in `lib/containers.sh`](.llm/gen/builds/phase-19-containers-sh-consolidation.gen.md)
 - [Phase 20a: shared list-file reading and ordered dedup helpers](.llm/gen/builds/phase-20a-list-file-and-dedup-helpers.gen.md)
+- [Phase 20b: shared slug normalisation helper in `lib/naming.sh`](.llm/gen/builds/phase-20b-slugify-helper.gen.md)
