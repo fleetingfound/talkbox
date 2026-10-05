@@ -524,10 +524,18 @@ run_recontain() {
 	run_recreate onbox no "$1" "$2" "$3" "$4" no_mounts no_mounts "$5" "$6" "$7"
 }
 
+run_onbox_recontain() {
+	run_recontain "$@"
+}
+
 run_rebuild() {
 	# shellcheck disable=SC2034 # dummy arrays are consumed by nameref parameters
 	local -a no_mounts=()
 	run_recreate onbox yes "$1" "$2" "$3" "$4" no_mounts no_mounts "$5" "$6" "$7"
+}
+
+run_onbox_rebuild() {
+	run_rebuild "$@"
 }
 
 run_netbox_recontain() {
@@ -552,6 +560,10 @@ run_rm_container() {
 	run_rm_container_any onbox "$1" no_dsts
 }
 
+run_onbox_rm_container() {
+	run_rm_container "$1"
+}
+
 run_netbox_rm_container() {
 	run_rm_container_any netbox "$1" "$2"
 }
@@ -562,6 +574,10 @@ run_offbox_rm_container() {
 
 run_rm_image() {
 	run_rm_image_any onbox "$1"
+}
+
+run_onbox_rm_image() {
+	run_rm_image "$@"
 }
 
 run_netbox_rm_image() {

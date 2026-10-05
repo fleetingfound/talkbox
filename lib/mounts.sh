@@ -108,18 +108,16 @@ mount_args() {
 
 mount_volume_args() {
 	local -n _out="$1"
-	local container="$2" file="$3" project="$4" home="$5"
-	shift 5
-	local -a srcs=() dsts=()
-	mount_entries srcs dsts write "$file" "$project" "$home" "$@"
+	local container="$2" project="$3"
+	local -n _srcs="$4" _dsts="$5"
 	local i vol
 	_out=()
-	for ((i = 0; i < ${#srcs[@]}; i++)); do
+	for ((i = 0; i < ${#_srcs[@]}; i++)); do
 		if [[ "$container" == offbox ]]; then
-			vol="$(offbox_write_volume "$project" "$(dest_slug "${dsts[$i]}")")"
+			vol="$(offbox_write_volume "$project" "$(dest_slug "${_dsts[$i]}")")"
 		else
-			vol="$(netbox_write_volume "$project" "$(dest_slug "${dsts[$i]}")")"
+			vol="$(netbox_write_volume "$project" "$(dest_slug "${_dsts[$i]}")")"
 		fi
-		_out+=("-v" "$vol:${dsts[$i]}")
+		_out+=("-v" "$vol:${_dsts[$i]}")
 	done
 }

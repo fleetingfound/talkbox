@@ -25,3 +25,4 @@
 - [x] [`parse_tap()` fallback drops all but the last failure when `not ok` lines lack diagnostics](parse-tap-fallback-drops-multiple-failures.gen.md) — resolved by [Phase 16d](../plans/phase-16d-parse-tap-fallback-multiple-failures.gen.md)
 - [x] [`MAP.gen.md` is missing implemented core test files](map-gen-md-missing-test-files.gen.md)
 - [ ] [`make_podman_shim` is shadowed by a different implementation in `network.bats`](make-podman-shim-shadowed-in-network-bats.gen.md)
+- [ ] [Onbox create/recontain no longer ensure the base image exists](onbox-base-image-no-longer-probed.gen.md)
