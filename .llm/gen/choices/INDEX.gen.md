@@ -105,3 +105,9 @@
 ## `lib/containers.sh` consolidation (Phase 19)
 
 - [x] [Consolidation boundary and unit-test surface](containers-consolidation-boundary.gen.md) - which interfaces survive the Phase 19 consolidation (the `run_*` executors as delegates over unified cores with executor-level unit tests, or full parameterization with CLI-level unit tests). Selected: executor-surface preservation.
+
+## Duplication-review resolution choices (Phase 20)
+
+- [x] [Naming dispatch consolidation scope](naming-dispatch-consolidation.gen.md) - whether the per-container naming one-liners and `*_of` dispatch layer are replaced by a parametric resource-name function, or left as the documented dispatch surface. Selected: defer.
+- [x] [Write-mount parse-once mechanism](write-mount-parse-once.gen.md) - how `sandbox_action`'s double parse of the write mounts is eliminated (signature change of `mount_volume_args` to accept precomputed entries, a parallel from-entries variant, or no change). Selected: accept precomputed entries.
+- [x] [`run_fetch` git-history guard reuse](run-fetch-git-history-probe.gen.md) - whether `run_fetch` reuses `require_git_history` directly (behaviour change) or a shared non-fatal probe preserving current semantics. Selected: shared non-fatal probe.
