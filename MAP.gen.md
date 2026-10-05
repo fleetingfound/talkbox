@@ -14,9 +14,14 @@ Core files implemented for the talkbox commands:
 - [image/Containerfile](image/Containerfile) - shared base image definition used to build `talkbox/base:latest`.
 - [image/Containerfile.minimal](image/Containerfile.minimal) - minimal Debian-slim test image definition (git, curl, ca-certificates, the `dev` user, `/working`, `setup.sh`) which `mk_talkbox` swaps into the temp talkbox copy's `image/Containerfile`, so the e2e suite builds `talkbox/base-e2e:latest` instead of the production image.
 - [defaults/dotfiles/.bashrc](defaults/dotfiles/.bashrc) - global interactive-shell dotfile which prints the container-type ASCII art banner (guarded by the exported `_TALKBOX_BANNER_SHOWN` sentinel, `TALKBOX_CONTAINER_TYPE` and the bind-mounted art file) and defines the coloured `PS1` prompt with the `<project-slug>.<container-type>` host segment, git aliases and shell conveniences.
-- [defaults/art/onbox.txt](defaults/art/onbox.txt) - repo-provided blue ASCII art for the `onbox` container, rendered by the `.bashrc` banner block on interactive shell start.
-- [defaults/art/netbox.txt](defaults/art/netbox.txt) - repo-provided cyan ASCII art for the `netbox` container, rendered by the `.bashrc` banner block on interactive shell start.
+- [defaults/art/onbox.txt](defaults/art/onbox.txt) - repo-provided green ASCII art for the `onbox` container, rendered by the `.bashrc` banner block on interactive shell start.
+- [defaults/art/netbox.txt](defaults/art/netbox.txt) - repo-provided blue ASCII art for the `netbox` container, rendered by the `.bashrc` banner block on interactive shell start.
 - [defaults/art/offbox.txt](defaults/art/offbox.txt) - repo-provided red ASCII art for the `offbox` container, rendered by the `.bashrc` banner block on interactive shell start.
+- [defaults/deny.ip](defaults/deny.ip) - repo-provided default IP deny list derived from the IANA Special-Purpose Address Registries (every block with Globally Reachable = FALSE, omitting the loopback and DNS-forwarder entries that are always allowed); it is parsed by `deny_allow_args` for `onbox`/`netbox` and enforced via the nft ruleset in `lib/network.sh`.
+- [defaults/allow.ip](defaults/allow.ip) - empty repo-provided default IP allow list parsed by `deny_allow_args`; the effective allow set always also contains the loopback entries `127.0.0.0/8` and `::1` and the DNS-forward address `169.254.1.1/32` appended by `lib/network.sh`.
+- [defaults/ports](defaults/ports) - empty repo-provided default port list parsed by `port_args` into the pasta `-T,<port>` forwarding tokens together with the repeatable CLI `--port` values.
+- [defaults/read.mounts](defaults/read.mounts) - repo-provided default read-mount spec list parsed by `mount_args`, currently binding the host OpenCode auth file (`~/.local/share/opencode/auth.json`) read-only at `/home/dev/.local/share/opencode/auth.json`.
+- [defaults/write.mounts](defaults/write.mounts) - empty repo-provided default write-mount spec list parsed by `mount_entries`/`mount_volume_args` together with the repeatable CLI `--write` values (netbox/offbox destinations become named volumes).
 - [image/setup.sh](image/setup.sh) - in-container setup script (invoked with `podman exec` after `podman start`, under the nft deny list for `onbox`/`netbox`) which copies global then project dotfiles into `/home/dev/`, writes the propagated host git identity (`TALKBOX_GIT_USER_NAME`/`TALKBOX_GIT_USER_EMAIL`) into the global git config, and initializes a fresh git repository in the gitdir volume when present (wiring the `host` remote at `/host/git/`, setting the working tree, and performing an initial `git fetch host` + `git reset --mixed` to connect to the host history); it exits 0 on completion and the image defines no `ENTRYPOINT`.
 
 Core files implemented for the test harness:
@@ -34,3 +39,9 @@ The remaining harness files live under `test/`:
 - [test/e2e/host_http_server.py](test/e2e/host_http_server.py) - e2e `--port` test server which binds a socket to port 0, prints the kernel-assigned port as its sole stdout line, then serves a given directory over HTTP using that already-bound socket (eliminating the probe-then-rebind race).
 - [test/canary/false.bats](test/canary/false.bats) - canary tests which intentionally assert something false and are expected to fail under `make test-canary`.
 - [test/timeout/hang.bats](test/timeout/hang.bats) - timeout canary test which runs a non-terminating command and is expected to fail under `make test-timeout`.
+
+Repository meta files:
+
+- [.gitignore](.gitignore) - ignores the untracked `.tmp/` scratch and `.mdi/` working directories.
+- [LICENSE](LICENSE) - MIT license text for the project (Copyright (c) 2026 fleetingfound).
+- [README.md](README.md) - project overview covering the experimental-software warning, the sandboxing design goals, the `onbox`/`netbox`/`offbox` commands and their git workflows, and development/reference notes.
