@@ -53,49 +53,41 @@ mount_entries() {
 	local mode="$3" file="$4" project="$5" home="$6"
 	shift 6
 	local -a cli_specs=("$@")
-	local -a lsrcs=() ldsts=()
+	local -a lines=() lsrcs=() ldsts=()
+	read_list_file lines "$file"
 	local line src dst spec
-	if [[ -f "$file" ]]; then
-		while IFS= read -r line || [[ -n "$line" ]]; do
-			line="$(strip_comment "$line")"
-			line="$(trim "$line")"
-			[[ -z "$line" ]] && continue
-			mount_spec src dst "$line"
-			expand_mount "$mode" "$src" "$dst" "$project" "$home" src dst
-			lsrcs+=("$src")
-			ldsts+=("$dst")
-		done <"$file"
-	fi
+	for line in "${lines[@]}"; do
+		mount_spec src dst "$line"
+		expand_mount "$mode" "$src" "$dst" "$project" "$home" src dst
+		lsrcs+=("$src")
+		ldsts+=("$dst")
+	done
 	for spec in "${cli_specs[@]}"; do
-		spec="$(strip_comment "$spec")"
-		spec="$(trim "$spec")"
+		spec="$(clean_line "$spec")"
 		[[ -z "$spec" ]] && continue
 		mount_spec src dst "$spec"
 		expand_mount "$mode" "$src" "$dst" "$project" "$home" src dst
 		lsrcs+=("$src")
 		ldsts+=("$dst")
 	done
-	local -A seen=()
-	local -a usrcs=() udsts=() depthlines=() idx=()
-	local i j
-	for ((i = ${#lsrcs[@]} - 1; i >= 0; i--)); do
-		if [[ -z "${seen[${ldsts[$i]}]+x}" ]]; then
-			seen["${ldsts[$i]}"]=1
-			usrcs=("${lsrcs[$i]}" "${usrcs[@]}")
-			udsts=("${ldsts[$i]}" "${udsts[@]}")
-		fi
+	local -A src_of=()
+	local i
+	for ((i = 0; i < ${#ldsts[@]}; i++)); do
+		src_of["${ldsts[$i]}"]="${lsrcs[$i]}"
 	done
-	for ((j = 0; j < ${#udsts[@]}; j++)); do
-		depthlines+=("$(dest_depth "${udsts[$j]}") $j")
+	local -a udsts=() depthlines=() idx=()
+	dedup_last_ordered udsts "${ldsts[@]}"
+	for ((i = 0; i < ${#udsts[@]}; i++)); do
+		depthlines+=("$(dest_depth "${udsts[$i]}") $i")
 	done
 	if ((${#depthlines[@]} > 0)); then
 		mapfile -t idx < <(printf '%s\n' "${depthlines[@]}" | sort -n -s -k1,1 | cut -d' ' -f2)
 	fi
 	_esrcs=()
 	_edsts=()
-	for j in "${idx[@]}"; do
-		_esrcs+=("${usrcs[$j]}")
-		_edsts+=("${udsts[$j]}")
+	for i in "${idx[@]}"; do
+		_esrcs+=("${src_of[${udsts[$i]}]}")
+		_edsts+=("${udsts[$i]}")
 	done
 }
 

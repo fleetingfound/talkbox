@@ -45,7 +45,7 @@ Implementation plan for `SPEC.md`, in recommended order. Each phase builds on th
 - [x] [Phase 17a: ASCII art banner on container startup](phase-17a-ascii-art-banner.gen.md) #flow/unified #model/default
 - [x] [Phase 18: Minimal test Containerfile for the e2e suite](phase-18-minimal-test-image.gen.md) #flow/unified #model/default
 - [x] [Phase 19: Consolidation of repeated container logic in `lib/containers.sh`](phase-19-containers-sh-consolidation.gen.md) #flow/refactor #model/big
-- [ ] [Phase 20a: shared list-file reading and ordered dedup helpers](phase-20a-list-file-and-dedup-helpers.gen.md) #flow/refactor #model/default
+- [x] [Phase 20a: shared list-file reading and ordered dedup helpers](phase-20a-list-file-and-dedup-helpers.gen.md) #flow/refactor #model/default
 - [ ] [Phase 20b: shared slug normalisation helper in `lib/naming.sh`](phase-20b-slugify-helper.gen.md) #flow/refactor #model/default
 - [ ] [Phase 20c: shared git bundle lifecycle and git-history probe in `lib/git.sh`](phase-20c-git-bundle-lifecycle.gen.md) #flow/refactor #model/default
 - [ ] [Phase 20d: shared no-network run prefix and git-mount plan tokens](phase-20d-no-net-run-and-git-mount-helpers.gen.md) #flow/refactor #model/default

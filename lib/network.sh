@@ -8,26 +8,14 @@ port_args() {
 	local -n _out="$1"
 	local file="$2"
 	shift 2
-	local -a cli_ports=("$@")
-	local -a list=()
-	local line
-	if [[ -f "$file" ]]; then
-		while IFS= read -r line || [[ -n "$line" ]]; do
-			line="$(strip_comment "$line")"
-			line="$(trim "$line")"
-			[[ -z "$line" ]] && continue
-			list+=("$line")
-		done <"$file"
-	fi
-	list+=("${cli_ports[@]}")
-	local -A seen=()
-	local p
+	local -a entries=() uniq=()
+	read_list_file entries "$file"
+	entries+=("$@")
+	dedup_ordered uniq "${entries[@]}"
 	_out=()
-	for p in "${list[@]}"; do
-		if [[ -z "${seen[$p]+x}" ]]; then
-			seen[$p]=1
-			_out+=("-T,$p")
-		fi
+	local p
+	for p in "${uniq[@]}"; do
+		_out+=("-T,$p")
 	done
 }
 
@@ -36,43 +24,13 @@ deny_allow_args() {
 	local deny_file="$3" allow_file="$4"
 	local -n _deny_cli="$5" _allow_cli="$6"
 	local -a deny=() allow=()
-	local line
-	if [[ -f "$deny_file" ]]; then
-		while IFS= read -r line || [[ -n "$line" ]]; do
-			line="$(strip_comment "$line")"
-			line="$(trim "$line")"
-			[[ -z "$line" ]] && continue
-			deny+=("$line")
-		done <"$deny_file"
-	fi
+	read_list_file deny "$deny_file"
 	deny+=("${_deny_cli[@]}")
-	if [[ -f "$allow_file" ]]; then
-		while IFS= read -r line || [[ -n "$line" ]]; do
-			line="$(strip_comment "$line")"
-			line="$(trim "$line")"
-			[[ -z "$line" ]] && continue
-			allow+=("$line")
-		done <"$allow_file"
-	fi
+	read_list_file allow "$allow_file"
 	allow+=("${_allow_cli[@]}")
 	allow+=(127.0.0.0/8 169.254.1.1/32 ::1)
-	local -A seen=()
-	local e
-	_deny_out=()
-	for e in "${deny[@]}"; do
-		if [[ -z "${seen[$e]+x}" ]]; then
-			seen[$e]=1
-			_deny_out+=("$e")
-		fi
-	done
-	seen=()
-	_allow_out=()
-	for e in "${allow[@]}"; do
-		if [[ -z "${seen[$e]+x}" ]]; then
-			seen[$e]=1
-			_allow_out+=("$e")
-		fi
-	done
+	dedup_ordered _deny_out "${deny[@]}"
+	dedup_ordered _allow_out "${allow[@]}"
 }
 
 nft_interval_set() {
