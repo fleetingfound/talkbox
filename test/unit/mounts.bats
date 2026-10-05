@@ -111,6 +111,16 @@ setup() {
 	[[ "${out[*]}" == "-v /host/x:/working/talkbox-proj/cfg:ro" ]]
 }
 
+@test "mount_args expands ~ and \$PROJECT in defaults-file lines" {
+	load_lib mounts.sh
+	local file="$BATS_TEST_TMPDIR/read.mounts"
+	# shellcheck disable=SC2016,SC2088 # literal ~ and $PROJECT placeholders are passed for expansion
+	printf '~/cfg : $PROJECT/cfg\n' >"$file"
+	local out=()
+	mount_args out read "$file" "$PROJECT" "$HOME_FAKE"
+	[[ "${out[*]}" == "-v $HOME_FAKE/cfg:/working/talkbox-proj/cfg:ro" ]]
+}
+
 @test "mount_args unions defaults-file and CLI mounts" {
 	load_lib mounts.sh
 	local file="$BATS_TEST_TMPDIR/read.mounts"
@@ -125,6 +135,24 @@ setup() {
 	local out=()
 	mount_args out read "$ABSENT" "$PROJECT" "$HOME_FAKE" '/first:/x' '/second:/x'
 	[[ "${out[*]}" == "-v /second:/x:ro" ]]
+}
+
+@test "mount_args collapses identical dests within the defaults file keeping the last source" {
+	load_lib mounts.sh
+	local file="$BATS_TEST_TMPDIR/read.mounts"
+	printf '/first:/x\n/second:/x\n' >"$file"
+	local out=()
+	mount_args out read "$file" "$PROJECT" "$HOME_FAKE"
+	[[ "${out[*]}" == "-v /second:/x:ro" ]]
+}
+
+@test "mount_args lets a CLI read spec override an identical defaults-file dest keeping the CLI source" {
+	load_lib mounts.sh
+	local file="$BATS_TEST_TMPDIR/read.mounts"
+	printf '/def:/x\n' >"$file"
+	local out=()
+	mount_args out read "$file" "$PROJECT" "$HOME_FAKE" '/cli:/x'
+	[[ "${out[*]}" == "-v /cli:/x:ro" ]]
 }
 
 @test "mount_args orders nested dests shallow-to-deep" {
@@ -171,4 +199,22 @@ setup() {
 	local out=()
 	mount_volume_args out netbox "$file" "$PROJECT" "$HOME_FAKE" '/cli:/y'
 	[[ "${out[*]}" == "-v talkbox-proj.netbox.write.x:/x -v talkbox-proj.netbox.write.y:/y" ]]
+}
+
+@test "mount_args lets a CLI write spec override an identical defaults-file write dest keeping the CLI source" {
+	load_lib mounts.sh
+	local file="$BATS_TEST_TMPDIR/write.mounts"
+	printf '/def:/x\n' >"$file"
+	local out=()
+	mount_args out write "$file" "$PROJECT" "$HOME_FAKE" '/cli:/x'
+	[[ "${out[*]}" == "-v /cli:/x" ]]
+}
+
+@test "mount_volume_args collapses an identical defaults-file and CLI write dest into a single volume mount" {
+	load_lib mounts.sh
+	local file="$BATS_TEST_TMPDIR/write.mounts"
+	printf '/def:/x\n' >"$file"
+	local out=()
+	mount_volume_args out netbox "$file" "$PROJECT" "$HOME_FAKE" '/cli:/x'
+	[[ "${out[*]}" == "-v talkbox-proj.netbox.write.x:/x" ]]
 }
