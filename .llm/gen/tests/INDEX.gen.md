@@ -38,3 +38,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 20b: shared slug normalisation helper in lib/naming.sh](phase-20b-slugify-helper.gen.md)
 - [Phase 20c: shared git bundle lifecycle and git-history probe in lib/git.sh](phase-20c-git-bundle-lifecycle.gen.md)
 - [Phase 20d: shared no-network run prefix and git-mount plan tokens](phase-20d-no-net-run-and-git-mount-helpers.gen.md)
+- [Phase 20e: unified container action and single write-mount parse](phase-20e-unified-action-and-write-mount-parse-once.gen.md)

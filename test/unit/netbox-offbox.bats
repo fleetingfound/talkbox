@@ -267,9 +267,9 @@ use_podman_shim() {
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 	local -a read_mounts=() write_mounts=() srcs=() dsts=()
 	mount_args read_mounts read "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
-	mount_volume_args write_mounts netbox "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
-	srcs=('/host/data')
-	dsts=('/talkbox/wdata')
+	mount_entries srcs dsts write "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
+	# shellcheck disable=SC2034 # write_mounts is consumed by nameref in run_netbox
+	write_mounts=("-v" "$(netbox_write_volume "$PROJECT" "$(dest_slug "${dsts[0]}")"):${dsts[0]}")
 	run run_netbox "$PROJECT" 'true' no read_mounts write_mounts srcs dsts PORTS DENY ALLOW
 	[[ "$status" -eq 0 ]]
 	local create populate
@@ -381,9 +381,9 @@ use_podman_shim() {
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 	local -a read_mounts=() write_mounts=() srcs=() dsts=()
 	mount_args read_mounts read "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
-	mount_volume_args write_mounts offbox "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
-	srcs=('/host/data')
-	dsts=('/talkbox/wdata')
+	mount_entries srcs dsts write "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
+	# shellcheck disable=SC2034 # write_mounts is consumed by nameref in run_offbox
+	write_mounts=("-v" "$(offbox_write_volume "$PROJECT" "$(dest_slug "${dsts[0]}")"):${dsts[0]}")
 	run run_offbox "$PROJECT" 'true' no read_mounts write_mounts srcs dsts PORTS DENY ALLOW
 	[[ "$status" -eq 0 ]]
 	local create populate
