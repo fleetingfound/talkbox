@@ -468,3 +468,46 @@ EOF
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'talkbox: warning: cannot apply nftables deny/allow rules in container talkbox-proj.onbox; deny list left unenforced'* ]]
 }
+
+@test "install_nft_deny in strict mode emits the exact PID-lookup failure message and returns 1" {
+	load_lib network.sh
+	# shellcheck disable=SC2034 # arrays are passed by name to the install_nft_deny function
+	local deny=(10.0.0.0/8) allow=()
+	local shimdir
+	shimdir="$(make_podman_shim)"
+	export SHIM_INSPECT_RC=1
+	export SHIM_INSPECT_STDERR='Error: no container with name or ID "talkbox-proj.onbox" found'
+	export PATH="$shimdir:$PATH"
+	run install_nft_deny talkbox-proj.onbox deny allow
+	[[ "$status" -eq 1 ]]
+	[[ "$output" == *'talkbox: cannot determine the PID of container talkbox-proj.onbox; deny/allow rules not applied'* ]]
+	[[ "$output" == *'Error: no container with name or ID "talkbox-proj.onbox" found'* ]]
+}
+
+@test "install_nft_deny in strict mode emits the exact nft-pipeline failure message and returns 1" {
+	load_lib network.sh
+	# shellcheck disable=SC2034 # arrays are passed by name to the install_nft_deny function
+	local deny=(10.0.0.0/8) allow=()
+	local shimdir
+	shimdir="$(make_podman_shim)"
+	export SHIM_NFT_RC=1
+	export SHIM_NFT_STDERR='nft: netlink error: Operation not permitted'
+	export PATH="$shimdir:$PATH"
+	run install_nft_deny talkbox-proj.onbox deny allow
+	[[ "$status" -eq 1 ]]
+	[[ "$output" == *'talkbox: failed to apply nftables deny/allow rules in container talkbox-proj.onbox; deny list left unenforced'* ]]
+	[[ "$output" == *'nft: netlink error: Operation not permitted'* ]]
+}
+
+@test "install_nft_deny with TALKBOX_STRICT_NFT=0 applies the rules and emits no warning when the nft pipeline succeeds" {
+	load_lib network.sh
+	# shellcheck disable=SC2034 # arrays are passed by name to the install_nft_deny function
+	local deny=(10.0.0.0/8) allow=()
+	local shimdir
+	shimdir="$(make_podman_shim)"
+	export TALKBOX_STRICT_NFT=0
+	export PATH="$shimdir:$PATH"
+	run install_nft_deny talkbox-proj.onbox deny allow
+	[[ "$status" -eq 0 ]]
+	[[ -z "$output" ]]
+}

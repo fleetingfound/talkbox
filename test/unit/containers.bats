@@ -372,3 +372,39 @@ EOF
 	[[ "$status" -eq 0 ]]
 	[[ "$(podman_create_line)" == "$create_create" ]]
 }
+
+@test "run_onbox stops the container and dies with the exact nft error when the nft deny step fails" {
+	load_onbox_plan
+	use_podman_shim
+	export PODMAN_FAIL_PATTERN='nsenter'
+	export PODMAN_FAIL_CODE=1
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a deny=(1.1.1.1) allow=()
+	run run_onbox "$PROJECT" 'echo hi' no READ_MOUNTS WRITE_MOUNTS PORTS deny allow
+	[[ "$status" -eq 1 ]]
+	[[ "$output" == *'talkbox: cannot apply nftables deny/allow rules in container talkbox-proj.onbox; deny list left unenforced'* ]]
+	local nft_line stop_line
+	nft_line="$(podman_line_no 'unshare nsenter')"
+	stop_line="$(podman_line_no '^stop -t 5 talkbox-proj.onbox$')"
+	[[ -n "$nft_line" && -n "$stop_line" ]]
+	[[ "$nft_line" -lt "$stop_line" ]]
+}
+
+@test "run_onbox stops the container and dies with the exact setup error when the setup.sh exec fails" {
+	load_onbox_plan
+	use_podman_shim
+	export PODMAN_FAIL_PATTERN='exec talkbox-proj.onbox setup.sh'
+	export PODMAN_FAIL_CODE=1
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a deny=(1.1.1.1) allow=()
+	run run_onbox "$PROJECT" 'echo hi' no READ_MOUNTS WRITE_MOUNTS PORTS deny allow
+	[[ "$status" -eq 1 ]]
+	[[ "$output" == *'talkbox: cannot run setup.sh in container talkbox-proj.onbox; setup failed'* ]]
+	local nft_line setup_line stop_line
+	nft_line="$(podman_line_no 'unshare nsenter')"
+	setup_line="$(podman_line_no '^exec talkbox-proj.onbox setup.sh$')"
+	stop_line="$(podman_line_no '^stop -t 5 talkbox-proj.onbox$')"
+	[[ -n "$nft_line" && -n "$setup_line" && -n "$stop_line" ]]
+	[[ "$nft_line" -lt "$setup_line" ]]
+	[[ "$setup_line" -lt "$stop_line" ]]
+}
