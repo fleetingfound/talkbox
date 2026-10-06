@@ -214,6 +214,60 @@ use_podman_shim() {
 	[[ -n "$(podman_line '^start talkbox-proj.netbox$')" ]]
 }
 
+@test "run_netbox create path creates the gitdir volume after populate and before create" {
+	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local populate_line volcreate_line create_line
+	populate_line="$(podman_line_no 'talkbox-proj.netbox.worktree:/talkbox/target')"
+	volcreate_line="$(podman_line_no '^volume create talkbox-proj.netbox.gitdir$')"
+	create_line="$(podman_line_no '^create ')"
+	[[ -n "$populate_line" && -n "$volcreate_line" && -n "$create_line" ]]
+	[[ "$populate_line" -lt "$volcreate_line" ]]
+	[[ "$volcreate_line" -lt "$create_line" ]]
+}
+
+@test "run_netbox create path omits the gitdir volume create when the gitdir volume already exists" {
+	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_VOLUMES="talkbox-proj.netbox.gitdir"
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ -z "$(podman_line '^volume create ')" ]]
+	line_has_token "$(podman_create_line)" 'talkbox-proj.netbox.gitdir:/working/talkbox-proj/.git'
+}
+
+@test "run_netbox probes the base image and builds it when missing on the create path" {
+	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ -n "$(podman_line "^image exists $(base_image_name)$")" ]]
+	[[ "$(podman_count '^build ')" -eq 0 ]]
+	: >"$LOG"
+	export PODMAN_IMAGES=""
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ -n "$(podman_line "^image exists $(base_image_name)$")" ]]
+	[[ "$(podman_count '^commit ')" -eq 0 ]]
+	local build_line populate_line create_line
+	build_line="$(podman_line_no '^build ')"
+	populate_line="$(podman_line_no 'talkbox-proj.netbox.worktree:/talkbox/target')"
+	create_line="$(podman_line_no '^create ')"
+	[[ -n "$build_line" && -n "$populate_line" && -n "$create_line" ]]
+	[[ "$build_line" -lt "$populate_line" ]]
+	[[ "$populate_line" -lt "$create_line" ]]
+	local build
+	build="$(podman_line '^build ')"
+	line_has_token "$build" '-t'
+	line_has_token "$build" "$(base_image_name)"
+	line_has_token "$build" "$TALKBOX_ROOT/image/Containerfile"
+}
+
 @test "run_netbox commits the onbox container as the netbox root image when onbox exists" {
 	load_netbox_plan
 	use_podman_shim
@@ -677,4 +731,84 @@ EOF
 	[[ "$start_line" -lt "$setup_line" ]]
 	[[ "$setup_line" -lt "$stop_line" ]]
 	[[ "$(grep -c 'nsenter' "$log" || true)" -eq 0 ]]
+}
+
+@test "run_netbox create line is byte-identical to the recontain recreate line from the base image" {
+	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create_create
+	create_create="$(podman_create_line)"
+	[[ -n "$create_create" ]]
+	: >"$LOG"
+	run run_netbox_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ "$(podman_create_line)" == "$create_create" ]]
+}
+
+@test "run_netbox create line is byte-identical to the recontain recreate line when inheriting from onbox" {
+	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_CONTAINERS="talkbox-proj.onbox"
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create_create
+	create_create="$(podman_create_line)"
+	line_has_token "$create_create" 'talkbox-proj.netbox.root'
+	: >"$LOG"
+	run run_netbox_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ "$(podman_create_line)" == "$create_create" ]]
+}
+
+@test "run_offbox create line is byte-identical to the recontain recreate line when inheriting from netbox" {
+	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_CONTAINERS="talkbox-proj.netbox"
+	run run_offbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create_create
+	create_create="$(podman_create_line)"
+	line_has_token "$create_create" 'talkbox-proj.offbox.root'
+	: >"$LOG"
+	run run_offbox_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ "$(podman_create_line)" == "$create_create" ]]
+}
+
+@test "run_netbox and run_netbox_recontain build identical create lines under TALKBOX_FRESH and TALKBOX_INHERIT" {
+	load_netbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_CONTAINERS="talkbox-proj.onbox talkbox-proj.offbox"
+	# shellcheck disable=SC2034 # globals consumed by the sourced containers.sh
+	TALKBOX_FRESH=yes
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ "$(podman_count '^commit ')" -eq 0 ]]
+	local fresh_create
+	fresh_create="$(podman_create_line)"
+	: >"$LOG"
+	run run_netbox_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ "$(podman_count '^commit ')" -eq 0 ]]
+	[[ "$(podman_create_line)" == "$fresh_create" ]]
+	: >"$LOG"
+	unset TALKBOX_FRESH
+	# shellcheck disable=SC2034 # global consumed by the sourced containers.sh
+	TALKBOX_INHERIT=offbox
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local inherit_create
+	inherit_create="$(podman_create_line)"
+	[[ -n "$(podman_line '^commit talkbox-proj.offbox talkbox-proj.netbox.root$')" ]]
+	: >"$LOG"
+	run run_netbox_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ "$(podman_count '^commit ')" -eq 1 ]]
+	[[ "$(podman_create_line)" == "$inherit_create" ]]
 }

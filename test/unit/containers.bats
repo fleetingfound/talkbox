@@ -183,6 +183,17 @@ use_podman_shim() {
 	[[ -z "$(podman_line '^volume create ')" ]]
 }
 
+@test "run_onbox omits the gitdir volume create when the gitdir volume already exists" {
+	load_onbox_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_VOLUMES="talkbox-proj.onbox.gitdir"
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ -z "$(podman_line '^volume create ')" ]]
+	line_has_token "$(podman_create_line)" 'talkbox-proj.onbox.gitdir:/working/talkbox-proj/.git'
+}
+
 @test "run_onbox emits git identity env vars for a git-tracked project but not for a non-git project" {
 	load_onbox_plan
 	use_podman_shim
@@ -346,4 +357,18 @@ EOF
 	[[ "$status" -ne 0 ]]
 	[[ "$output" == *'talkbox:'* ]]
 	[[ "$(grep -c "^stop " "$log")" -ge 1 ]]
+}
+
+@test "run_onbox create line is byte-identical to the run_recontain recreate line" {
+	load_onbox_plan
+	use_podman_shim
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	local create_create
+	create_create="$(podman_create_line)"
+	[[ -n "$create_create" ]]
+	: >"$LOG"
+	run run_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ "$(podman_create_line)" == "$create_create" ]]
 }

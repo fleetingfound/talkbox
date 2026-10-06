@@ -284,6 +284,29 @@ use_podman_shim() {
 	line_lacks_token "$create" '--tmpfs'
 }
 
+@test "run_offbox_recontain with no source container probes the base image and skips commit and build when it exists" {
+	load_lifecycle_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	run run_offbox_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ "$(podman_count '^commit ')" -eq 0 ]]
+	[[ -n "$(podman_line "^image exists $(base_image_name)$")" ]]
+	[[ "$(podman_count '^build ')" -eq 0 ]]
+	line_has_token "$(podman_create_line)" "$(base_image_name)"
+	local rm_line populate_line volcreate_line create_line start_line
+	rm_line="$(podman_line_no '^rm -f --volumes talkbox-proj.offbox$')"
+	populate_line="$(podman_line_no 'talkbox-proj.offbox.worktree:/talkbox/target')"
+	volcreate_line="$(podman_line_no '^volume create talkbox-proj.offbox.gitdir$')"
+	create_line="$(podman_line_no '^create ')"
+	start_line="$(podman_line_no '^start talkbox-proj.offbox$')"
+	[[ -n "$rm_line" && -n "$populate_line" && -n "$volcreate_line" && -n "$create_line" && -n "$start_line" ]]
+	[[ "$rm_line" -lt "$populate_line" ]]
+	[[ "$populate_line" -lt "$volcreate_line" ]]
+	[[ "$volcreate_line" -lt "$create_line" ]]
+	[[ "$create_line" -lt "$start_line" ]]
+}
+
 @test "run_netbox_rebuild builds the base image first, then commits and recreates the container" {
 	load_lifecycle_plan
 	use_podman_shim
@@ -316,6 +339,30 @@ use_podman_shim() {
 	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.gitdir$')" ]]
 	[[ -n "$(podman_line '^exec talkbox-proj.netbox setup.sh$')" ]]
 	[[ "$(podman_count 'unshare')" -eq 0 ]]
+}
+
+@test "run_netbox_rebuild with no source container builds without probing or committing" {
+	load_lifecycle_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	run run_netbox_rebuild "$PROJECT" no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ "$(podman_count '^commit ')" -eq 0 ]]
+	[[ "$(podman_count 'image exists')" -eq 0 ]]
+	local build_line rm_line populate_line volcreate_line create_line start_line
+	build_line="$(podman_line_no '^build ')"
+	rm_line="$(podman_line_no '^rm -f --volumes talkbox-proj.netbox$')"
+	populate_line="$(podman_line_no 'talkbox-proj.netbox.worktree:/talkbox/target')"
+	volcreate_line="$(podman_line_no '^volume create talkbox-proj.netbox.gitdir$')"
+	create_line="$(podman_line_no '^create ')"
+	start_line="$(podman_line_no '^start talkbox-proj.netbox$')"
+	[[ -n "$build_line" && -n "$rm_line" && -n "$populate_line" && -n "$volcreate_line" && -n "$create_line" && -n "$start_line" ]]
+	[[ "$build_line" -lt "$rm_line" ]]
+	[[ "$rm_line" -lt "$populate_line" ]]
+	[[ "$populate_line" -lt "$volcreate_line" ]]
+	[[ "$volcreate_line" -lt "$create_line" ]]
+	[[ "$create_line" -lt "$start_line" ]]
+	line_has_token "$(podman_create_line)" "$(base_image_name)"
 }
 
 @test "run_offbox_rebuild builds the base image first, then commits and recreates the container" {
