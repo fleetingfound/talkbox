@@ -209,6 +209,22 @@ plan_offbox_populate() {
 	done
 }
 
+plan_populate_and_create() {
+	local -n _plan_out="$1"
+	local container="$2" interactive="$3" project="$4" source="$5" image="$6"
+	shift 6
+	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
+	case "$container" in
+	netbox) plan_netbox_populate "${!_plan_out}" "$project" "$3" "$4" ;;
+	offbox) plan_offbox_populate "${!_plan_out}" "$project" "$source" "$3" "$4" ;;
+	esac
+	plan_gitdir_volume "${!_plan_out}" "$project" "$container"
+	local -a create_args=()
+	plan_container create_args "$container" "$project" "$interactive" "$1" "$2" "$5" "$image"
+	_plan_out+=("podman" "create")
+	_plan_out+=("${create_args[@]}")
+}
+
 plan_recreate() {
 	local -n _plan_out="$1"
 	local container="$2" rebuild="$3" interactive="$4" project="$5"
@@ -227,15 +243,7 @@ plan_recreate() {
 	fi
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$ctr")
 	plan_container_volumes_rm "${!_plan_out}" "$project" "$container" "$4"
-	case "$container" in
-	netbox) plan_netbox_populate "${!_plan_out}" "$project" "$3" "$4" ;;
-	offbox) plan_offbox_populate "${!_plan_out}" "$project" "$source" "$3" "$4" ;;
-	esac
-	plan_gitdir_volume "${!_plan_out}" "$project" "$container"
-	local -a create_args=()
-	plan_container create_args "$container" "$project" "$interactive" "$1" "$2" "$5" "$image"
-	_plan_out+=("podman" "create")
-	_plan_out+=("${create_args[@]}")
+	plan_populate_and_create "${!_plan_out}" "$container" "$interactive" "$project" "$source" "$image" "$1" "$2" "$3" "$4" "$5"
 	_plan_out+=("podman" "start" "$ctr")
 }
 
@@ -407,35 +415,34 @@ inherit_source_for() {
 	inherit_source "$container" "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$(netbox_container_name "$project")")" "$(exists_yn "$(offbox_container_name "$project")")" "$TALKBOX_FRESH" "$TALKBOX_INHERIT"
 }
 
+resolve_inheritance() {
+	local container="$1" rebuild="$2" project="$3"
+	local -n _source_out="$4"
+	local -n _image_out="$5"
+	_image_out="$(base_image_name)"
+	if [[ "$container" == onbox ]]; then
+		_source_out=base
+		return
+	fi
+	_source_out="$(inherit_source_for "$container" "$project")"
+	if [[ "$_source_out" != base ]]; then
+		_image_out="$(root_image_of "$container" "$project")"
+	elif [[ "$rebuild" != yes ]]; then
+		ensure_base_image
+	fi
+}
+
 create_sandbox() {
 	local container="$1" project="$2" interactive="$3"
 	shift 3
 	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
 	local source image
-	image="$(base_image_name)"
-	if [[ "$container" == onbox ]]; then
-		source=base
-	else
-		source="$(inherit_source_for "$container" "$project")"
-		if [[ "$source" != base ]]; then
-			image="$(root_image_of "$container" "$project")"
-		else
-			ensure_base_image
-		fi
-	fi
+	resolve_inheritance "$container" no "$project" source image
 	local -a plan=()
 	if [[ "$source" != base ]]; then
 		plan+=("podman" "commit" "$(container_name_of "$source" "$project")" "$image")
 	fi
-	case "$container" in
-	netbox) plan_netbox_populate plan "$project" "$3" "$4" ;;
-	offbox) plan_offbox_populate plan "$project" "$source" "$3" "$4" ;;
-	esac
-	plan_gitdir_volume plan "$project" "$container"
-	local -a create_args=()
-	plan_container create_args "$container" "$project" "$interactive" "$1" "$2" "$5" "$image"
-	plan+=("podman" "create")
-	plan+=("${create_args[@]}")
+	plan_populate_and_create plan "$container" "$interactive" "$project" "$source" "$image" "$1" "$2" "$3" "$4" "$5"
 	execute_plan "${plan[@]}"
 }
 
@@ -460,16 +467,9 @@ run_recreate() {
 	local container="$1" rebuild="$2" project="$3" interactive="$4"
 	shift 4
 	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5" _deny="$6" _allow="$7"
-	local ctr source
+	local ctr source image
 	ctr="$(container_name_of "$container" "$project")"
-	if [[ "$container" == onbox ]]; then
-		source=base
-	else
-		source="$(inherit_source_for "$container" "$project")"
-		if [[ "$rebuild" != yes && "$source" == base ]]; then
-			ensure_base_image
-		fi
-	fi
+	resolve_inheritance "$container" "$rebuild" "$project" source image
 	local -a plan=()
 	plan_recreate plan "$container" "$rebuild" "$interactive" "$project" "$1" "$2" "$3" "$4" "$5" "$source"
 	execute_plan "${plan[@]}"

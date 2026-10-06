@@ -50,5 +50,5 @@ Implementation plan for `SPEC.md`, in recommended order. Each phase builds on th
 - [x] [Phase 20c: shared git bundle lifecycle and git-history probe in `lib/git.sh`](phase-20c-git-bundle-lifecycle.gen.md) #flow/refactor #model/default
 - [x] [Phase 20d: shared no-network run prefix and git-mount plan tokens](phase-20d-no-net-run-and-git-mount-helpers.gen.md) #flow/refactor #model/default
 - [x] [Phase 20e: unified container action in `talkbox.sh` and single write-mount parse](phase-20e-unified-action-and-write-mount-parse-once.gen.md) #flow/refactor #model/default
-- [ ] [Phase 20f: convergence of `create_sandbox` and `plan_recreate` in `lib/containers.sh`](phase-20f-create-recreate-convergence.gen.md) #flow/refactor #model/default
+- [x] [Phase 20f: convergence of `create_sandbox` and `plan_recreate` in `lib/containers.sh`](phase-20f-create-recreate-convergence.gen.md) #flow/refactor #model/default
 - [ ] [Phase 20g: minor production deduplications](phase-20g-minor-production-dedups.gen.md) #flow/refactor #model/default

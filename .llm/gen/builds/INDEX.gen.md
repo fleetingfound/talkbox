@@ -44,3 +44,4 @@
 - [Phase 20c: shared git bundle lifecycle and git-history probe in `lib/git.sh`](.llm/gen/builds/phase-20c-git-bundle-lifecycle.gen.md)
 - [Phase 20d: shared no-network run prefix and git-mount plan tokens](.llm/gen/builds/phase-20d-no-net-run-and-git-mount-helpers.gen.md)
 - [Phase 20e: unified container action in `talkbox.sh` and single write-mount parse](.llm/gen/builds/phase-20e-unified-action-and-write-mount-parse-once.gen.md)
+- [Phase 20f: convergence of `create_sandbox` and `plan_recreate` in `lib/containers.sh`](.llm/gen/builds/phase-20f-create-recreate-convergence.gen.md)
