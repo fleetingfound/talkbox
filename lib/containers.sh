@@ -378,19 +378,23 @@ stop_container() {
 	podman stop -t "$STOP_GRACE_SECONDS" "$1" >/dev/null 2>&1 || true
 }
 
+stop_and_die() {
+	local ctr="$1" message="$2"
+	stop_container "$ctr"
+	die "$message" 1
+}
+
 install_nft_deny_or_die() {
 	local ctr="$1"
 	if ! install_nft_deny "$@"; then
-		stop_container "$ctr"
-		die "cannot apply nftables deny/allow rules in container $ctr; deny list left unenforced" 1
+		stop_and_die "$ctr" "cannot apply nftables deny/allow rules in container $ctr; deny list left unenforced"
 	fi
 }
 
 run_setup_in_container() {
 	local ctr="$1"
 	if ! podman exec "$ctr" setup.sh; then
-		stop_container "$ctr"
-		die "cannot run setup.sh in container $ctr; setup failed" 1
+		stop_and_die "$ctr" "cannot run setup.sh in container $ctr; setup failed"
 	fi
 }
 

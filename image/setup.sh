@@ -15,11 +15,16 @@ if [[ -n "${TALKBOX_GIT_USER_EMAIL:-}" ]]; then
 	git config --global user.email "$TALKBOX_GIT_USER_EMAIL"
 fi
 
+ensure_host_remote() {
+	local repo="$1"
+	git -C "$repo" remote add host /host/git/ 2>/dev/null || git -C "$repo" remote set-url host /host/git/ 2>/dev/null || true
+}
+
 if [[ -d /host/git ]]; then
 	repo="$(pwd)"
 	if ! git -C "$repo" rev-parse --git-dir >/dev/null 2>&1; then
 		git init -q "$repo"
-		git -C "$repo" remote add host /host/git/ 2>/dev/null || git -C "$repo" remote set-url host /host/git/ 2>/dev/null || true
+		ensure_host_remote "$repo"
 		git -C "$repo" config core.worktree "$repo" 2>/dev/null || true
 		if git -C "$repo" fetch host >/dev/null 2>&1; then
 			host_branch="$(git --git-dir=/host/git symbolic-ref --short HEAD 2>/dev/null || true)"
@@ -29,6 +34,6 @@ if [[ -d /host/git ]]; then
 			fi
 		fi
 	else
-		git -C "$repo" remote set-url host /host/git/ 2>/dev/null || git -C "$repo" remote add host /host/git/ 2>/dev/null || true
+		ensure_host_remote "$repo"
 	fi
 fi

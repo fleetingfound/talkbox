@@ -1,0 +1,13 @@
+# Build: Phase 20g — minor production deduplications
+
+Status: SUCCESS
+
+Implements [Phase 20g](../plans/phase-20g-minor-production-dedups.gen.md), resolving the minor production items of §9 of the [duplication and abstraction review](../reviews/duplication-abstraction-review.gen.md) not covered by the other Phase 20 plans. All three changes are behaviour-preserving: emitted stderr text, return codes, exit statuses and the `run_*` dispatch surface are unchanged.
+
+- [lib/network.sh](../../../lib/network.sh) — `install_nft_deny`'s two failure modes now report through the `nft_fail_or_warn <strict-message> [lax-message]` helper (strict: plain `talkbox:` message and return 1; lax: `talkbox: warning:` message and return 0, pairing with the `nft_strict` predicate), with the PID lookup extracted into `nft_container_pid`, which keeps the podman-inspect stderr suppression lax-only so the underlying stderr is still surfaced verbatim in strict mode. Each failure message now appears once; the strict/lax nft-pipeline verb difference (`failed to apply` vs `cannot apply`) is carried explicitly by the helper's two arguments.
+- [lib/containers.sh](../../../lib/containers.sh) — `install_nft_deny_or_die` and `run_setup_in_container` share the new `stop_and_die <ctr> <message>` wrapper (stop the container, then `die "<message>" 1`), keeping both wrappers' signatures, messages and exit codes.
+- [image/setup.sh](../../../image/setup.sh) — the two git-remote branches share the new `ensure_host_remote <repo>` helper (`git remote add host /host/git/` falling back to `remote set-url`, then `|| true`); since both fallback orders end in `|| true` and reach the same end state for fresh, remote-present and remote-absent repositories, unifying the fallback order is behaviour-preserving.
+
+Deliberately not implemented (per the review's "intentional, do not fix" note): `warn()` in `lib/merge.sh` and the fifteen one-line `run_*` delegates.
+
+`make test-unit` (303/303) and `make test-e2e` (76/76) pass, including the pinner's exact-message/return-value tests for `install_nft_deny` strict/lax modes and the stop-then-die wrapper-ordering tests in `test/unit/containers.bats`; `make lint` and `shfmt` are clean. No new tests were required (the [pinning pass](../tests/phase-20g-minor-production-dedups.gen.md) already covered the interfaces; the setup.sh half is covered by the git-identity and git-transport e2e suites). The [MAP.gen.md](../../../MAP.gen.md) entries for the three modified files were updated and the plan document is marked complete in the plans index. No dispute, verdict or issue documents were involved, and no pre-existing open issue was resolved by this phase.
