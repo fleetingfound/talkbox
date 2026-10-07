@@ -41,3 +41,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 20e: unified container action and single write-mount parse](phase-20e-unified-action-and-write-mount-parse-once.gen.md)
 - [Phase 20f: convergence of create_sandbox and plan_recreate](phase-20f-create-recreate-convergence.gen.md)
 - [Phase 20g: minor production deduplications (network fail-or-warn, stop-then-die wrapper, setup.sh host remote)](phase-20g-minor-production-dedups.gen.md)
+- [Phase 21: onbox create/recontain ensure the base image exists](phase-21-onbox-base-image-probe.gen.md)

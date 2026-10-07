@@ -98,6 +98,21 @@ teardown() {
 	rm -rf "$shimdir" "$log"
 }
 
+@test "onbox auto-builds the base image when it is missing" {
+	local id
+	for id in $(sdrun podman ps -a --external --filter "ancestor=$E2E_BASE_IMAGE" --format '{{.ID}}'); do
+		sdrun podman rm -f "$id" >/dev/null 2>&1 || true
+	done
+	run sdrun podman rmi "$E2E_BASE_IMAGE"
+	[[ "$status" -eq 0 ]]
+	run sdrun podman image exists "$E2E_BASE_IMAGE"
+	[[ "$status" -ne 0 ]]
+	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'true'
+	[[ "$status" -eq 0 ]]
+	run sdrun podman image exists "$E2E_BASE_IMAGE"
+	[[ "$status" -eq 0 ]]
+}
+
 @test "onbox starts an interactive shell that exits via exit" {
 	local exp
 	exp="$(mktemp --suffix=.exp)"

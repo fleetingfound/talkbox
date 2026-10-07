@@ -1,5 +1,9 @@
 target: test-unit
-started: '2026-10-06T01:11:29Z'
-exit: 0
-totals: { total: 303, pass: 303, fail: 0, skip: 0 }
+started: '2026-10-07T19:09:48Z'
+exit: 1
+totals: { total: 305, pass: 301, fail: 4, skip: 0 }
 fail:
+ - 'test/unit/containers.bats :: run_onbox creates the container with the workdir, userns and capability drops, probing the base image'
+ - 'test/unit/containers.bats :: run_onbox probes the base image and builds it when missing on the create path'
+ - 'test/unit/lifecycle.bats :: run_recontain removes, recreates and starts the onbox container, running no nft, setup or user command'
+ - 'test/unit/lifecycle.bats :: run_recontain probes the base image and builds it when missing before recreating the onbox container'

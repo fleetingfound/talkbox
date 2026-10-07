@@ -30,20 +30,48 @@ use_podman_shim() {
 	export PODMAN_IMAGES="$img"
 }
 
-@test "run_onbox creates the container with the workdir, userns and capability drops, probing no image" {
+@test "run_onbox creates the container with the workdir, userns and capability drops, probing the base image" {
 	load_onbox_plan
 	use_podman_shim
 	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
 	[[ "$status" -eq 0 ]]
-	local create
+	local create probe_line
 	create="$(podman_create_line)"
 	[[ -n "$create" ]]
 	line_has_token "$create" '--workdir=/working/talkbox-proj'
 	line_has_token "$create" '--userns=keep-id:uid=1000,gid=1000'
 	line_has_token "$create" '--cap-drop=NET_ADMIN'
 	line_has_token "$create" '--cap-drop=NET_RAW'
-	[[ "$(podman_count 'image exists')" -eq 0 ]]
+	probe_line="$(podman_line_no "^image exists $(base_image_name)$")"
+	[[ -n "$probe_line" ]]
+	[[ "$probe_line" -lt "$(podman_line_no '^create ')" ]]
+	[[ "$(podman_count 'image exists')" -eq 1 ]]
 	[[ "$(podman_count '^build ')" -eq 0 ]]
+}
+
+@test "run_onbox probes the base image and builds it when missing on the create path" {
+	load_onbox_plan
+	use_podman_shim
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ -n "$(podman_line "^image exists $(base_image_name)$")" ]]
+	[[ "$(podman_count '^build ')" -eq 0 ]]
+	: >"$LOG"
+	export PODMAN_IMAGES=""
+	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ -n "$(podman_line "^image exists $(base_image_name)$")" ]]
+	[[ "$(podman_count '^commit ')" -eq 0 ]]
+	local build_line create_line
+	build_line="$(podman_line_no '^build ')"
+	create_line="$(podman_line_no '^create ')"
+	[[ -n "$build_line" && -n "$create_line" ]]
+	[[ "$build_line" -lt "$create_line" ]]
+	local build
+	build="$(podman_line '^build ')"
+	line_has_token "$build" '-t'
+	line_has_token "$build" "$(base_image_name)"
+	line_has_token "$build" "$TALKBOX_ROOT/image/Containerfile"
 }
 
 @test "run_onbox uses the pasta network with the DNS-forward suffix and no host-port forwarding by default" {

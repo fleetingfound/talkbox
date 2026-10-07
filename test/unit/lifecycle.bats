@@ -101,7 +101,11 @@ use_podman_shim() {
 	[[ "$(podman_count 'unshare')" -eq 0 ]]
 	[[ "$(podman_count 'nsenter')" -eq 0 ]]
 	[[ "$(podman_count '^exec ')" -eq 0 ]]
-	[[ "$(podman_count 'image exists')" -eq 0 ]]
+	local probe_line
+	probe_line="$(podman_line_no "^image exists $(base_image_name)$")"
+	[[ -n "$probe_line" ]]
+	[[ "$probe_line" -lt "$create_line" ]]
+	[[ "$(podman_count 'image exists')" -eq 1 ]]
 	[[ "$(podman_count '^build ')" -eq 0 ]]
 	local create
 	create="$(podman_create_line)"
@@ -111,6 +115,39 @@ use_podman_shim() {
 	line_has_token "$create" 'TALKBOX_CONTAINER_TYPE=onbox'
 	line_lacks_token "$create" '--tmpfs'
 	[[ "$create" != *'/run/talkbox'* ]]
+}
+
+@test "run_recontain probes the base image and builds it when missing before recreating the onbox container" {
+	load_lifecycle_plan
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_VOLUMES="talkbox-proj.onbox.gitdir"
+	run run_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ -n "$(podman_line "^image exists $(base_image_name)$")" ]]
+	[[ "$(podman_count '^build ')" -eq 0 ]]
+	: >"$LOG"
+	export PODMAN_IMAGES=""
+	run run_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ -n "$(podman_line "^image exists $(base_image_name)$")" ]]
+	[[ "$(podman_count '^commit ')" -eq 0 ]]
+	local build_line rm_line volrm_line create_line start_line
+	build_line="$(podman_line_no '^build ')"
+	rm_line="$(podman_line_no '^rm -f --volumes talkbox-proj.onbox$')"
+	volrm_line="$(podman_line_no '^volume rm -f talkbox-proj.onbox.gitdir$')"
+	create_line="$(podman_line_no '^create ')"
+	start_line="$(podman_line_no '^start talkbox-proj.onbox$')"
+	[[ -n "$build_line" && -n "$rm_line" && -n "$volrm_line" && -n "$create_line" && -n "$start_line" ]]
+	[[ "$build_line" -lt "$rm_line" ]]
+	[[ "$rm_line" -lt "$volrm_line" ]]
+	[[ "$volrm_line" -lt "$create_line" ]]
+	[[ "$create_line" -lt "$start_line" ]]
+	local build
+	build="$(podman_line '^build ')"
+	line_has_token "$build" '-t'
+	line_has_token "$build" "$(base_image_name)"
+	line_has_token "$build" "$TALKBOX_ROOT/image/Containerfile"
 }
 
 @test "run_recontain removes only the volumes that exist and creates the missing gitdir volume" {

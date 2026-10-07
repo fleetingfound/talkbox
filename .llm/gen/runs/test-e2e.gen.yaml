@@ -1,5 +1,6 @@
 target: test-e2e
-started: '2026-10-06T01:12:04Z'
-exit: 0
-totals: { total: 76, pass: 76, fail: 0, skip: 0 }
+started: '2026-10-07T19:10:29Z'
+exit: 1
+totals: { total: 77, pass: 76, fail: 1, skip: 0 }
 fail:
+ - 'test/e2e/onbox.bats :: onbox auto-builds the base image when it is missing'
