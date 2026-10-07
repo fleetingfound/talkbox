@@ -426,12 +426,13 @@ resolve_inheritance() {
 	_image_out="$(base_image_name)"
 	if [[ "$container" == onbox ]]; then
 		_source_out=base
-		return
+	else
+		_source_out="$(inherit_source_for "$container" "$project")"
+		if [[ "$_source_out" != base ]]; then
+			_image_out="$(root_image_of "$container" "$project")"
+		fi
 	fi
-	_source_out="$(inherit_source_for "$container" "$project")"
-	if [[ "$_source_out" != base ]]; then
-		_image_out="$(root_image_of "$container" "$project")"
-	elif [[ "$rebuild" != yes ]]; then
+	if [[ "$_source_out" == base && "$rebuild" != yes ]]; then
 		ensure_base_image
 	fi
 }

@@ -46,3 +46,4 @@
 - [Phase 20e: unified container action in `talkbox.sh` and single write-mount parse](.llm/gen/builds/phase-20e-unified-action-and-write-mount-parse-once.gen.md)
 - [Phase 20f: convergence of `create_sandbox` and `plan_recreate` in `lib/containers.sh`](.llm/gen/builds/phase-20f-create-recreate-convergence.gen.md)
 - [Phase 20g: minor production deduplications](.llm/gen/builds/phase-20g-minor-production-dedups.gen.md)
+- [Phase 21: onbox create/recontain ensure the base image exists](.llm/gen/builds/phase-21-onbox-base-image-probe.gen.md)

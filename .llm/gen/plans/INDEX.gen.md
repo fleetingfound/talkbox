@@ -52,4 +52,4 @@ Implementation plan for `SPEC.md`, in recommended order. Each phase builds on th
 - [x] [Phase 20e: unified container action in `talkbox.sh` and single write-mount parse](phase-20e-unified-action-and-write-mount-parse-once.gen.md) #flow/refactor #model/default
 - [x] [Phase 20f: convergence of `create_sandbox` and `plan_recreate` in `lib/containers.sh`](phase-20f-create-recreate-convergence.gen.md) #flow/refactor #model/default
 - [x] [Phase 20g: minor production deduplications](phase-20g-minor-production-dedups.gen.md) #flow/refactor #model/default
-- [ ] [Phase 21: onbox create/recontain ensure the base image exists](phase-21-onbox-base-image-probe.gen.md) #flow/redgreen #model/default
+- [x] [Phase 21: onbox create/recontain ensure the base image exists](phase-21-onbox-base-image-probe.gen.md) #flow/redgreen #model/default
