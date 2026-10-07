@@ -106,6 +106,11 @@
 
 - [x] [Consolidation boundary and unit-test surface](containers-consolidation-boundary.gen.md) - which interfaces survive the Phase 19 consolidation (the `run_*` executors as delegates over unified cores with executor-level unit tests, or full parameterization with CLI-level unit tests). Selected: executor-surface preservation.
 
+- [x] [Podman shim factory interface](shim-factory-interface.gen.md) - how the ~14 inline podman shims, the shadowed `make_podman_shim` in `network.bats` and `mk_gpu_shim` are consolidated (extend the env-driven shared shim, a flag-driven factory, or a minimal rename). Selected: extend the env-driven shared shim, with delegation to real podman treated separately via a dedicated e2e-side logging-delegate helper.
+- [x] [E2e setup/teardown parameterisation mechanism](e2e-setup-teardown-mechanism.gen.md) - how the seven e2e files' setup/teardown boilerplate is parameterised (shared pair plus registration helpers, fully declarative pair, or shared helpers only). Selected: shared pair plus registration helpers.
+- [x] [HTTP readiness wait placement](http-readiness-wait-placement.gen.md) - whether the HTTP readiness poll becomes a standalone `wait_for_http` helper or is folded into `start_host_http_server`. Selected: standalone `wait_for_http`.
+- [x] [E2e run wrapper mechanism](e2e-run-wrapper-mechanism.gen.md) - how the hand-rolled `sdrun bash -c 'cd …'` sites are routed through shared helpers (extend `run_talkbox` with a PATH-prepend plus a symlink helper, caller-side PATH prefixing, or no change). Selected: extend `run_talkbox` plus a symlink helper.
+
 ## Duplication-review resolution choices (Phase 20)
 
 - [x] [Naming dispatch consolidation scope](naming-dispatch-consolidation.gen.md) - whether the per-container naming one-liners and `*_of` dispatch layer are replaced by a parametric resource-name function, or left as the documented dispatch surface. Selected: defer.
