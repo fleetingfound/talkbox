@@ -56,3 +56,9 @@ Implementation plan for `SPEC.md`, in recommended order. Each phase builds on th
 - [x] [Phase 22a: shared podman shim factory](phase-22a-podman-shim-factory.gen.md) #flow/pin #model/default
 - [x] [Phase 22b: e2e setup/teardown consolidation and shared e2e helpers](phase-22b-e2e-harness-consolidation.gen.md) #flow/pin #model/default
 - [x] [Phase 22c: unit scaffolding consolidation and data-driven test folds](phase-22c-unit-scaffolding-and-data-driven-folds.gen.md) #flow/pin #model/default
+
+Resolution of the remaining unchecked issues:
+
+- [ ] [Phase 23a: write-mount folder validation and failed-creation volume rollback](phase-23a-write-mount-validation-and-rollback.gen.md) #flow/redgreen #model/default
+- [ ] [Phase 23b: `--rm-container`/recreate write-volume removal via container-mount inspection](phase-23b-rm-container-write-volume-inspection.gen.md) #flow/redgreen #model/default
+- [ ] [Phase 23c: e2e nested `sdrun` units die with the parent suite unit](phase-23c-e2e-nested-units-die-with-parent.gen.md) #flow/pinner #model/default
