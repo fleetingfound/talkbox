@@ -1,16 +1,12 @@
 load helpers
 
 setup() {
-	PROJECT="$(mk_project)"
-	TALKBOX="$(mk_talkbox)"
-	ensure_base_image_e2e "$TALKBOX"
-	PROJECT_BASE="$(basename "$PROJECT")"
-	CTR="$(onbox_ctr_name "$PROJECT")"
+	e2e_setup
+	CTR="$ONBOX_CTR"
 }
 
 teardown() {
-	teardown_talkbox "$(project_slug_e2e "$PROJECT")"
-	rm -rf "$PROJECT" "$TALKBOX"
+	e2e_teardown
 }
 
 @test "onbox starts a container whose working directory is /working/<project-base>" {
@@ -70,16 +66,14 @@ teardown() {
 	local bindir
 	bindir="$(mktemp -d)"
 	ln -s "$TALKBOX/talkbox.sh" "$bindir/onbox"
-	# shellcheck disable=SC2016 # $0/$1 expand inside the wrapped bash -c
-	run sdrun bash -c 'cd "$1" && "$0/onbox" -c --noninteractive "pwd"' "$bindir" "$PROJECT"
+	run run_talkbox_symlink "$PROJECT" "$bindir" onbox -c --noninteractive pwd
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *"/working/$PROJECT_BASE"* ]]
 	rm -rf "$bindir"
 }
 
 @test "onbox --command long form drives the container end-to-end" {
-	# shellcheck disable=SC2016 # $0/$1 expand inside the wrapped bash -c
-	run sdrun bash -c 'cd "$1" && "$0/talkbox.sh" onbox --command --noninteractive "pwd"' "$TALKBOX" "$PROJECT"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox --command --noninteractive pwd
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *"/working/$PROJECT_BASE"* ]]
 }
@@ -87,9 +81,9 @@ teardown() {
 @test "onbox --gpu passes the GPU options to podman create on a GPU-less host" {
 	local shimdir log
 	log="$(mktemp)"
-	shimdir="$(mk_gpu_shim "$log")"
-	# shellcheck disable=SC2016 # $0/$1/$2 expand inside the wrapped bash -c
-	run sdrun bash -c 'cd "$1" && PATH="$2:$PATH" "$0/talkbox.sh" onbox --gpu -c --noninteractive true' "$TALKBOX" "$PROJECT" "$shimdir"
+	shimdir="$(mk_podman_logging_shim "$log" start exec stop)"
+	e2e_use_podman_shim "$shimdir"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox --gpu -c --noninteractive true
 	[[ "$status" -eq 0 ]]
 	[[ "$(grep -c 'nvidia.com/gpu=all' "$log")" -ge 1 ]]
 	[[ "$(grep -c 'keep-groups' "$log")" -ge 1 ]]

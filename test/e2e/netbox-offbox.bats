@@ -1,18 +1,12 @@
 load helpers
 
 setup() {
-	PROJECT="$(mk_project)"
-	TALKBOX="$(mk_talkbox)"
-	ensure_base_image_e2e "$TALKBOX"
-	PROJECT_SLUG="$(project_slug_e2e "$PROJECT")"
-	NETBOX_CTR="$PROJECT_SLUG.netbox"
-	OFFBOX_CTR="$PROJECT_SLUG.offbox"
+	e2e_setup
 	NETBOX_ROOT="$PROJECT_SLUG.netbox.root"
 }
 
 teardown() {
-	teardown_talkbox "$PROJECT_SLUG"
-	rm -rf "$PROJECT" "$TALKBOX"
+	e2e_teardown
 }
 
 @test "netbox container has internet access" {
@@ -99,9 +93,9 @@ teardown() {
 @test "netbox --gpu passes the GPU options to podman create on a GPU-less host" {
 	local shimdir log
 	log="$(mktemp)"
-	shimdir="$(mk_gpu_shim "$log")"
-	# shellcheck disable=SC2016 # $0/$1/$2 expand inside the wrapped bash -c
-	run sdrun bash -c 'cd "$1" && PATH="$2:$PATH" "$0/talkbox.sh" netbox --gpu -c --noninteractive true' "$TALKBOX" "$PROJECT" "$shimdir"
+	shimdir="$(mk_podman_logging_shim "$log" start exec stop)"
+	e2e_use_podman_shim "$shimdir"
+	run run_talkbox "$PROJECT" "$TALKBOX" netbox --gpu -c --noninteractive true
 	[[ "$status" -eq 0 ]]
 	[[ "$(grep -c 'nvidia.com/gpu=all' "$log")" -ge 1 ]]
 	[[ "$(grep -c 'keep-groups' "$log")" -ge 1 ]]
@@ -113,9 +107,9 @@ teardown() {
 @test "offbox --gpu passes the GPU options to podman create on a GPU-less host" {
 	local shimdir log
 	log="$(mktemp)"
-	shimdir="$(mk_gpu_shim "$log")"
-	# shellcheck disable=SC2016 # $0/$1/$2 expand inside the wrapped bash -c
-	run sdrun bash -c 'cd "$1" && PATH="$2:$PATH" "$0/talkbox.sh" offbox --gpu -c --noninteractive true' "$TALKBOX" "$PROJECT" "$shimdir"
+	shimdir="$(mk_podman_logging_shim "$log" start exec stop)"
+	e2e_use_podman_shim "$shimdir"
+	run run_talkbox "$PROJECT" "$TALKBOX" offbox --gpu -c --noninteractive true
 	[[ "$status" -eq 0 ]]
 	[[ "$(grep -c 'nvidia.com/gpu=all' "$log")" -ge 1 ]]
 	[[ "$(grep -c 'keep-groups' "$log")" -ge 1 ]]

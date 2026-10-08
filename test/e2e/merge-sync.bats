@@ -1,14 +1,9 @@
-# shellcheck disable=SC2030,SC2031 # bats runs setup/test/teardown in one subshell; EXTRA_DIRS is read back in teardown
+# shellcheck disable=SC2030,SC2031 # bats runs setup/test/teardown in one subshell; PLAIN_CTR is read back in teardown
 load helpers
 
 setup() {
-	PROJECT="$(mk_project)"
-	TALKBOX="$(mk_talkbox)"
-	ensure_base_image_e2e "$TALKBOX"
-	PROJECT_SLUG="$(project_slug_e2e "$PROJECT")"
-	ONBOX_CTR="$PROJECT_SLUG.onbox"
+	e2e_setup
 	PLAIN_CTR=""
-	EXTRA_DIRS=()
 	BRANCH="$(git -C "$PROJECT" symbolic-ref --short HEAD)"
 	GITDIR_VOL="$PROJECT_SLUG.onbox.gitdir"
 	printf 'tracked\n' >"$PROJECT/file.txt"
@@ -17,18 +12,7 @@ setup() {
 }
 
 teardown() {
-	teardown_talkbox "$PROJECT_SLUG" "$PLAIN_CTR"
-	rm -rf "$PROJECT" "$TALKBOX" "${EXTRA_DIRS[@]}"
-}
-
-volume_mountpoint() {
-	sdrun podman volume inspect --format '{{.Mountpoint}}' "$1" 2>/dev/null || true
-}
-
-container_stopped() {
-	local state
-	state="$(sdrun podman inspect -f '{{.State.Running}}' "$1" 2>/dev/null | grep -x 'false' || true)"
-	[[ "$state" == 'false' ]]
+	e2e_teardown "$PLAIN_CTR"
 }
 
 container_commit() {

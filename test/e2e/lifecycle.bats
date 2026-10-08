@@ -1,21 +1,12 @@
 load helpers
 
 setup() {
-	PROJECT="$(mk_project)"
-	TALKBOX="$(mk_talkbox)"
-	ensure_base_image_e2e "$TALKBOX"
-	PROJECT_BASE="$(basename "$PROJECT")"
-	PROJECT_SLUG="$(project_slug_e2e "$PROJECT")"
-	CTR="$PROJECT_SLUG.onbox"
-	HOST_SRV_PID=""
+	e2e_setup
+	CTR="$ONBOX_CTR"
 }
 
 teardown() {
-	if [[ -n "$HOST_SRV_PID" ]]; then
-		kill "$HOST_SRV_PID" 2>/dev/null || true
-	fi
-	teardown_talkbox "$PROJECT_SLUG"
-	rm -rf "$PROJECT" "$TALKBOX"
+	e2e_teardown
 }
 
 @test "onbox creates a persistent container that survives after the shell exits" {
@@ -47,12 +38,10 @@ EXPECT
 	local src
 	src="$(mktemp)"
 	printf 'mountable-config\n' >"$src"
-	# shellcheck disable=SC2016 # $0/$1/$2 expand inside the wrapped bash -c
-	run sdrun bash -c 'cd "$1" && "$0/talkbox.sh" onbox --read "$2" -c --noninteractive "cat /host/read/$(basename "$2")"' "$TALKBOX" "$PROJECT" "$src"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox --read "$src" -c --noninteractive "cat /host/read/$(basename "$src")"
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'mountable-config'* ]]
-	# shellcheck disable=SC2016 # $0/$1/$2 expand inside the wrapped bash -c
-	run sdrun bash -c 'cd "$1" && "$0/talkbox.sh" onbox --read "$2" -c --noninteractive "touch /host/read/$(basename "$2")"' "$TALKBOX" "$PROJECT" "$src"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox --read "$src" -c --noninteractive "touch /host/read/$(basename "$src")"
 	[[ "$status" -ne 0 ]]
 	rm -f "$src"
 }
@@ -60,8 +49,7 @@ EXPECT
 @test "onbox --write exposes a writable mount inside the container" {
 	local data
 	data="$(mktemp -d)"
-	# shellcheck disable=SC2016 # $0/$1/$2 expand inside the wrapped bash -c
-	run sdrun bash -c 'cd "$1" && "$0/talkbox.sh" onbox --write "$2" -c --noninteractive "echo written > /host/write/$(basename "$2")/out.txt"' "$TALKBOX" "$PROJECT" "$data"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox --write "$data" -c --noninteractive "echo written > /host/write/$(basename "$data")/out.txt"
 	[[ "$status" -eq 0 ]]
 	[[ -f "$data/out.txt" ]]
 	[[ "$(cat "$data/out.txt")" == 'written' ]]
@@ -70,23 +58,17 @@ EXPECT
 
 @test "onbox --port makes a host port reachable inside the container" {
 	command -v python3 >/dev/null 2>&1 || skip "python3 is required for the port e2e test"
-	local port www srv n
+	local www port srv
 	www="$(mktemp -d)"
 	printf 'port-marker\n' >"$www/marker"
 	start_host_http_server "$www" srv port
-	HOST_SRV_PID=$srv
-	for ((n = 0; n < 20; n++)); do
-		if curl -fsS --max-time 2 "http://127.0.0.1:$port/marker" >/dev/null 2>&1; then
-			break
-		fi
-		sleep 0.5
-	done
-	# shellcheck disable=SC2016 # $0/$1/$2 expand inside the wrapped bash -c
-	run sdrun bash -c 'cd "$1" && "$0/talkbox.sh" onbox --port "$2" -c --noninteractive "curl -fsS --max-time 10 http://127.0.0.1:$2/marker"' "$TALKBOX" "$PROJECT" "$port"
+	e2e_register_pid "$srv"
+	wait_for_http "http://127.0.0.1:$port/marker"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox --port "$port" -c --noninteractive "curl -fsS --max-time 10 http://127.0.0.1:$port/marker"
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'port-marker'* ]]
 	kill "$srv" 2>/dev/null || true
-	HOST_SRV_PID=""
+	e2e_clear_pids
 	rm -rf "$www"
 }
 
@@ -97,8 +79,7 @@ EXPECT
 	[[ "$status" -eq 0 ]]
 	run sdrun podman volume exists "$PROJECT_SLUG.onbox.gitdir"
 	[[ "$status" -eq 0 ]]
-	# shellcheck disable=SC2016 # $0/$1 expand inside the wrapped bash -c
-	run sdrun bash -c 'cd "$1" && "$0/talkbox.sh" onbox --rm-container' "$TALKBOX" "$PROJECT"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox --rm-container
 	[[ "$status" -eq 0 ]]
 	run sdrun podman container exists "$CTR"
 	[[ "$status" -ne 0 ]]
@@ -111,8 +92,7 @@ EXPECT
 	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'echo stale > /tmp/talkbox-recontain-probe && git config user.email c@example.com && git config user.name container && git commit --allow-empty -m container-commit && git log --oneline | grep -q container-commit && echo PRESENT'
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'PRESENT'* ]]
-	# shellcheck disable=SC2016 # $0/$1 expand inside the wrapped bash -c
-	run sdrun bash -c 'cd "$1" && "$0/talkbox.sh" onbox --recontain' "$TALKBOX" "$PROJECT"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox --recontain
 	[[ "$status" -eq 0 ]]
 	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'test ! -e /tmp/talkbox-recontain-probe && (git log --oneline | grep -q container-commit && echo STALE || echo FRESH)'
 	[[ "$status" -eq 0 ]]
@@ -120,8 +100,7 @@ EXPECT
 }
 
 @test "onbox --rebuild rebuilds the base image and starts the container" {
-	# shellcheck disable=SC2016 # $0/$1 expand inside the wrapped bash -c
-	run sdrun bash -c 'cd "$1" && "$0/talkbox.sh" onbox --rebuild' "$TALKBOX" "$PROJECT"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox --rebuild
 	[[ "$status" -eq 0 ]]
 	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'pwd'
 	[[ "$status" -eq 0 ]]

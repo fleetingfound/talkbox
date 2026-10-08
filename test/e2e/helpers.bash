@@ -109,6 +109,77 @@ offbox_ctr_name() {
 	printf '%s\n' "$(project_slug_e2e "$1").offbox"
 }
 
+volume_mountpoint() {
+	sdrun podman volume inspect --format '{{.Mountpoint}}' "$1" 2>/dev/null || true
+}
+
+container_stopped() {
+	local state
+	state="$(sdrun podman inspect -f '{{.State.Running}}' "$1" 2>/dev/null | grep -x 'false' || true)"
+	[[ "$state" == 'false' ]]
+}
+
+E2E_EXTRA_DIRS=()
+E2E_SERVER_PIDS=()
+E2E_PODMAN_SHIM_DIR=''
+
+e2e_register_dir() {
+	E2E_EXTRA_DIRS+=("$1")
+}
+
+e2e_register_pid() {
+	E2E_SERVER_PIDS+=("$1")
+}
+
+e2e_clear_pids() {
+	E2E_SERVER_PIDS=()
+}
+
+e2e_use_podman_shim() {
+	E2E_PODMAN_SHIM_DIR="$1"
+}
+
+e2e_setup() {
+	E2E_EXTRA_DIRS=()
+	E2E_SERVER_PIDS=()
+	E2E_PODMAN_SHIM_DIR=''
+	PROJECT="$(mk_project)"
+	TALKBOX="$(mk_talkbox)"
+	ensure_base_image_e2e "$TALKBOX"
+	# The standard derivations below (except PROJECT_SLUG, read back by
+	# e2e_teardown) are consumed by the per-file setup() wrappers and test
+	# bodies, which shellcheck cannot see.
+	# shellcheck disable=SC2034 # consumed cross-file by the bats files
+	PROJECT_BASE="$(basename "$PROJECT")"
+	PROJECT_SLUG="$(project_slug_e2e "$PROJECT")"
+	# shellcheck disable=SC2034 # consumed cross-file by the bats files
+	ONBOX_CTR="$(onbox_ctr_name "$PROJECT")"
+	# shellcheck disable=SC2034 # consumed cross-file by the bats files
+	NETBOX_CTR="$(netbox_ctr_name "$PROJECT")"
+	# shellcheck disable=SC2034 # consumed cross-file by the bats files
+	OFFBOX_CTR="$(offbox_ctr_name "$PROJECT")"
+}
+
+e2e_teardown() {
+	# Safe against a half-created fixture: bats still invokes teardown() after
+	# a failed setup(), so every variable is guarded before any rm -rf and
+	# missing resources are tolerated.
+	local pid dir
+	for pid in "${E2E_SERVER_PIDS[@]}"; do
+		if [[ -n "$pid" ]]; then
+			kill "$pid" 2>/dev/null || true
+		fi
+	done
+	if [[ -n "${PROJECT_SLUG:-}" ]]; then
+		teardown_talkbox "$PROJECT_SLUG" "$@"
+	fi
+	for dir in "${PROJECT:-}" "${TALKBOX:-}" "${E2E_EXTRA_DIRS[@]}"; do
+		if [[ -n "$dir" ]]; then
+			rm -rf "$dir"
+		fi
+	done
+}
+
 start_host_http_server() {
 	# $1 directory to serve, $2 nameref for PID, $3 nameref for port,
 	# $4 optional bind address (default 127.0.0.1; use ::1 for an IPv6 server)
@@ -132,6 +203,17 @@ start_host_http_server() {
 	port_ref="$p"
 }
 
+wait_for_http() {
+	local url="$1" n
+	for ((n = 0; n < 20; n++)); do
+		if curl -fsS --max-time 2 "$url" >/dev/null 2>&1; then
+			return 0
+		fi
+		sleep 0.5
+	done
+	return 1
+}
+
 run_onbox_noninteractive() {
 	local project="$1" talkbox="$2" cmd="$3"
 	# shellcheck disable=SC2016 # $0/$1/$2 expand inside the wrapped bash -c
@@ -139,28 +221,58 @@ run_onbox_noninteractive() {
 }
 
 run_talkbox() {
+	# <project> <talkbox> [args…]; when e2e_use_podman_shim has registered a
+	# shim directory, PATH="$shimdir:$PATH" is prepended for the wrapped
+	# talkbox invocation so its podman calls reach the shim.
 	local project="$1" talkbox="$2"
 	shift 2
+	local -a env_args=()
+	if [[ -n "$E2E_PODMAN_SHIM_DIR" ]]; then
+		env_args=("PATH=$E2E_PODMAN_SHIM_DIR:$PATH")
+	fi
 	# shellcheck disable=SC2016 # $1/$@ expand inside the wrapped bash -c
-	sdrun bash -c 'cd "$1" && shift && exec "$@"' bash "$project" "$talkbox/talkbox.sh" "$@"
+	sdrun env "${env_args[@]}" bash -c 'cd "$1" && shift && exec "$@"' bash "$project" "$talkbox/talkbox.sh" "$@"
 }
 
-mk_gpu_shim() {
-	# $1: log file path; prints the directory holding a podman shim which logs
-	# every invocation to $1 and delegates to the real podman for everything
-	# except start/exec/stop (stubbed to exit 0). A GPU-less host cannot start a
-	# container carrying `--device nvidia.com/gpu=all` (the CDI device is
-	# unresolvable), so the shim lets the `--gpu` flow reach `podman create`
-	# and succeed while the create arguments are still observed in the log.
-	local log="$1" dir real
+run_talkbox_symlink() {
+	# <project> <bindir> <name> [args…]; invokes <bindir>/<name> (a symlink to
+	# talkbox.sh under a differently-named executable) from the project dir.
+	local project="$1" bin="$2" name="$3"
+	shift 3
+	# shellcheck disable=SC2016 # $1/$@ expand inside the wrapped bash -c
+	sdrun bash -c 'cd "$1" && shift && exec "$@"' bash "$project" "$bin/$name" "$@"
+}
+
+mk_podman_logging_shim() {
+	# $1: log file path; remaining arguments name the podman subcommands the
+	# shim stubs to exit 0. Every podman invocation is appended to the log and
+	# then delegated to the real podman; the directory holding the shim is
+	# printed for PATH-prepending via e2e_use_podman_shim. Stubbing
+	# start/exec/stop lets a GPU-less host reach `podman create` for a --gpu
+	# container whose CDI device is unresolvable at start time. This e2e
+	# delegate is independent of the unit-side mock factory: delegation to the
+	# real podman never appears in make_podman_shim.
+	local log="$1" dir real sub stubs
+	shift
 	dir="$(mktemp -d)"
 	real="$(command -v podman)"
+	stubs=''
+	for sub in "$@"; do
+		stubs+="$sub|"
+	done
+	stubs="${stubs%|}"
 	cat >"$dir/podman" <<EOF
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >>'$log'
+EOF
+	if [[ -n "$stubs" ]]; then
+		cat >>"$dir/podman" <<EOF
 case "\$1" in
-start|exec|stop) exit 0 ;;
+$stubs) exit 0 ;;
 esac
+EOF
+	fi
+	cat >>"$dir/podman" <<EOF
 exec '$real' "\$@"
 EOF
 	chmod +x "$dir/podman"

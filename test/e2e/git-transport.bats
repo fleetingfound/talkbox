@@ -1,28 +1,16 @@
-# shellcheck disable=SC2030,SC2031 # bats runs setup/test/teardown in one subshell; EXTRA_DIRS is read back in teardown
+# shellcheck disable=SC2030,SC2031 # bats runs setup/test/teardown in one subshell; PLAIN_CTR is read back in teardown
 load helpers
 
 setup() {
-	PROJECT="$(mk_project)"
-	TALKBOX="$(mk_talkbox)"
-	ensure_base_image_e2e "$TALKBOX"
-	PROJECT_SLUG="$(project_slug_e2e "$PROJECT")"
-	ONBOX_CTR="$PROJECT_SLUG.onbox"
-	NETBOX_CTR="$PROJECT_SLUG.netbox"
-	OFFBOX_CTR="$PROJECT_SLUG.offbox"
+	e2e_setup
 	PLAIN_CTR=""
-	EXTRA_DIRS=()
 	BRANCH="$(git -C "$PROJECT" symbolic-ref --short HEAD)"
 	GITDIR_VOL="$PROJECT_SLUG.onbox.gitdir"
 	git -C "$PROJECT" commit -q --allow-empty -m host-initial
 }
 
 teardown() {
-	teardown_talkbox "$PROJECT_SLUG" "$PLAIN_CTR"
-	rm -rf "$PROJECT" "$TALKBOX" "${EXTRA_DIRS[@]}"
-}
-
-volume_mountpoint() {
-	sdrun podman volume inspect --format '{{.Mountpoint}}' "$1" 2>/dev/null || true
+	e2e_teardown "$PLAIN_CTR"
 }
 
 @test "onbox exposes the host git history as the host remote inside the container" {
@@ -71,7 +59,7 @@ volume_mountpoint() {
 @test "onbox adds git mounts for a git-tracked project but not for a non-git folder" {
 	local plain
 	plain="$(mktemp -d)"
-	EXTRA_DIRS+=("$plain")
+	e2e_register_dir "$plain"
 	PLAIN_CTR="$(project_slug_e2e "$plain").onbox"
 	run run_talkbox "$plain" "$TALKBOX" onbox -c --noninteractive 'test ! -e /host/git && echo NO_GIT'
 	[[ "$status" -eq 0 ]]
@@ -84,7 +72,7 @@ volume_mountpoint() {
 @test "onbox, netbox and offbox refuse when the project .git points outside the project" {
 	local outside
 	outside="$(mktemp -d)"
-	EXTRA_DIRS+=("$outside")
+	e2e_register_dir "$outside"
 	mkdir -p "$outside/.git"
 	rm -rf "$PROJECT/.git"
 	printf 'gitdir: %s/.git\n' "$outside" >"$PROJECT/.git"
@@ -103,7 +91,7 @@ volume_mountpoint() {
 @test "git operations inside a submodule are blocked within the container" {
 	local remote
 	remote="$(mktemp -d)"
-	EXTRA_DIRS+=("$remote")
+	e2e_register_dir "$remote"
 	git -C "$remote" init -q
 	git -C "$remote" config user.email t@example.com
 	git -C "$remote" config user.name talkbox-test
