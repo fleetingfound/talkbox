@@ -1,15 +1,5 @@
 target: test-unit
-started: '2026-10-08T23:19:10Z'
-exit: 1
-totals: { total: 312, pass: 302, fail: 10, skip: 0 }
+started: '2026-10-08T23:33:47Z'
+exit: 0
+totals: { total: 312, pass: 312, fail: 0, skip: 0 }
 fail:
- - 'test/unit/dispatcher.bats :: talkbox.sh onbox refuses a file write source with a talkbox diagnostic and no podman call'
- - 'test/unit/dispatcher.bats :: talkbox.sh netbox refuses a file write source with a talkbox diagnostic and no podman call'
- - 'test/unit/dispatcher.bats :: talkbox.sh netbox refuses a nonexistent write source with a talkbox diagnostic and no podman call'
- - 'test/unit/dispatcher.bats :: talkbox.sh netbox refuses a defaults-file file-source write spec with a talkbox diagnostic and no podman call'
- - 'test/unit/mounts.bats :: write mode dies with a talkbox diagnostic for a file source while a directory source parses'
- - 'test/unit/mounts.bats :: write mode dies with a talkbox diagnostic for a nonexistent source'
- - 'test/unit/mounts.bats :: write mode dies with a talkbox diagnostic for a defaults-file file source'
- - 'test/unit/mounts.bats :: read mode accepts file sources while write mode refuses the same source'
- - 'test/unit/netbox-offbox.bats :: a failed netbox create plan rolls back the named volumes and reports a talkbox error'
- - 'test/unit/netbox-offbox.bats :: a failed netbox recontain start rolls back the partial container and named volumes with a talkbox error'

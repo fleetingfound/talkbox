@@ -72,19 +72,30 @@ write_volume_of() {
 	esac
 }
 
+container_volumes() {
+	local -n _vols="$1"
+	local container="$2" project="$3"
+	local -n _dsts="$4"
+	_vols=()
+	if [[ "$container" != onbox ]]; then
+		_vols+=("$(worktree_volume_of "$container" "$project")")
+	fi
+	_vols+=("$(gitdir_volume "$project" "$container")")
+	local i
+	for ((i = 0; i < ${#_dsts[@]}; i++)); do
+		_vols+=("$(write_volume_of "$container" "$project" "$(dest_slug "${_dsts[$i]}")")")
+	done
+}
+
 plan_container_volumes_rm() {
 	local -n _plan_out="$1"
 	local project="$2" container="$3"
 	local -n _dsts="$4"
-	local i
-	if [[ "$container" == onbox ]]; then
-		plan_volume_rm "${!_plan_out}" "$(gitdir_volume "$project" "$container")"
-		return
-	fi
-	plan_volume_rm "${!_plan_out}" "$(worktree_volume_of "$container" "$project")"
-	plan_volume_rm "${!_plan_out}" "$(gitdir_volume "$project" "$container")"
-	for ((i = 0; i < ${#_dsts[@]}; i++)); do
-		plan_volume_rm "${!_plan_out}" "$(write_volume_of "$container" "$project" "$(dest_slug "${_dsts[$i]}")")"
+	local -a vols=()
+	container_volumes vols "$container" "$project" "$4"
+	local v
+	for v in "${vols[@]}"; do
+		plan_volume_rm "${!_plan_out}" "$v"
 	done
 }
 
@@ -270,13 +281,13 @@ execute_plan() {
 	local arg
 	for arg in "${plan[@]}"; do
 		if [[ "$arg" == podman ]] && ((${#cmd[@]} > 0)); then
-			"${cmd[@]}"
+			"${cmd[@]}" || return $?
 			cmd=()
 		fi
 		cmd+=("$arg")
 	done
 	if ((${#cmd[@]} > 0)); then
-		"${cmd[@]}"
+		"${cmd[@]}" || return $?
 	fi
 }
 
@@ -384,6 +395,23 @@ stop_and_die() {
 	die "$message" 1
 }
 
+rollback_creation_and_die() {
+	local container="$1" project="$2"
+	local -n _dsts="$3"
+	local ctr v
+	ctr="$(container_name_of "$container" "$project")"
+	stop_container "$ctr"
+	podman rm -f "$ctr" || true
+	local -a vols=()
+	container_volumes vols "$container" "$project" "$3"
+	for v in "${vols[@]}"; do
+		if volume_exists "$v"; then
+			podman volume rm -f "$v" || true
+		fi
+	done
+	die "cannot create container $ctr; rolled back the partial container and volumes" 1
+}
+
 install_nft_deny_or_die() {
 	local ctr="$1"
 	if ! install_nft_deny "$@"; then
@@ -448,7 +476,9 @@ create_sandbox() {
 		plan+=("podman" "commit" "$(container_name_of "$source" "$project")" "$image")
 	fi
 	plan_populate_and_create plan "$container" "$interactive" "$project" "$source" "$image" "$1" "$2" "$3" "$4" "$5"
-	execute_plan "${plan[@]}"
+	if ! execute_plan "${plan[@]}"; then
+		rollback_creation_and_die "$container" "$project" "$4"
+	fi
 }
 
 run_container() {
@@ -477,7 +507,9 @@ run_recreate() {
 	resolve_inheritance "$container" "$rebuild" "$project" source image
 	local -a plan=()
 	plan_recreate plan "$container" "$rebuild" "$interactive" "$project" "$1" "$2" "$3" "$4" "$5" "$source"
-	execute_plan "${plan[@]}"
+	if ! execute_plan "${plan[@]}"; then
+		rollback_creation_and_die "$container" "$project" "$4"
+	fi
 	if [[ "$container" != onbox ]]; then
 		if [[ "$container" != offbox ]]; then
 			install_nft_deny_or_die "$ctr" "$6" "$7"

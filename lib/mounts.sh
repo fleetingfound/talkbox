@@ -37,6 +37,13 @@ expand_mount() {
 	_dst="$d"
 }
 
+require_write_dir() {
+	local mode="$1" src="$2"
+	if [[ "$mode" == write && ! -d "$src" ]]; then
+		die "write mount source is not a directory: $src" 1
+	fi
+}
+
 dest_depth() {
 	local d="$1" slashes
 	d="${d#/}"
@@ -59,6 +66,7 @@ mount_entries() {
 	for line in "${lines[@]}"; do
 		mount_spec src dst "$line"
 		expand_mount "$mode" "$src" "$dst" "$project" "$home" src dst
+		require_write_dir "$mode" "$src"
 		lsrcs+=("$src")
 		ldsts+=("$dst")
 	done
@@ -67,6 +75,7 @@ mount_entries() {
 		[[ -z "$spec" ]] && continue
 		mount_spec src dst "$spec"
 		expand_mount "$mode" "$src" "$dst" "$project" "$home" src dst
+		require_write_dir "$mode" "$src"
 		lsrcs+=("$src")
 		ldsts+=("$dst")
 	done
