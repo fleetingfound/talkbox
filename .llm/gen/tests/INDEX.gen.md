@@ -44,3 +44,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 21: onbox create/recontain ensure the base image exists](phase-21-onbox-base-image-probe.gen.md)
 - [Phase 22a: shared podman shim factory](phase-22a-podman-shim-factory.gen.md)
 - [Phase 22b: e2e setup/teardown consolidation and shared e2e helpers](phase-22b-e2e-harness-consolidation.gen.md)
+- [Phase 22c: unit scaffolding consolidation and data-driven test folds](phase-22c-unit-scaffolding-and-data-driven-folds.gen.md)

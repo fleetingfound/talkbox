@@ -119,6 +119,10 @@ container_stopped() {
 	[[ "$state" == 'false' ]]
 }
 
+log_line_no() {
+	grep -n -m1 -- "$1" "$2" | cut -d: -f1
+}
+
 E2E_EXTRA_DIRS=()
 E2E_SERVER_PIDS=()
 E2E_PODMAN_SHIM_DIR=''

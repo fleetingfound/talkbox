@@ -1,13 +1,6 @@
 # shellcheck disable=SC2030,SC2031 # bats runs each test in a subshell; TALKBOX_ROOT is overridden only within its own test
 load helpers
 
-load_onbox_plan() {
-	load_lib naming.sh
-	load_lib mounts.sh
-	load_lib network.sh
-	load_lib containers.sh
-}
-
 # shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 setup() {
 	PROJECT="$BATS_TEST_TMPDIR/talkbox-proj"
@@ -21,17 +14,8 @@ setup() {
 	LOG="$BATS_TEST_TMPDIR/podman.log"
 }
 
-use_podman_shim() {
-	make_podman_shim "$SHIM"
-	PATH="$SHIM:$PATH"
-	export PODMAN_LOG="$LOG"
-	local img
-	img="$(base_image_name)"
-	export PODMAN_IMAGES="$img"
-}
-
 @test "run_onbox creates the container with the workdir, userns and capability drops, probing the base image" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
 	[[ "$status" -eq 0 ]]
@@ -50,7 +34,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox probes the base image and builds it when missing on the create path" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
 	[[ "$status" -eq 0 ]]
@@ -75,7 +59,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox uses the pasta network with the DNS-forward suffix and no host-port forwarding by default" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
 	[[ "$status" -eq 0 ]]
@@ -86,7 +70,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox forwards pasta -T ports and applies read mounts read-only and write mounts as bind-mounts" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	local home="$BATS_TEST_TMPDIR/home"
 	mkdir -p "$home"
@@ -108,7 +92,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox bind-mounts the host worktree read-write" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
 	[[ "$status" -eq 0 ]]
@@ -119,7 +103,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox bind-mounts global dotfiles and art read-only and project dotfiles when they exist" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.dotfiles"
 	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
@@ -132,7 +116,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox omits the dotfiles and art bind-mounts when absent" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	TALKBOX_ROOT="$BATS_TEST_TMPDIR/talkbox-root-no-dotfiles"
 	mkdir -p "$TALKBOX_ROOT"
@@ -146,7 +130,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox names the container, runs the base image with sleep infinity behind --init, without --rm or tmpfs" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
 	[[ "$status" -eq 0 ]]
@@ -170,7 +154,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox interactive create allocates a terminal and noninteractive does not" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	run run_onbox "$PROJECT" 'true' yes READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
 	[[ "$status" -eq 0 ]]
@@ -187,7 +171,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox adds the git mounts and creates the gitdir volume for a git-tracked project only" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
@@ -212,7 +196,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox omits the gitdir volume create when the gitdir volume already exists" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_VOLUMES="talkbox-proj.onbox.gitdir"
@@ -223,7 +207,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox emits git identity env vars for a git-tracked project but not for a non-git project" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	git -C "$PROJECT" init -q
 	git -C "$PROJECT" config user.name host-user
@@ -244,7 +228,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox omits a git identity env var for a field the host has not configured" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	export HOME="$BATS_TEST_TMPDIR/home"
 	export GIT_CONFIG_NOSYSTEM=1
@@ -260,7 +244,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox emits the prompt host env vars for git-tracked and non-git projects" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	git -C "$PROJECT" init -q
 	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
@@ -280,7 +264,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox appends the GPU device and group options when TALKBOX_GPU is yes" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	# shellcheck disable=SC2034 # global consumed by the sourced containers.sh
 	TALKBOX_GPU=yes
@@ -293,7 +277,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox starts an interactive /bin/bash when no command is given and stops the container afterwards" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	run run_onbox "$PROJECT" '' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
 	[[ "$status" -eq 0 ]]
@@ -305,7 +289,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox runs a non-empty command via bash -c, returns its exit status and stops best-effort" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	export PODMAN_FAIL_PATTERN='bash -c exit 3'
 	export PODMAN_FAIL_CODE=7
@@ -319,7 +303,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox succeeds even when the best-effort stop fails" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	export PODMAN_FAIL_PATTERN='stop -t 5'
 	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
@@ -328,7 +312,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox applies the nft deny rules before running setup.sh and runs setup.sh before the user command" {
-	load_onbox_plan
+	load_container_libs
 	local ctr
 	ctr="$(onbox_container_name "$PROJECT")"
 	use_podman_shim
@@ -338,10 +322,10 @@ use_podman_shim() {
 	run run_onbox "$PROJECT" 'echo hi' no READ_MOUNTS WRITE_MOUNTS PORTS deny allow
 	[[ "$status" -eq 0 ]]
 	local start_line nft_line setup_line cmd_line
-	start_line="$(grep -n "^start $ctr$" "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	nft_line="$(grep -n 'unshare.*nsenter.*nft' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	setup_line="$(grep -n "exec $ctr setup.sh$" "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	cmd_line="$(grep -n 'bash -c echo hi' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
+	start_line="$(log_line_no "^start $ctr$" "$PODMAN_LOG")"
+	nft_line="$(log_line_no 'unshare.*nsenter.*nft' "$PODMAN_LOG")"
+	setup_line="$(log_line_no "exec $ctr setup.sh$" "$PODMAN_LOG")"
+	cmd_line="$(log_line_no 'bash -c echo hi' "$PODMAN_LOG")"
 	[[ -n "$start_line" && -n "$nft_line" && -n "$setup_line" && -n "$cmd_line" ]]
 	[[ "$start_line" -lt "$nft_line" ]]
 	[[ "$nft_line" -lt "$setup_line" ]]
@@ -349,7 +333,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox stops the container and raises a talkbox error when the setup.sh exec fails" {
-	load_onbox_plan
+	load_container_libs
 	local ctr
 	ctr="$(onbox_container_name "$PROJECT")"
 	use_podman_shim
@@ -365,7 +349,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox create line is byte-identical to the run_recontain recreate line" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	run run_onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
 	[[ "$status" -eq 0 ]]
@@ -379,7 +363,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox stops the container and dies with the exact nft error when the nft deny step fails" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	export PODMAN_FAIL_PATTERN='nsenter'
 	export PODMAN_FAIL_CODE=1
@@ -396,7 +380,7 @@ use_podman_shim() {
 }
 
 @test "run_onbox stops the container and dies with the exact setup error when the setup.sh exec fails" {
-	load_onbox_plan
+	load_container_libs
 	use_podman_shim
 	export PODMAN_FAIL_PATTERN='exec talkbox-proj.onbox setup.sh'
 	export PODMAN_FAIL_CODE=1

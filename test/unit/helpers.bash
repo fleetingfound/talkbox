@@ -10,6 +10,16 @@ load_lib() {
 	source "$PROJECT_ROOT/lib/$lib"
 }
 
+# Sourced from bats tests via `load helpers`; the container libraries must be
+# loaded after the file scope (load_lib sources into the test's shell), hence
+# this helper instead of a top-level source.
+load_container_libs() {
+	load_lib naming.sh
+	load_lib mounts.sh
+	load_lib network.sh
+	load_lib containers.sh
+}
+
 make_podman_shim() {
 	local shimdir="$1"
 	mkdir -p "$shimdir"
@@ -96,14 +106,36 @@ EOF
 	chmod +x "$shimdir/podman"
 }
 
+# Standard shim activation shared by the unit bats files: shim on PATH,
+# PODMAN_LOG exported and PODMAN_IMAGES seeded with the base image. An optional
+# explicit image argument replaces the base_image_name derivation for tests
+# which cannot source lib/naming.sh (the dispatcher tests drive talkbox.sh as a
+# subprocess).
+# shellcheck disable=SC2154 # SHIM and LOG are initialised by the test setup
+use_podman_shim() {
+	make_podman_shim "$SHIM"
+	PATH="$SHIM:$PATH"
+	export PODMAN_LOG="$LOG"
+	if (($#)); then
+		PODMAN_IMAGES="$1"
+	else
+		PODMAN_IMAGES="$(base_image_name)"
+	fi
+	export PODMAN_IMAGES
+}
+
 # shellcheck disable=SC2154 # PODMAN_LOG is exported by the test using the shim
 podman_line() {
 	grep -m1 -- "$1" "$PODMAN_LOG" || true
 }
 
+log_line_no() {
+	grep -n -m1 -- "$1" "$2" | cut -d: -f1
+}
+
 # shellcheck disable=SC2154 # PODMAN_LOG is exported by the test using the shim
 podman_line_no() {
-	grep -n -m1 -- "$1" "$PODMAN_LOG" | cut -d: -f1
+	log_line_no "$1" "$PODMAN_LOG"
 }
 
 # shellcheck disable=SC2154 # PODMAN_LOG is exported by the test using the shim
@@ -141,4 +173,38 @@ line_token_at() {
 		}
 	done
 	printf '0\n'
+}
+
+plan_subcommands() {
+	local -n _plan="$1"
+	local i
+	for ((i = 0; i < ${#_plan[@]}; i++)); do
+		if [[ "${_plan[$i]}" == podman ]]; then
+			printf '%s\n' "${_plan[$((i + 1))]}"
+		fi
+	done
+}
+
+array_contains() {
+	local value="$1"
+	shift
+	local element
+	for element in "$@"; do
+		if [[ "$element" == "$value" ]]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+array_has_none() {
+	local needle="$1"
+	shift
+	local element
+	for element in "$@"; do
+		if [[ "$element" == *"$needle"* ]]; then
+			return 1
+		fi
+	done
+	return 0
 }

@@ -33,43 +33,24 @@ require_nft_ipv6() {
 	fi
 }
 
-@test "onbox --deny-ip blocks a denied address while a non-denied address remains reachable" {
+@test "--deny-ip blocks a denied address while a non-denied address remains reachable in onbox and netbox" {
 	require_nft_and_internet
 	command -v python3 >/dev/null 2>&1 || skip "python3 is required for the deny/allow e2e test"
-	local www port srv
+	local c www port srv
 	www="$(mktemp -d)"
 	printf 'deny-marker\n' >"$www/marker"
 	start_host_http_server "$www" srv port
 	e2e_register_pid "$srv"
 	wait_for_http "http://127.0.0.1:$port/marker"
-	run run_talkbox "$PROJECT" "$TALKBOX" onbox --deny-ip 1.1.1.1 --port "$port" -c --noninteractive \
-		'curl -sS --max-time 8 -o /dev/null http://1.1.1.1/ 2>/dev/null && echo DENIED-REACHABLE || echo DENIED-BLOCKED
+	for c in onbox netbox; do
+		run run_talkbox "$PROJECT" "$TALKBOX" "$c" --deny-ip 1.1.1.1 --port "$port" -c --noninteractive \
+			'curl -sS --max-time 8 -o /dev/null http://1.1.1.1/ 2>/dev/null && echo DENIED-REACHABLE || echo DENIED-BLOCKED
 		curl -fsS --max-time 8 "http://127.0.0.1:'"$port"'/marker" && echo ALLOWED-REACHABLE'
-	[[ "$status" -eq 0 ]]
-	[[ "$output" == *'DENIED-BLOCKED'* ]]
-	[[ "$output" == *'ALLOWED-REACHABLE'* ]]
-	[[ "$output" != *'talkbox:'* ]]
-	kill "$srv" 2>/dev/null || true
-	e2e_clear_pids
-	rm -rf "$www"
-}
-
-@test "netbox --deny-ip blocks a denied address while a non-denied address remains reachable" {
-	require_nft_and_internet
-	command -v python3 >/dev/null 2>&1 || skip "python3 is required for the deny/allow e2e test"
-	local www port srv
-	www="$(mktemp -d)"
-	printf 'deny-marker\n' >"$www/marker"
-	start_host_http_server "$www" srv port
-	e2e_register_pid "$srv"
-	wait_for_http "http://127.0.0.1:$port/marker"
-	run run_talkbox "$PROJECT" "$TALKBOX" netbox --deny-ip 1.1.1.1 --port "$port" -c --noninteractive \
-		'curl -sS --max-time 8 -o /dev/null http://1.1.1.1/ 2>/dev/null && echo DENIED-REACHABLE || echo DENIED-BLOCKED
-		curl -fsS --max-time 8 "http://127.0.0.1:'"$port"'/marker" && echo ALLOWED-REACHABLE'
-	[[ "$status" -eq 0 ]]
-	[[ "$output" == *'DENIED-BLOCKED'* ]]
-	[[ "$output" == *'ALLOWED-REACHABLE'* ]]
-	[[ "$output" != *'talkbox:'* ]]
+		[[ "$status" -eq 0 ]]
+		[[ "$output" == *'DENIED-BLOCKED'* ]]
+		[[ "$output" == *'ALLOWED-REACHABLE'* ]]
+		[[ "$output" != *'talkbox:'* ]]
+	done
 	kill "$srv" 2>/dev/null || true
 	e2e_clear_pids
 	rm -rf "$www"

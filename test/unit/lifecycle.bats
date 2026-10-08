@@ -1,23 +1,6 @@
 # shellcheck disable=SC2030,SC2031 # bats runs each test in a subshell; the PODMAN_* exports are scoped to their own test
 load helpers
 
-load_lifecycle_plan() {
-	load_lib naming.sh
-	load_lib mounts.sh
-	load_lib network.sh
-	load_lib containers.sh
-}
-
-plan_subcommands() {
-	local -n _plan="$1"
-	local i
-	for ((i = 0; i < ${#_plan[@]}; i++)); do
-		if [[ "${_plan[$i]}" == podman ]]; then
-			printf '%s\n' "${_plan[$((i + 1))]}"
-		fi
-	done
-}
-
 plan_has_volume_rm() {
 	local -n _plan="$1"
 	local vol="$2"
@@ -68,17 +51,8 @@ setup() {
 	LOG="$BATS_TEST_TMPDIR/podman.log"
 }
 
-use_podman_shim() {
-	make_podman_shim "$SHIM"
-	PATH="$SHIM:$PATH"
-	export PODMAN_LOG="$LOG"
-	local img
-	img="$(base_image_name)"
-	export PODMAN_IMAGES="$img"
-}
-
 @test "run_recontain removes, recreates and starts the onbox container, running no nft, setup or user command" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	# shellcheck disable=SC2034 # array is passed by name to the executor
@@ -118,7 +92,7 @@ use_podman_shim() {
 }
 
 @test "run_recontain probes the base image and builds it when missing before recreating the onbox container" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_VOLUMES="talkbox-proj.onbox.gitdir"
@@ -151,7 +125,7 @@ use_podman_shim() {
 }
 
 @test "run_recontain removes only the volumes that exist and creates the missing gitdir volume" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	run run_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS PORTS DENY ALLOW
@@ -163,7 +137,7 @@ use_podman_shim() {
 }
 
 @test "run_rebuild builds the base image first, then recreates and starts the onbox container" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	# shellcheck disable=SC2034 # array is passed by name to the executor
@@ -193,7 +167,7 @@ use_podman_shim() {
 }
 
 @test "run_rm_container removes the onbox container and only its gitdir volume" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	run run_rm_container "$PROJECT"
@@ -212,7 +186,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox_recontain commits the source before removing and recreates volumes, container and image" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_CONTAINERS="talkbox-proj.onbox"
@@ -250,7 +224,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox_recontain skips the commit when the source is base and probes the base image" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	run run_netbox_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
@@ -268,7 +242,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox_recontain removes and repopulates the write volumes when present" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_CONTAINERS="talkbox-proj.onbox"
@@ -286,7 +260,7 @@ use_podman_shim() {
 }
 
 @test "run_offbox_recontain commits the netbox source before removing and recreating, with no nft step" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_CONTAINERS="talkbox-proj.netbox"
@@ -322,7 +296,7 @@ use_podman_shim() {
 }
 
 @test "run_offbox_recontain with no source container probes the base image and skips commit and build when it exists" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	run run_offbox_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
@@ -345,7 +319,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox_rebuild builds the base image first, then commits and recreates the container" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_CONTAINERS="talkbox-proj.onbox"
@@ -379,7 +353,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox_rebuild with no source container builds without probing or committing" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	run run_netbox_rebuild "$PROJECT" no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
@@ -403,7 +377,7 @@ use_podman_shim() {
 }
 
 @test "run_offbox_rebuild builds the base image first, then commits and recreates the container" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_CONTAINERS="talkbox-proj.netbox"
@@ -436,7 +410,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox_rm_container removes the container, its volumes and its root image when the root image exists" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_IMAGES="talkbox-proj.netbox.root"
@@ -460,7 +434,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox_rm_container omits the rmi when the root image does not exist" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_VOLUMES="talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir"
@@ -473,7 +447,7 @@ use_podman_shim() {
 }
 
 @test "run_offbox_rm_container removes the container, its volumes and its root image when the root image exists" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_IMAGES="talkbox-proj.offbox.root"
@@ -490,7 +464,7 @@ use_podman_shim() {
 }
 
 @test "run_offbox_rm_container omits the rmi when the root image does not exist" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_VOLUMES="talkbox-proj.offbox.worktree talkbox-proj.offbox.gitdir"
@@ -501,7 +475,7 @@ use_podman_shim() {
 }
 
 @test "netbox and offbox rm-container volume removal is guarded by volume existence" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	run run_netbox_rm_container "$PROJECT" DSTS
@@ -514,7 +488,7 @@ use_podman_shim() {
 }
 
 @test "plan_volume_rm emits podman volume rm -f only when the volume exists" {
-	load_lifecycle_plan
+	load_container_libs
 	stub_volumes 'talkbox-proj.onbox.gitdir'
 	local args=()
 	plan_volume_rm args 'talkbox-proj.onbox.gitdir'
@@ -528,7 +502,7 @@ use_podman_shim() {
 }
 
 @test "run_rm_image refuses to remove the base image while it is in use by other containers" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	export PODMAN_PS_NAMES="other-box"
 	run run_rm_image "$PROJECT"
@@ -548,7 +522,7 @@ use_podman_shim() {
 }
 
 @test "prune_external_image_containers queries external containers by ancestor and force-removes each returned ID" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	export PODMAN_EXTERNAL="ext1 ext2"
 	run prune_external_image_containers "$(base_image_name)"
@@ -559,7 +533,7 @@ use_podman_shim() {
 }
 
 @test "prune_external_image_containers silently succeeds when no external working containers match" {
-	load_lifecycle_plan
+	load_container_libs
 	use_podman_shim
 	run prune_external_image_containers "$(base_image_name)"
 	[[ "$status" -eq 0 ]]
@@ -567,47 +541,20 @@ use_podman_shim() {
 	[[ "$(grep -c '^rm ' "$PODMAN_LOG" || true)" -eq 0 ]]
 }
 
-@test "run_rm_image prunes external working containers before removing the base image" {
-	load_lifecycle_plan
+@test "run_rm_image prunes external working containers before removing the base image for every container" {
+	load_container_libs
 	use_podman_shim
 	export PODMAN_EXTERNAL="ext1"
-	run run_rm_image "$PROJECT"
-	[[ "$status" -eq 0 ]]
-	local ext_line rm_line rmi_line
-	ext_line="$(grep -n -- '--external --filter ancestor=talkbox/base:latest' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	rm_line="$(grep -n '^rm -f ext1$' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	rmi_line="$(grep -n '^rmi talkbox/base:latest$' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	[[ -n "$ext_line" && -n "$rm_line" && -n "$rmi_line" ]]
-	[[ "$ext_line" -lt "$rm_line" ]]
-	[[ "$rm_line" -lt "$rmi_line" ]]
-}
-
-@test "run_netbox_rm_image prunes external working containers before removing the base image" {
-	load_lifecycle_plan
-	use_podman_shim
-	export PODMAN_EXTERNAL="ext1"
-	run run_netbox_rm_image "$PROJECT"
-	[[ "$status" -eq 0 ]]
-	local ext_line rm_line rmi_line
-	ext_line="$(grep -n -- '--external --filter ancestor=talkbox/base:latest' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	rm_line="$(grep -n '^rm -f ext1$' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	rmi_line="$(grep -n '^rmi talkbox/base:latest$' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	[[ -n "$ext_line" && -n "$rm_line" && -n "$rmi_line" ]]
-	[[ "$ext_line" -lt "$rm_line" ]]
-	[[ "$rm_line" -lt "$rmi_line" ]]
-}
-
-@test "run_offbox_rm_image prunes external working containers before removing the base image" {
-	load_lifecycle_plan
-	use_podman_shim
-	export PODMAN_EXTERNAL="ext1"
-	run run_offbox_rm_image "$PROJECT"
-	[[ "$status" -eq 0 ]]
-	local ext_line rm_line rmi_line
-	ext_line="$(grep -n -- '--external --filter ancestor=talkbox/base:latest' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	rm_line="$(grep -n '^rm -f ext1$' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	rmi_line="$(grep -n '^rmi talkbox/base:latest$' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	[[ -n "$ext_line" && -n "$rm_line" && -n "$rmi_line" ]]
-	[[ "$ext_line" -lt "$rm_line" ]]
-	[[ "$rm_line" -lt "$rmi_line" ]]
+	local c ext_line rm_line rmi_line
+	for c in onbox netbox offbox; do
+		: >"$LOG"
+		run "run_${c}_rm_image" "$PROJECT"
+		[[ "$status" -eq 0 ]]
+		ext_line="$(log_line_no '--external --filter ancestor=talkbox/base:latest' "$PODMAN_LOG")"
+		rm_line="$(log_line_no '^rm -f ext1$' "$PODMAN_LOG")"
+		rmi_line="$(log_line_no '^rmi talkbox/base:latest$' "$PODMAN_LOG")"
+		[[ -n "$ext_line" && -n "$rm_line" && -n "$rmi_line" ]]
+		[[ "$ext_line" -lt "$rm_line" ]]
+		[[ "$rm_line" -lt "$rmi_line" ]]
+	done
 }

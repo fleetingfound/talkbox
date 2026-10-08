@@ -3,6 +3,11 @@ load helpers
 
 PROJECT_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
 
+# The dispatcher tests drive talkbox.sh as a subprocess and cannot source
+# lib/naming.sh, so the shared use_podman_shim is joined with the base image
+# passed explicitly instead of deriving it with base_image_name.
+BASE_IMAGE="${TALKBOX_BASE_IMAGE:-talkbox/base:latest}"
+
 setup() {
 	PROJECT="$BATS_TEST_TMPDIR/talkbox-proj"
 	mkdir -p "$PROJECT"
@@ -12,12 +17,6 @@ setup() {
 	SHIM="$BATS_TEST_TMPDIR/shim"
 	LOG="$BATS_TEST_TMPDIR/podman.log"
 	make_podman_shim "$SHIM"
-}
-
-use_podman_shim() {
-	PATH="$SHIM:$PATH"
-	export PODMAN_LOG="$LOG"
-	export PODMAN_IMAGES="${TALKBOX_BASE_IMAGE:-talkbox/base:latest}"
 }
 
 run_dispatcher() {
@@ -43,7 +42,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh onbox creates the container with the host worktree bind-mount and runs setup then the command" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	run_dispatcher onbox -c --noninteractive 'echo hi'
 	[[ "$status" -eq 0 ]]
 	local create
@@ -61,7 +60,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh onbox defaults to an interactive shell when no command is given" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	run_dispatcher onbox
 	[[ "$status" -eq 0 ]]
 	local create
@@ -72,7 +71,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh netbox populates its volumes from the host and installs the nft deny rules after start" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	run_dispatcher netbox -c --noninteractive true
 	[[ "$status" -eq 0 ]]
 	local create populate
@@ -89,7 +88,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh offbox restricts pasta to loopback and installs no nft rules" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	run_dispatcher offbox -c --noninteractive true
 	[[ "$status" -eq 0 ]]
 	local create
@@ -103,7 +102,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh onbox bind-mounts CLI write specs and never populates volumes" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	run_dispatcher onbox --write /host/data:/talkbox/wdata -c --noninteractive true
 	[[ "$status" -eq 0 ]]
 	local create
@@ -114,7 +113,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh netbox mounts a CLI write spec as a volume named <slug>.netbox.write.<dest-slug> and populates it from the host" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	run_dispatcher netbox --write /host/data:/talkbox/wdata -c --noninteractive true
 	[[ "$status" -eq 0 ]]
 	local create populate
@@ -125,21 +124,21 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh offbox mounts a CLI write spec as a volume named <slug>.offbox.write.<dest-slug>" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	run_dispatcher offbox --write /host/data:/talkbox/wdata -c --noninteractive true
 	[[ "$status" -eq 0 ]]
 	line_has_token "$(podman_create_line)" 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/wdata'
 }
 
 @test "talkbox.sh netbox derives the write-volume dest-slug from the dest basename path" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	run_dispatcher netbox --write /host/data:/a/b/c -c --noninteractive true
 	[[ "$status" -eq 0 ]]
 	line_has_token "$(podman_create_line)" 'talkbox-proj.netbox.write.a-b-c:/a/b/c'
 }
 
 @test "talkbox.sh netbox collapses identical write dests into a single volume populated from the last source" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	run_dispatcher netbox --write /first:/x --write /cli:/x -c --noninteractive true
 	[[ "$status" -eq 0 ]]
 	local create populate
@@ -151,7 +150,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh netbox merges defaults-file and CLI write specs in order" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	local copy="$BATS_TEST_TMPDIR/talkbox-copy"
 	mk_talkbox_copy "$copy"
 	printf '/def:/x\n' >>"$copy/defaults/write.mounts"
@@ -162,7 +161,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh threads --port into the per-container pasta network string" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	run_dispatcher onbox --port 8080 --port 9090 -c --noninteractive true
 	[[ "$status" -eq 0 ]]
 	line_has_token "$(podman_create_line)" '--network=pasta:-T,8080,-T,9090,--dns-forward,169.254.1.1,--map-guest-addr,none'
@@ -173,7 +172,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh netbox --recontain recreates the container and volumes without a commit" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	run_dispatcher netbox --recontain
 	[[ "$status" -eq 0 ]]
 	[[ "$(podman_count '^commit ')" -eq 0 ]]
@@ -189,7 +188,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh onbox --recontain recreates without populating, nft or setup" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	run_dispatcher onbox --recontain
 	[[ "$status" -eq 0 ]]
 	[[ "$(podman_count '^run ')" -eq 0 ]]
@@ -205,7 +204,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh onbox --rebuild builds the base image before recreating" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	run_dispatcher onbox --rebuild
 	[[ "$status" -eq 0 ]]
 	[[ -n "$(podman_line '^build -t ')" ]]
@@ -218,7 +217,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh netbox --rebuild builds the base image and skips the commit when no source container exists" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	run_dispatcher netbox --rebuild
 	[[ "$status" -eq 0 ]]
 	[[ -n "$(podman_line '^build -t ')" ]]
@@ -230,7 +229,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh netbox commits the onbox container as the netbox root image by default" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	export PODMAN_CONTAINERS="talkbox-proj.onbox"
 	run_dispatcher netbox -c --noninteractive true
 	[[ "$status" -eq 0 ]]
@@ -240,7 +239,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh netbox --fresh skips the commit even when the onbox container exists" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	export PODMAN_CONTAINERS="talkbox-proj.onbox"
 	run_dispatcher netbox --fresh -c --noninteractive true
 	[[ "$status" -eq 0 ]]
@@ -249,7 +248,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh netbox --rm-container removes the container, its volumes and its root image" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	export PODMAN_VOLUMES="talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir"
 	export PODMAN_IMAGES="${TALKBOX_BASE_IMAGE:-talkbox/base:latest} talkbox-proj.netbox.root"
 	run_dispatcher netbox --rm-container
@@ -263,7 +262,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh onbox --rm-container removes only the container and its gitdir volume" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	export PODMAN_VOLUMES="talkbox-proj.onbox.gitdir"
 	run_dispatcher onbox --rm-container
 	[[ "$status" -eq 0 ]]
@@ -275,7 +274,7 @@ mk_talkbox_copy() {
 }
 
 @test "talkbox.sh onbox --rm-image removes the base image when it is not in use" {
-	use_podman_shim
+	use_podman_shim "$BASE_IMAGE"
 	run_dispatcher onbox --rm-image
 	[[ "$status" -eq 0 ]]
 	[[ "$(podman_line '^rmi ')" == "rmi ${TALKBOX_BASE_IMAGE:-talkbox/base:latest}" ]]

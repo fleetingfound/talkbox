@@ -1,47 +1,6 @@
 # shellcheck disable=SC2030,SC2031 # bats runs each test in a subshell; the PODMAN_* exports are scoped to their own test
 load helpers
 
-load_netbox_plan() {
-	load_lib naming.sh
-	load_lib mounts.sh
-	load_lib network.sh
-	load_lib containers.sh
-}
-
-array_contains() {
-	local value="$1"
-	shift
-	local element
-	for element in "$@"; do
-		if [[ "$element" == "$value" ]]; then
-			return 0
-		fi
-	done
-	return 1
-}
-
-array_has_none() {
-	local needle="$1"
-	shift
-	local element
-	for element in "$@"; do
-		if [[ "$element" == *"$needle"* ]]; then
-			return 1
-		fi
-	done
-	return 0
-}
-
-plan_subcommands() {
-	local -n _plan="$1"
-	local i
-	for ((i = 0; i < ${#_plan[@]}; i++)); do
-		if [[ "${_plan[$i]}" == podman ]]; then
-			printf '%s\n' "${_plan[$((i + 1))]}"
-		fi
-	done
-}
-
 # shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 setup() {
 	PROJECT="$BATS_TEST_TMPDIR/talkbox-proj"
@@ -57,28 +16,19 @@ setup() {
 	LOG="$BATS_TEST_TMPDIR/podman.log"
 }
 
-use_podman_shim() {
-	make_podman_shim "$SHIM"
-	PATH="$SHIM:$PATH"
-	export PODMAN_LOG="$LOG"
-	local img
-	img="$(base_image_name)"
-	export PODMAN_IMAGES="$img"
-}
-
 @test "inheritance planner uses the base image when no source container exists" {
-	load_netbox_plan
+	load_container_libs
 	[[ "$(inherit_source netbox no no no no '')" == base ]]
 	[[ "$(inherit_source offbox no no no no '')" == base ]]
 }
 
 @test "inheritance planner defaults netbox to onbox when onbox exists" {
-	load_netbox_plan
+	load_container_libs
 	[[ "$(inherit_source netbox yes no no no '')" == onbox ]]
 }
 
 @test "inheritance planner defaults offbox to netbox, then onbox, then base" {
-	load_netbox_plan
+	load_container_libs
 	[[ "$(inherit_source offbox yes yes no no '')" == netbox ]]
 	[[ "$(inherit_source offbox no yes no no '')" == netbox ]]
 	[[ "$(inherit_source offbox yes no no '')" == onbox ]]
@@ -86,33 +36,33 @@ use_podman_shim() {
 }
 
 @test "inheritance planner --fresh prevents root filesystem inheritance" {
-	load_netbox_plan
+	load_container_libs
 	[[ "$(inherit_source netbox yes no no yes '')" == base ]]
 	[[ "$(inherit_source offbox yes yes no yes '')" == base ]]
 }
 
 @test "inheritance planner --inherit selects the explicit source" {
-	load_netbox_plan
+	load_container_libs
 	[[ "$(inherit_source netbox yes yes yes no offbox)" == offbox ]]
 	[[ "$(inherit_source offbox yes yes no no onbox)" == onbox ]]
 	[[ "$(inherit_source netbox yes yes no no netbox)" == netbox ]]
 }
 
 @test "inheritance planner falls back to base when the --inherit source does not exist" {
-	load_netbox_plan
+	load_container_libs
 	[[ "$(inherit_source netbox no no no no onbox)" == base ]]
 	[[ "$(inherit_source netbox yes no no no offbox)" == base ]]
 	[[ "$(inherit_source offbox no no no no netbox)" == base ]]
 }
 
 @test "inheritance planner --fresh overrides an --inherit selection" {
-	load_netbox_plan
+	load_container_libs
 	[[ "$(inherit_source netbox yes yes yes no offbox)" == offbox ]]
 	[[ "$(inherit_source netbox yes yes yes yes offbox)" == base ]]
 }
 
 @test "volume-population planner runs a no-network helper with the host source read-only" {
-	load_netbox_plan
+	load_container_libs
 	local args=()
 	plan_volume_populate args 'talkbox-proj.netbox.worktree' host "$PROJECT"
 	[[ "$(plan_subcommands args)" == 'run' ]]
@@ -127,7 +77,7 @@ use_podman_shim() {
 }
 
 @test "volume-population planner mounts a source volume read-write" {
-	load_netbox_plan
+	load_container_libs
 	local args=()
 	plan_volume_populate args 'talkbox-proj.offbox.worktree' volume 'talkbox-proj.netbox.worktree'
 	[[ "$(plan_subcommands args)" == 'run' ]]
@@ -139,7 +89,7 @@ use_podman_shim() {
 }
 
 @test "volume-population planner opens the run with the exact no-network prefix tokens" {
-	load_netbox_plan
+	load_container_libs
 	local -a host_args=() volume_args=()
 	plan_volume_populate host_args 'talkbox-proj.netbox.worktree' host "$PROJECT"
 	[[ "${host_args[0]}" == podman ]]
@@ -159,7 +109,7 @@ use_podman_shim() {
 }
 
 @test "netbox and offbox populate plans open every podman run with the exact no-network prefix" {
-	load_netbox_plan
+	load_container_libs
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 	local -a srcs=('/host/data') dsts=('/talkbox/wdata') plan=()
 	plan_netbox_populate plan "$PROJECT" srcs dsts
@@ -177,7 +127,7 @@ use_podman_shim() {
 }
 
 @test "netbox populate copies the worktree and write mounts from the host but never touches the gitdir volume" {
-	load_netbox_plan
+	load_container_libs
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 	local -a srcs=('/host/data') dsts=('/talkbox/wdata') plan=()
 	plan_netbox_populate plan "$PROJECT" srcs dsts
@@ -186,7 +136,7 @@ use_podman_shim() {
 }
 
 @test "offbox populate copies from the host when the root source is base and never touches the gitdir volume" {
-	load_netbox_plan
+	load_container_libs
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 	local -a srcs=('/host/data') dsts=('/talkbox/wdata') plan=()
 	plan_offbox_populate plan "$PROJECT" base srcs dsts
@@ -195,7 +145,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox uses the base image and populates the worktree from the host when no source container exists" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
@@ -215,7 +165,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox create path creates the gitdir volume after populate and before create" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
@@ -230,7 +180,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox create path omits the gitdir volume create when the gitdir volume already exists" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_VOLUMES="talkbox-proj.netbox.gitdir"
@@ -241,7 +191,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox probes the base image and builds it when missing on the create path" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
@@ -269,7 +219,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox commits the onbox container as the netbox root image when onbox exists" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_CONTAINERS="talkbox-proj.onbox"
@@ -283,7 +233,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox create args mount the worktree volume, name the container, use pasta with the DNS-forward suffix and drop caps" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
@@ -301,7 +251,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox forwards pasta -T ports" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	# shellcheck disable=SC2054 # -T,<port> tokens are single array elements
@@ -313,7 +263,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox keeps read mounts read-only and write mounts as volumes, populating them from the host" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	local home="$BATS_TEST_TMPDIR/home"
@@ -336,7 +286,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox create args include GPU options, --init ahead of the image, dotfiles, prompt env vars, and no tmpfs" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	# shellcheck disable=SC2034 # global consumed by the sourced containers.sh
@@ -364,7 +314,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox adds the git mounts and git identity env vars for a git-tracked project only" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	git -C "$PROJECT" init -q
 	git -C "$PROJECT" config user.name host-user
@@ -389,7 +339,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox emits the three git mounts as consecutive tokens in the shared order" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	git -C "$PROJECT" init -q
 	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
@@ -400,7 +350,7 @@ use_podman_shim() {
 }
 
 @test "run_offbox create args restrict pasta to loopback, exclude talkbox0, mount the worktree volume and drop caps" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	run run_offbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
@@ -415,7 +365,7 @@ use_podman_shim() {
 }
 
 @test "run_offbox forwards pasta -T ports alongside the loopback restriction" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	# shellcheck disable=SC2054 # -T,<port> tokens are single array elements
@@ -427,7 +377,7 @@ use_podman_shim() {
 }
 
 @test "run_offbox emits write-mount volumes and read-only read mounts, populating from the host" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	local home="$BATS_TEST_TMPDIR/home"
@@ -450,7 +400,7 @@ use_podman_shim() {
 }
 
 @test "run_offbox create args include GPU options, --init, prompt env vars and no tmpfs" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	# shellcheck disable=SC2034 # global consumed by the sourced containers.sh
@@ -474,7 +424,7 @@ use_podman_shim() {
 }
 
 @test "run_offbox emits git identity env vars for a git-tracked project but not for a non-git project" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	git -C "$PROJECT" init -q
 	git -C "$PROJECT" config user.name host-user
@@ -495,7 +445,7 @@ use_podman_shim() {
 }
 
 @test "run_offbox commits netbox, else onbox, else uses the base image and populates from the host" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
@@ -521,7 +471,7 @@ use_podman_shim() {
 }
 
 @test "TALKBOX_FRESH skips the commit and uses the base image even when source containers exist" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_CONTAINERS="talkbox-proj.onbox"
@@ -539,7 +489,7 @@ use_podman_shim() {
 }
 
 @test "TALKBOX_INHERIT selects the commit source" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_CONTAINERS="talkbox-proj.onbox talkbox-proj.offbox"
@@ -561,7 +511,7 @@ use_podman_shim() {
 }
 
 @test "run_offbox populates from the netbox volumes when inheriting from netbox and they exist" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_CONTAINERS="talkbox-proj.netbox"
@@ -580,7 +530,7 @@ use_podman_shim() {
 }
 
 @test "run_offbox falls back to host sources per volume when the netbox volumes are missing" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_CONTAINERS="talkbox-proj.netbox"
@@ -597,7 +547,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox applies the nft deny rules before running setup.sh and runs setup.sh before the user command" {
-	load_netbox_plan
+	load_container_libs
 	local ctr
 	ctr="$(netbox_container_name "$PROJECT")"
 	use_podman_shim
@@ -607,10 +557,10 @@ use_podman_shim() {
 	run run_netbox "$PROJECT" 'echo hi' no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS deny allow
 	[[ "$status" -eq 0 ]]
 	local start_line nft_line setup_line cmd_line
-	start_line="$(grep -n "^start $ctr$" "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	nft_line="$(grep -n 'unshare.*nsenter.*nft' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	setup_line="$(grep -n "exec $ctr setup.sh$" "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	cmd_line="$(grep -n 'bash -c echo hi' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
+	start_line="$(log_line_no "^start $ctr$" "$PODMAN_LOG")"
+	nft_line="$(log_line_no 'unshare.*nsenter.*nft' "$PODMAN_LOG")"
+	setup_line="$(log_line_no "exec $ctr setup.sh$" "$PODMAN_LOG")"
+	cmd_line="$(log_line_no 'bash -c echo hi' "$PODMAN_LOG")"
 	[[ -n "$start_line" && -n "$nft_line" && -n "$setup_line" && -n "$cmd_line" ]]
 	[[ "$start_line" -lt "$nft_line" ]]
 	[[ "$nft_line" -lt "$setup_line" ]]
@@ -618,7 +568,7 @@ use_podman_shim() {
 }
 
 @test "run_offbox runs setup.sh after start and before the user command, with no nft step" {
-	load_netbox_plan
+	load_container_libs
 	local ctr
 	ctr="$(offbox_container_name "$PROJECT")"
 	use_podman_shim
@@ -628,73 +578,49 @@ use_podman_shim() {
 	run run_offbox "$PROJECT" 'echo hi' no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS deny allow
 	[[ "$status" -eq 0 ]]
 	local start_line setup_line cmd_line
-	start_line="$(grep -n "^start $ctr$" "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	setup_line="$(grep -n "exec $ctr setup.sh$" "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	cmd_line="$(grep -n 'bash -c echo hi' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
+	start_line="$(log_line_no "^start $ctr$" "$PODMAN_LOG")"
+	setup_line="$(log_line_no "exec $ctr setup.sh$" "$PODMAN_LOG")"
+	cmd_line="$(log_line_no 'bash -c echo hi' "$PODMAN_LOG")"
 	[[ -n "$start_line" && -n "$setup_line" && -n "$cmd_line" ]]
 	[[ "$start_line" -lt "$setup_line" ]]
 	[[ "$setup_line" -lt "$cmd_line" ]]
 	[[ "$(grep -c 'nsenter' "$PODMAN_LOG" || true)" -eq 0 ]]
 }
 
-@test "run_netbox recontain and rebuild run setup.sh after the nft deny install and before stopping the container" {
-	load_netbox_plan
-	local ctr
-	ctr="$(netbox_container_name "$PROJECT")"
+@test "run_netbox and run_offbox recontain and rebuild order start, the nft install, setup.sh and stop per container" {
+	load_container_libs
 	use_podman_shim
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 	local -a deny=(1.1.1.1) allow=() srcs=() dsts=()
-	local nft_line setup_line stop_line
-	run run_netbox_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS deny allow
-	[[ "$status" -eq 0 ]]
-	nft_line="$(grep -n 'unshare.*nsenter.*nft' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	setup_line="$(grep -n "exec $ctr setup.sh$" "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	stop_line="$(grep -n "^stop " "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	[[ -n "$nft_line" && -n "$setup_line" && -n "$stop_line" ]]
-	[[ "$nft_line" -lt "$setup_line" ]]
-	[[ "$setup_line" -lt "$stop_line" ]]
-	: >"$LOG"
-	run run_netbox_rebuild "$PROJECT" no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS deny allow
-	[[ "$status" -eq 0 ]]
-	nft_line="$(grep -n 'unshare.*nsenter.*nft' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	setup_line="$(grep -n "exec $ctr setup.sh$" "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	stop_line="$(grep -n "^stop " "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	[[ -n "$nft_line" && -n "$setup_line" && -n "$stop_line" ]]
-	[[ "$nft_line" -lt "$setup_line" ]]
-	[[ "$setup_line" -lt "$stop_line" ]]
-}
-
-@test "run_offbox recontain and rebuild run setup.sh after start and before stopping the container, with no nft step" {
-	load_netbox_plan
-	local ctr
-	ctr="$(offbox_container_name "$PROJECT")"
-	use_podman_shim
-	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
-	local -a deny=(1.1.1.1) allow=() srcs=() dsts=()
-	local start_line setup_line stop_line
-	run run_offbox_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS deny allow
-	[[ "$status" -eq 0 ]]
-	start_line="$(grep -n "^start $ctr$" "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	setup_line="$(grep -n "exec $ctr setup.sh$" "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	stop_line="$(grep -n "^stop " "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	[[ -n "$start_line" && -n "$setup_line" && -n "$stop_line" ]]
-	[[ "$start_line" -lt "$setup_line" ]]
-	[[ "$setup_line" -lt "$stop_line" ]]
-	[[ "$(grep -c 'nsenter' "$PODMAN_LOG" || true)" -eq 0 ]]
-	: >"$LOG"
-	run run_offbox_rebuild "$PROJECT" no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS deny allow
-	[[ "$status" -eq 0 ]]
-	start_line="$(grep -n "^start $ctr$" "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	setup_line="$(grep -n "exec $ctr setup.sh$" "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	stop_line="$(grep -n "^stop " "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
-	[[ -n "$start_line" && -n "$setup_line" && -n "$stop_line" ]]
-	[[ "$start_line" -lt "$setup_line" ]]
-	[[ "$setup_line" -lt "$stop_line" ]]
-	[[ "$(grep -c 'nsenter' "$PODMAN_LOG" || true)" -eq 0 ]]
+	# Per-container expectations indexed alongside containers: the step that
+	# must precede setup.sh (the nft deny install for netbox, the start for
+	# offbox) and a pattern that must not appear in the log (empty = no check).
+	local -a containers=(netbox offbox)
+	local -a ctrs=("$(netbox_container_name "$PROJECT")" "$(offbox_container_name "$PROJECT")")
+	local -a pre_patterns=('unshare.*nsenter.*nft' '^start ')
+	local -a absent_patterns=('' 'nsenter')
+	local i c phase pre_line setup_line stop_line absent_count
+	for i in "${!containers[@]}"; do
+		c="${containers[$i]}"
+		ctr="${ctrs[$i]}"
+		for phase in recontain rebuild; do
+			: >"$LOG"
+			run "run_${c}_${phase}" "$PROJECT" no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS deny allow
+			[[ "$status" -eq 0 ]]
+			pre_line="$(log_line_no "${pre_patterns[$i]}" "$PODMAN_LOG")"
+			setup_line="$(log_line_no "exec $ctr setup.sh$" "$PODMAN_LOG")"
+			stop_line="$(log_line_no '^stop ' "$PODMAN_LOG")"
+			absent_count="$(grep -c "${absent_patterns[$i]}" "$PODMAN_LOG" || true)"
+			[[ -n "$pre_line" && -n "$setup_line" && -n "$stop_line" ]]
+			[[ "$pre_line" -lt "$setup_line" ]]
+			[[ "$setup_line" -lt "$stop_line" ]]
+			[[ -z "${absent_patterns[$i]}" || "$absent_count" -eq 0 ]]
+		done
+	done
 }
 
 @test "run_netbox create line is byte-identical to the recontain recreate line from the base image" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
@@ -709,7 +635,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox create line is byte-identical to the recontain recreate line when inheriting from onbox" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_CONTAINERS="talkbox-proj.onbox"
@@ -725,7 +651,7 @@ use_podman_shim() {
 }
 
 @test "run_offbox create line is byte-identical to the recontain recreate line when inheriting from netbox" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_CONTAINERS="talkbox-proj.netbox"
@@ -741,7 +667,7 @@ use_podman_shim() {
 }
 
 @test "run_netbox and run_netbox_recontain build identical create lines under TALKBOX_FRESH and TALKBOX_INHERIT" {
-	load_netbox_plan
+	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
 	export PODMAN_CONTAINERS="talkbox-proj.onbox talkbox-proj.offbox"
