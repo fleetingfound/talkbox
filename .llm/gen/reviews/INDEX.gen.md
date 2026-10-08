@@ -13,4 +13,5 @@
 - [Offbox sandbox escape review — host and internet access](offbox-escape-review.gen.md)
 - [Consolidation review — repeated onbox/netbox/offbox logic in `lib/containers.sh`](containers-sh-consolidation-review.gen.md)
 - [Duplication and reusable-abstraction review — production code and test harness](duplication-abstraction-review.gen.md)
+- [Workflow review — `onbox`/`netbox`/`offbox` workflows, `sync`/`merge` and test-suite fidelity to SPEC.md](workflow-fidelity-review.gen.md)
 
