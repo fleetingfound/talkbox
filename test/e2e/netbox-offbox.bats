@@ -182,3 +182,34 @@ teardown() {
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'INHERITED'* ]]
 }
+
+@test "netbox --write with a file source is refused with a talkbox diagnostic and leaves no named volumes" {
+	printf 'notes\n' >"$PROJECT/wfile.txt"
+	run run_talkbox "$PROJECT" "$TALKBOX" netbox --write "$PROJECT/wfile.txt:/talkbox/wdata" -c --noninteractive true
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$output" == *"$PROJECT/wfile.txt"* ]]
+	local vols
+	vols="$(sdrun podman volume ls -q --filter "name=$PROJECT_SLUG" 2>/dev/null)"
+	[[ -z "$vols" ]]
+	run sdrun podman container exists "$NETBOX_CTR"
+	[[ "$status" -ne 0 ]]
+}
+
+@test "a failed netbox populate leaves no named volumes and no container" {
+	local data
+	data="$(mktemp -d)"
+	e2e_register_dir "$data"
+	mkdir -p "$data/secret"
+	printf 'secret\n' >"$data/secret/key.txt"
+	chmod 000 "$data/secret"
+	run run_talkbox "$PROJECT" "$TALKBOX" netbox --write "$data/secret:/talkbox/wdata" -c --noninteractive true
+	chmod 755 "$data/secret"
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	local vols
+	vols="$(sdrun podman volume ls -q --filter "name=$PROJECT_SLUG" 2>/dev/null)"
+	[[ -z "$vols" ]]
+	run sdrun podman container exists "$NETBOX_CTR"
+	[[ "$status" -ne 0 ]]
+}

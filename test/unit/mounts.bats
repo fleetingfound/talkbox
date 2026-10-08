@@ -16,9 +16,11 @@ setup() {
 
 @test "mount_args derives a write default dest from the source basename" {
 	load_lib mounts.sh
+	local dir="$BATS_TEST_TMPDIR/data"
+	mkdir -p "$dir"
 	local out=()
-	mount_args out write "$ABSENT" "$PROJECT" "$HOME_FAKE" '/some/dir/data'
-	[[ "${out[*]}" == "-v /some/dir/data:/host/write/data" ]]
+	mount_args out write "$ABSENT" "$PROJECT" "$HOME_FAKE" "$dir"
+	[[ "${out[*]}" == "-v $dir:/host/write/data" ]]
 }
 
 @test "mount_args parses a source:dest pair without spaces" {
@@ -64,11 +66,13 @@ setup() {
 
 @test "mount_entries strips an inline comment from CLI --read and --write specs" {
 	load_lib mounts.sh
+	local dir="$BATS_TEST_TMPDIR/data"
+	mkdir -p "$dir"
 	local r=() w=()
 	mount_args r read "$ABSENT" "$PROJECT" "$HOME_FAKE" '/a  # a comment'
-	mount_args w write "$ABSENT" "$PROJECT" "$HOME_FAKE" '/a  # a comment'
+	mount_args w write "$ABSENT" "$PROJECT" "$HOME_FAKE" "$dir  # a comment"
 	[[ "${r[*]}" == "-v /a:/host/read/a:ro" ]]
-	[[ "${w[*]}" == "-v /a:/host/write/a" ]]
+	[[ "${w[*]}" == "-v $dir:/host/write/data" ]]
 }
 
 @test "mount_args yields no mounts when the defaults file is absent" {
@@ -164,18 +168,72 @@ setup() {
 
 @test "mount_args treats read and write modes independently" {
 	load_lib mounts.sh
+	local src="$BATS_TEST_TMPDIR/src"
+	mkdir -p "$src"
 	local r=() w=()
-	mount_args r read "$ABSENT" "$PROJECT" "$HOME_FAKE" '/src:/home/dev/data'
-	mount_args w write "$ABSENT" "$PROJECT" "$HOME_FAKE" '/src:/home/dev/data'
-	[[ "${r[*]}" == "-v /src:/home/dev/data:ro" ]]
-	[[ "${w[*]}" == "-v /src:/home/dev/data" ]]
+	mount_args r read "$ABSENT" "$PROJECT" "$HOME_FAKE" "$src:/home/dev/data"
+	mount_args w write "$ABSENT" "$PROJECT" "$HOME_FAKE" "$src:/home/dev/data"
+	[[ "${r[*]}" == "-v $src:/home/dev/data:ro" ]]
+	[[ "${w[*]}" == "-v $src:/home/dev/data" ]]
 }
 
 @test "mount_args lets a CLI write spec override an identical defaults-file write dest keeping the CLI source" {
 	load_lib mounts.sh
+	local def="$BATS_TEST_TMPDIR/def" cli="$BATS_TEST_TMPDIR/cli"
+	mkdir -p "$def" "$cli"
 	local file="$BATS_TEST_TMPDIR/write.mounts"
-	printf '/def:/x\n' >"$file"
+	printf '%s:/x\n' "$def" >"$file"
 	local out=()
-	mount_args out write "$file" "$PROJECT" "$HOME_FAKE" '/cli:/x'
-	[[ "${out[*]}" == "-v /cli:/x" ]]
+	mount_args out write "$file" "$PROJECT" "$HOME_FAKE" "$cli:/x"
+	[[ "${out[*]}" == "-v $cli:/x" ]]
+}
+
+@test "write mode dies with a talkbox diagnostic for a file source while a directory source parses" {
+	load_lib mounts.sh
+	local dir="$BATS_TEST_TMPDIR/data" file="$BATS_TEST_TMPDIR/notes.txt"
+	mkdir -p "$dir"
+	printf 'notes\n' >"$file"
+	local out=()
+	mount_args out write "$ABSENT" "$PROJECT" "$HOME_FAKE" "$dir:/talkbox/wdata"
+	[[ "${out[*]}" == "-v $dir:/talkbox/wdata" ]]
+	run mount_args out write "$ABSENT" "$PROJECT" "$HOME_FAKE" "$file:/talkbox/wdata"
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$output" == *"$file"* ]]
+}
+
+@test "write mode dies with a talkbox diagnostic for a nonexistent source" {
+	load_lib mounts.sh
+	local missing="$BATS_TEST_TMPDIR/absent-dir"
+	local out=()
+	run mount_args out write "$ABSENT" "$PROJECT" "$HOME_FAKE" "$missing:/talkbox/wdata"
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$output" == *"$missing"* ]]
+}
+
+@test "write mode dies with a talkbox diagnostic for a defaults-file file source" {
+	load_lib mounts.sh
+	local file="$BATS_TEST_TMPDIR/notes.txt"
+	printf 'notes\n' >"$file"
+	local wf="$BATS_TEST_TMPDIR/write.mounts"
+	printf '%s : /talkbox/wdata\n' "$file" >"$wf"
+	local out=()
+	run mount_args out write "$wf" "$PROJECT" "$HOME_FAKE"
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$output" == *"$file"* ]]
+}
+
+@test "read mode accepts file sources while write mode refuses the same source" {
+	load_lib mounts.sh
+	local file="$BATS_TEST_TMPDIR/notes.txt"
+	printf 'notes\n' >"$file"
+	local out=()
+	mount_args out read "$ABSENT" "$PROJECT" "$HOME_FAKE" "$file"
+	[[ "${out[*]}" == "-v $file:/host/read/notes.txt:ro" ]]
+	run mount_args out write "$ABSENT" "$PROJECT" "$HOME_FAKE" "$file"
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$output" == *"$file"* ]]
 }

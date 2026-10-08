@@ -268,10 +268,12 @@ setup() {
 	mkdir -p "$PROJECT/.git"
 	local home="$BATS_TEST_TMPDIR/home"
 	mkdir -p "$home"
+	local wsrc="$BATS_TEST_TMPDIR/wsrc"
+	mkdir -p "$wsrc"
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 	local -a read_mounts=() write_mounts=() srcs=() dsts=()
 	mount_args read_mounts read "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
-	mount_entries srcs dsts write "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
+	mount_entries srcs dsts write "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" "$wsrc:/talkbox/wdata"
 	# shellcheck disable=SC2034 # write_mounts is consumed by nameref in run_netbox
 	write_mounts=("-v" "$(netbox_write_volume "$PROJECT" "$(dest_slug "${dsts[0]}")"):${dsts[0]}")
 	run run_netbox "$PROJECT" 'true' no read_mounts write_mounts srcs dsts PORTS DENY ALLOW
@@ -282,7 +284,7 @@ setup() {
 	line_has_token "$create" 'talkbox-proj.netbox.write.talkbox-wdata:/talkbox/wdata'
 	line_lacks_token "$create" 'talkbox-proj.netbox.write.talkbox-wdata:/talkbox/wdata:ro'
 	populate="$(podman_line 'talkbox-proj.netbox.write.talkbox-wdata:/talkbox/target')"
-	line_has_token "$populate" '/host/data:/talkbox/source:ro'
+	line_has_token "$populate" "$wsrc:/talkbox/source:ro"
 }
 
 @test "run_netbox create args include GPU options, --init ahead of the image, dotfiles, prompt env vars, and no tmpfs" {
@@ -382,10 +384,12 @@ setup() {
 	mkdir -p "$PROJECT/.git"
 	local home="$BATS_TEST_TMPDIR/home"
 	mkdir -p "$home"
+	local wsrc="$BATS_TEST_TMPDIR/wsrc"
+	mkdir -p "$wsrc"
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 	local -a read_mounts=() write_mounts=() srcs=() dsts=()
 	mount_args read_mounts read "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
-	mount_entries srcs dsts write "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
+	mount_entries srcs dsts write "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" "$wsrc:/talkbox/wdata"
 	# shellcheck disable=SC2034 # write_mounts is consumed by nameref in run_offbox
 	write_mounts=("-v" "$(offbox_write_volume "$PROJECT" "$(dest_slug "${dsts[0]}")"):${dsts[0]}")
 	run run_offbox "$PROJECT" 'true' no read_mounts write_mounts srcs dsts PORTS DENY ALLOW
@@ -396,7 +400,7 @@ setup() {
 	line_has_token "$create" 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/wdata'
 	line_lacks_token "$create" 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/wdata:ro'
 	populate="$(podman_line 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/target')"
-	line_has_token "$populate" '/host/data:/talkbox/source:ro'
+	line_has_token "$populate" "$wsrc:/talkbox/source:ro"
 }
 
 @test "run_offbox create args include GPU options, --init, prompt env vars and no tmpfs" {
@@ -697,4 +701,46 @@ setup() {
 	[[ "$status" -eq 0 ]]
 	[[ "$(podman_count '^commit ')" -eq 1 ]]
 	[[ "$(podman_create_line)" == "$inherit_create" ]]
+}
+
+@test "a failed netbox create plan rolls back the named volumes and reports a talkbox error" {
+	load_container_libs
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_VOLUMES="talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir talkbox-proj.netbox.write.talkbox-wdata"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a srcs=('/host/data') dsts=('/talkbox/wdata')
+	export PODMAN_FAIL_PATTERN='cp -a'
+	run run_netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY ALLOW
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	grep -q 'volume rm -f.*talkbox-proj\.netbox\.worktree' "$PODMAN_LOG"
+	grep -q 'volume rm -f.*talkbox-proj\.netbox\.gitdir' "$PODMAN_LOG"
+	grep -q 'volume rm -f.*talkbox-proj\.netbox\.write\.talkbox-wdata' "$PODMAN_LOG"
+	[[ -z "$(podman_line '^start talkbox-proj.netbox$')" ]]
+	[[ "$(podman_count '^exec ')" -eq 0 ]]
+}
+
+@test "a failed netbox recontain start rolls back the partial container and named volumes with a talkbox error" {
+	load_container_libs
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_VOLUMES="talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir talkbox-proj.netbox.write.talkbox-wdata"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a srcs=('/host/data') dsts=('/talkbox/wdata')
+	export PODMAN_FAIL_PATTERN='start talkbox-proj.netbox'
+	run run_netbox_recontain "$PROJECT" no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY ALLOW
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	local start_line rm_line vol_line
+	start_line="$(podman_line_no '^start talkbox-proj.netbox$')"
+	[[ -n "$start_line" ]]
+	rm_line="$(grep -nE 'rm -f( --volumes)? talkbox-proj\.netbox$' "$PODMAN_LOG" | tail -1 | cut -d: -f1)"
+	[[ -n "$rm_line" && "$rm_line" -gt "$start_line" ]]
+	vol_line="$(grep -n 'volume rm -f' "$PODMAN_LOG" | grep 'talkbox-proj\.netbox\.worktree' | tail -1 | cut -d: -f1)"
+	[[ -n "$vol_line" && "$vol_line" -gt "$start_line" ]]
+	vol_line="$(grep -n 'volume rm -f' "$PODMAN_LOG" | grep 'talkbox-proj\.netbox\.gitdir' | tail -1 | cut -d: -f1)"
+	[[ -n "$vol_line" && "$vol_line" -gt "$start_line" ]]
+	vol_line="$(grep -n 'volume rm -f' "$PODMAN_LOG" | grep 'talkbox-proj\.netbox\.write\.talkbox-wdata' | tail -1 | cut -d: -f1)"
+	[[ -n "$vol_line" && "$vol_line" -gt "$start_line" ]]
 }

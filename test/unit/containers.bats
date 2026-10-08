@@ -74,8 +74,10 @@ setup() {
 	use_podman_shim
 	local home="$BATS_TEST_TMPDIR/home"
 	mkdir -p "$home"
+	local wdir="$BATS_TEST_TMPDIR/var"
+	mkdir -p "$wdir"
 	printf '/host/etc\n' >"$BATS_TEST_TMPDIR/read.mounts"
-	printf '/host/var\n' >"$BATS_TEST_TMPDIR/write.mounts"
+	printf '%s\n' "$wdir" >"$BATS_TEST_TMPDIR/write.mounts"
 	printf '8080\n' >"$BATS_TEST_TMPDIR/ports"
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 	local -a read_mounts=() write_mounts=() ports=()
@@ -88,7 +90,7 @@ setup() {
 	create="$(podman_create_line)"
 	line_has_token "$create" '--network=pasta:-T,8080,-T,9090,--dns-forward,169.254.1.1,--map-guest-addr,none'
 	line_has_token "$create" '/host/etc:/host/read/etc:ro'
-	line_has_token "$create" '/host/var:/host/write/var'
+	line_has_token "$create" "$wdir:/host/write/var"
 }
 
 @test "run_onbox bind-mounts the host worktree read-write" {
