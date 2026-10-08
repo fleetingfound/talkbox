@@ -42,3 +42,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 20f: convergence of create_sandbox and plan_recreate](phase-20f-create-recreate-convergence.gen.md)
 - [Phase 20g: minor production deduplications (network fail-or-warn, stop-then-die wrapper, setup.sh host remote)](phase-20g-minor-production-dedups.gen.md)
 - [Phase 21: onbox create/recontain ensure the base image exists](phase-21-onbox-base-image-probe.gen.md)
+- [Phase 22a: shared podman shim factory](phase-22a-podman-shim-factory.gen.md)

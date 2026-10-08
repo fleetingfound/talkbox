@@ -24,6 +24,10 @@ make_podman_shim() {
 #   PODMAN_PS_NAMES    names listed for ancestor-filtered ps
 #   PODMAN_EXTERNAL    IDs listed for external ancestor-filtered ps
 #   PODMAN_FAIL_PATTERN, PODMAN_FAIL_CODE  make matching invocations fail
+#   PODMAN_INSPECT_PID  PID printed for inspect -f {{.State.Pid}} (default 12345)
+#   PODMAN_INSPECT_RC, PODMAN_INSPECT_STDERR  make inspect fail
+#   PODMAN_UNSHARE_RC, PODMAN_UNSHARE_STDERR  make unshare fail
+#   PODMAN_UNSHARE_LOG  file receiving one PATH= line per unshare invocation
 cat >/dev/null 2>&1 || true
 printf '%s\n' "$*" >>"$PODMAN_LOG"
 if [[ -n "${PODMAN_FAIL_PATTERN:-}" && "$*" == *"$PODMAN_FAIL_PATTERN"* ]]; then
@@ -48,8 +52,12 @@ if [[ "$1 $2" == 'image exists' ]]; then
 	exit 1
 fi
 if [[ "$1 $2" == 'inspect -f' ]]; then
+	if [[ -n "${PODMAN_INSPECT_RC:-}" && "${PODMAN_INSPECT_RC}" != 0 ]]; then
+		printf '%s\n' "${PODMAN_INSPECT_STDERR:-podman inspect: container not found}" >&2
+		exit "${PODMAN_INSPECT_RC}"
+	fi
 	if [[ "$3" == '{{.State.Pid}}' ]]; then
-		printf '12345\n'
+		printf '%s\n' "${PODMAN_INSPECT_PID:-12345}"
 	elif [[ "$3" == '{{.State.Running}}' ]]; then
 		for ctr in $PODMAN_RUNNING; do
 			[[ "$ctr" == "$4" ]] && {
@@ -70,6 +78,16 @@ if [[ "$1 $2" == 'ps -a' ]]; then
 		for name in $PODMAN_PS_NAMES; do
 			printf '%s\n' "$name"
 		done
+	fi
+	exit 0
+fi
+if [[ "$1" == 'unshare' ]]; then
+	if [[ -n "${PODMAN_UNSHARE_LOG:-}" ]]; then
+		printf 'PATH=%s\n' "$PATH" >>"$PODMAN_UNSHARE_LOG"
+	fi
+	if [[ -n "${PODMAN_UNSHARE_RC:-}" && "${PODMAN_UNSHARE_RC}" != 0 ]]; then
+		printf '%s\n' "${PODMAN_UNSHARE_STDERR:-nft: netlink error: Operation not permitted}" >&2
+		exit "${PODMAN_UNSHARE_RC}"
 	fi
 	exit 0
 fi

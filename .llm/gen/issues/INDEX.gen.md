@@ -24,5 +24,6 @@
 - [x] [`parse_tap()` drops failing tests with empty descriptions from `FAIL_NAMES`](parse-tap-empty-desc-drops-fail-name.gen.md) — resolved by [Phase 16c](../plans/phase-16c-parse-tap-empty-desc.gen.md)
 - [x] [`parse_tap()` fallback drops all but the last failure when `not ok` lines lack diagnostics](parse-tap-fallback-drops-multiple-failures.gen.md) — resolved by [Phase 16d](../plans/phase-16d-parse-tap-fallback-multiple-failures.gen.md)
 - [x] [`MAP.gen.md` is missing implemented core test files](map-gen-md-missing-test-files.gen.md)
-- [ ] [`make_podman_shim` is shadowed by a different implementation in `network.bats`](make-podman-shim-shadowed-in-network-bats.gen.md)
+- [x] [`make_podman_shim` is shadowed by a different implementation in `network.bats`](make-podman-shim-shadowed-in-network-bats.gen.md) — resolved by [Phase 22a](../plans/phase-22a-podman-shim-factory.gen.md)
 - [x] [Onbox create/recontain no longer ensure the base image exists](onbox-base-image-no-longer-probed.gen.md) — resolved by [Phase 21](../plans/phase-21-onbox-base-image-probe.gen.md)
+- [ ] [Interrupted e2e suite run races the immediately following run](interrupted-e2e-suite-run-races-next-run.gen.md)

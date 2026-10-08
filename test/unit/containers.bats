@@ -329,30 +329,19 @@ use_podman_shim() {
 
 @test "run_onbox applies the nft deny rules before running setup.sh and runs setup.sh before the user command" {
 	load_onbox_plan
-	local shimdir log ctr
-	shimdir="$BATS_TEST_TMPDIR/shim"
-	log="$BATS_TEST_TMPDIR/podman.log"
-	mkdir -p "$shimdir"
-	cat >"$shimdir/podman" <<EOF
-#!/usr/bin/env bash
-cat >/dev/null 2>&1 || true
-printf '%s\n' "\$*" >>'$log'
-if [[ "\$*" == *'inspect -f {{.State.Pid}}'* ]]; then
-	printf '12345\n'
-fi
-exit 0
-EOF
-	chmod +x "$shimdir/podman"
+	local ctr
 	ctr="$(onbox_container_name "$PROJECT")"
+	use_podman_shim
+	export PODMAN_CONTAINERS="$ctr"
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 	local -a deny=(1.1.1.1) allow=()
-	PATH="$shimdir:$PATH" run run_onbox "$PROJECT" 'echo hi' no READ_MOUNTS WRITE_MOUNTS PORTS deny allow
+	run run_onbox "$PROJECT" 'echo hi' no READ_MOUNTS WRITE_MOUNTS PORTS deny allow
 	[[ "$status" -eq 0 ]]
 	local start_line nft_line setup_line cmd_line
-	start_line="$(grep -n "^start $ctr$" "$log" | head -n 1 | cut -d: -f1)"
-	nft_line="$(grep -n 'unshare.*nsenter.*nft' "$log" | head -n 1 | cut -d: -f1)"
-	setup_line="$(grep -n "exec $ctr setup.sh$" "$log" | head -n 1 | cut -d: -f1)"
-	cmd_line="$(grep -n 'bash -c echo hi' "$log" | head -n 1 | cut -d: -f1)"
+	start_line="$(grep -n "^start $ctr$" "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
+	nft_line="$(grep -n 'unshare.*nsenter.*nft' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
+	setup_line="$(grep -n "exec $ctr setup.sh$" "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
+	cmd_line="$(grep -n 'bash -c echo hi' "$PODMAN_LOG" | head -n 1 | cut -d: -f1)"
 	[[ -n "$start_line" && -n "$nft_line" && -n "$setup_line" && -n "$cmd_line" ]]
 	[[ "$start_line" -lt "$nft_line" ]]
 	[[ "$nft_line" -lt "$setup_line" ]]
@@ -361,30 +350,18 @@ EOF
 
 @test "run_onbox stops the container and raises a talkbox error when the setup.sh exec fails" {
 	load_onbox_plan
-	local shimdir log ctr
-	shimdir="$BATS_TEST_TMPDIR/shim"
-	log="$BATS_TEST_TMPDIR/podman.log"
-	mkdir -p "$shimdir"
-	cat >"$shimdir/podman" <<EOF
-#!/usr/bin/env bash
-cat >/dev/null 2>&1 || true
-printf '%s\n' "\$*" >>'$log'
-if [[ "\$*" == *'inspect -f {{.State.Pid}}'* ]]; then
-	printf '12345\n'
-fi
-if [[ "\$*" == *setup.sh* ]]; then
-	exit 1
-fi
-exit 0
-EOF
-	chmod +x "$shimdir/podman"
+	local ctr
 	ctr="$(onbox_container_name "$PROJECT")"
+	use_podman_shim
+	export PODMAN_CONTAINERS="$ctr"
+	export PODMAN_FAIL_PATTERN='setup.sh'
+	export PODMAN_FAIL_CODE=1
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 	local -a deny=(1.1.1.1) allow=()
-	PATH="$shimdir:$PATH" run run_onbox "$PROJECT" 'echo hi' no READ_MOUNTS WRITE_MOUNTS PORTS deny allow
+	run run_onbox "$PROJECT" 'echo hi' no READ_MOUNTS WRITE_MOUNTS PORTS deny allow
 	[[ "$status" -ne 0 ]]
 	[[ "$output" == *'talkbox:'* ]]
-	[[ "$(grep -c "^stop " "$log")" -ge 1 ]]
+	[[ "$(grep -c "^stop " "$PODMAN_LOG")" -ge 1 ]]
 }
 
 @test "run_onbox create line is byte-identical to the run_recontain recreate line" {
