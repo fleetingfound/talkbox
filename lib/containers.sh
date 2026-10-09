@@ -87,12 +87,33 @@ container_volumes() {
 	done
 }
 
+container_write_volumes() {
+	local -n _vols="$1"
+	local container="$2" project="$3"
+	local ctr prefix mounts name
+	_vols=()
+	ctr="$(container_name_of "$container" "$project")"
+	if ! container_exists "$ctr"; then
+		return 0
+	fi
+	prefix="$(project_slug "$project").$container.write."
+	mounts="$(podman inspect -f '{{range .Mounts}}{{.Name}} {{end}}' "$ctr" 2>/dev/null || true)"
+	for name in $mounts; do
+		if [[ "$name" == "$prefix"* ]]; then
+			_vols+=("$name")
+		fi
+	done
+}
+
 plan_container_volumes_rm() {
 	local -n _plan_out="$1"
 	local project="$2" container="$3"
-	local -n _dsts="$4"
+	if [[ "$container" != onbox ]]; then
+		plan_volume_rm "${!_plan_out}" "$(worktree_volume_of "$container" "$project")"
+	fi
+	plan_volume_rm "${!_plan_out}" "$(gitdir_volume "$project" "$container")"
 	local -a vols=()
-	container_volumes vols "$container" "$project" "$4"
+	container_write_volumes vols "$container" "$project"
 	local v
 	for v in "${vols[@]}"; do
 		plan_volume_rm "${!_plan_out}" "$v"
@@ -253,7 +274,7 @@ plan_recreate() {
 		_plan_out+=("podman" "commit" "$(container_name_of "$source" "$project")" "$image")
 	fi
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$ctr")
-	plan_container_volumes_rm "${!_plan_out}" "$project" "$container" "$4"
+	plan_container_volumes_rm "${!_plan_out}" "$project" "$container"
 	plan_populate_and_create "${!_plan_out}" "$container" "$interactive" "$project" "$source" "$image" "$1" "$2" "$3" "$4" "$5"
 	_plan_out+=("podman" "start" "$ctr")
 }
@@ -261,10 +282,8 @@ plan_recreate() {
 plan_rm_container() {
 	local -n _plan_out="$1"
 	local container="$2" project="$3"
-	shift 3
-	local -n _dsts="$1"
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$(container_name_of "$container" "$project")")
-	plan_container_volumes_rm "${!_plan_out}" "$project" "$container" "$1"
+	plan_container_volumes_rm "${!_plan_out}" "$project" "$container"
 	if [[ "$container" != onbox ]] && podman image exists "$(root_image_of "$container" "$project")" >/dev/null 2>&1; then
 		_plan_out+=("podman" "rmi" "$(root_image_of "$container" "$project")")
 	fi
@@ -521,10 +540,8 @@ run_recreate() {
 
 run_rm_container_any() {
 	local container="$1" project="$2"
-	shift 2
-	local -n _dsts="$1"
 	local -a plan=()
-	plan_rm_container plan "$container" "$project" "$1"
+	plan_rm_container plan "$container" "$project"
 	execute_plan "${plan[@]}"
 }
 
@@ -592,9 +609,7 @@ run_offbox_rebuild() {
 }
 
 run_rm_container() {
-	# shellcheck disable=SC2034 # dummy array is consumed by nameref parameter
-	local -a no_dsts=()
-	run_rm_container_any onbox "$1" no_dsts
+	run_rm_container_any onbox "$1"
 }
 
 run_onbox_rm_container() {
@@ -602,11 +617,11 @@ run_onbox_rm_container() {
 }
 
 run_netbox_rm_container() {
-	run_rm_container_any netbox "$1" "$2"
+	run_rm_container_any netbox "$1"
 }
 
 run_offbox_rm_container() {
-	run_rm_container_any offbox "$1" "$2"
+	run_rm_container_any offbox "$1"
 }
 
 run_rm_image() {

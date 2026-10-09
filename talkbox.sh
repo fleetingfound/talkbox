@@ -52,7 +52,7 @@ container_action() {
 		"run_${container}_rebuild" "$(pwd)" "$TALKBOX_INTERACTIVE" read_mounts write_mounts "${write_entries[@]}" ports deny_ips allow_ips
 		;;
 	rm-container)
-		"run_${container}_rm_container" "$(pwd)" write_dsts
+		"run_${container}_rm_container" "$(pwd)"
 		;;
 	rm-image)
 		"run_${container}_rm_image" "$(pwd)"
