@@ -101,48 +101,38 @@ mk_talkbox_copy() {
 	[[ -n "$(podman_line '^stop -t 5 talkbox-proj.offbox$')" ]]
 }
 
-@test "talkbox.sh onbox bind-mounts CLI write specs and never populates volumes" {
+@test "talkbox.sh mounts CLI write specs in the per-container style" {
 	use_podman_shim "$BASE_IMAGE"
 	local wdir="$BATS_TEST_TMPDIR/wdata"
 	mkdir -p "$wdir"
-	run_dispatcher onbox --write "$wdir:/talkbox/wdata" -c --noninteractive true
-	[[ "$status" -eq 0 ]]
-	local create
-	create="$(podman_create_line)"
-	line_has_token "$create" "$wdir:/talkbox/wdata"
-	[[ "$create" != *'talkbox-proj.onbox.write'* ]]
-	[[ "$(podman_count '^run ')" -eq 0 ]]
+	local c populate
+	for c in onbox netbox offbox; do
+		run_dispatcher "$c" --write "$wdir:/talkbox/wdata" -c --noninteractive true
+		[[ "$status" -eq 0 ]]
+		if [[ "$c" == onbox ]]; then
+			line_has_token "$(podman_create_line)" "$wdir:/talkbox/wdata"
+			[[ "$(podman_create_line)" != *'talkbox-proj.onbox.write'* ]]
+			[[ "$(podman_count '^run ')" -eq 0 ]]
+		else
+			line_has_token "$(podman_create_line)" "talkbox-proj.$c.write.talkbox-wdata:/talkbox/wdata"
+			populate="$(podman_line "talkbox-proj.$c.write.talkbox-wdata:/talkbox/target")"
+			line_has_token "$populate" "$wdir:/talkbox/source:ro"
+		fi
+		: >"$LOG"
+	done
 }
 
-@test "talkbox.sh netbox mounts a CLI write spec as a volume named <slug>.netbox.write.<dest-slug> and populates it from the host" {
+@test "talkbox.sh netbox and offbox derive the write-volume dest-slug from the dest path" {
 	use_podman_shim "$BASE_IMAGE"
 	local wdir="$BATS_TEST_TMPDIR/wdata"
 	mkdir -p "$wdir"
-	run_dispatcher netbox --write "$wdir:/talkbox/wdata" -c --noninteractive true
-	[[ "$status" -eq 0 ]]
-	local create populate
-	create="$(podman_create_line)"
-	line_has_token "$create" 'talkbox-proj.netbox.write.talkbox-wdata:/talkbox/wdata'
-	populate="$(podman_line 'talkbox-proj.netbox.write.talkbox-wdata:/talkbox/target')"
-	line_has_token "$populate" "$wdir:/talkbox/source:ro"
-}
-
-@test "talkbox.sh offbox mounts a CLI write spec as a volume named <slug>.offbox.write.<dest-slug>" {
-	use_podman_shim "$BASE_IMAGE"
-	local wdir="$BATS_TEST_TMPDIR/wdata"
-	mkdir -p "$wdir"
-	run_dispatcher offbox --write "$wdir:/talkbox/wdata" -c --noninteractive true
-	[[ "$status" -eq 0 ]]
-	line_has_token "$(podman_create_line)" 'talkbox-proj.offbox.write.talkbox-wdata:/talkbox/wdata'
-}
-
-@test "talkbox.sh netbox derives the write-volume dest-slug from the dest basename path" {
-	use_podman_shim "$BASE_IMAGE"
-	local wdir="$BATS_TEST_TMPDIR/wdata"
-	mkdir -p "$wdir"
-	run_dispatcher netbox --write "$wdir:/a/b/c" -c --noninteractive true
-	[[ "$status" -eq 0 ]]
-	line_has_token "$(podman_create_line)" 'talkbox-proj.netbox.write.a-b-c:/a/b/c'
+	local c
+	for c in netbox offbox; do
+		run_dispatcher "$c" --write "$wdir:/a/b/c" -c --noninteractive true
+		[[ "$status" -eq 0 ]]
+		line_has_token "$(podman_create_line)" "talkbox-proj.$c.write.a-b-c:/a/b/c"
+		: >"$LOG"
+	done
 }
 
 @test "talkbox.sh netbox collapses identical write dests into a single volume populated from the last source" {
@@ -174,13 +164,16 @@ mk_talkbox_copy() {
 
 @test "talkbox.sh threads --port into the per-container pasta network string" {
 	use_podman_shim "$BASE_IMAGE"
-	run_dispatcher onbox --port 8080 --port 9090 -c --noninteractive true
-	[[ "$status" -eq 0 ]]
-	line_has_token "$(podman_create_line)" '--network=pasta:-T,8080,-T,9090,--dns-forward,169.254.1.1,--map-guest-addr,none'
-	: >"$LOG"
-	run_dispatcher offbox --port 8080 -c --noninteractive true
-	[[ "$status" -eq 0 ]]
-	line_has_token "$(podman_create_line)" '--network=pasta:-T,8080,-i,lo,-I,talkbox0'
+	local -a containers=(onbox netbox offbox)
+	# shellcheck disable=SC2034 # per-container data arrays are indexed alongside containers
+	local -a suffixes=('--dns-forward,169.254.1.1,--map-guest-addr,none' '--dns-forward,169.254.1.1,--map-guest-addr,none' '-i,lo,-I,talkbox0')
+	local i
+	for i in "${!containers[@]}"; do
+		run_dispatcher "${containers[$i]}" --port 8080 --port 9090 -c --noninteractive true
+		[[ "$status" -eq 0 ]]
+		line_has_token "$(podman_create_line)" "--network=pasta:-T,8080,-T,9090,${suffixes[$i]}"
+		: >"$LOG"
+	done
 }
 
 @test "talkbox.sh netbox --recontain recreates the container and volumes without a commit" {
@@ -264,57 +257,51 @@ mk_talkbox_copy() {
 	line_has_token "$(podman_create_line)" "${TALKBOX_BASE_IMAGE:-talkbox/base:latest}"
 }
 
-@test "talkbox.sh netbox --rm-container removes the container, its volumes and its root image" {
+@test "talkbox.sh --rm-container removes the container and its per-container volumes and root image" {
 	use_podman_shim "$BASE_IMAGE"
-	export PODMAN_CONTAINERS="talkbox-proj.netbox"
-	export PODMAN_INSPECT_MOUNTS="talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir talkbox-proj.netbox.write.talkbox-wdata"
-	export PODMAN_VOLUMES="talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir talkbox-proj.netbox.write.talkbox-wdata"
-	export PODMAN_IMAGES="${TALKBOX_BASE_IMAGE:-talkbox/base:latest} talkbox-proj.netbox.root"
-	run_dispatcher netbox --rm-container
-	[[ "$status" -eq 0 ]]
-	[[ -n "$(podman_line '^rm -f --volumes talkbox-proj.netbox$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.worktree$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.gitdir$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.write.talkbox-wdata$')" ]]
-	[[ "$(podman_count '^volume rm ')" -eq 3 ]]
-	[[ -n "$(podman_line '^rmi talkbox-proj.netbox.root$')" ]]
-	[[ "$(podman_line_no '^volume rm -f')" -lt "$(podman_line_no '^rmi ')" ]]
+	local -a containers=(onbox netbox offbox)
+	# shellcheck disable=SC2034 # per-container data arrays are indexed alongside containers
+	local -a volsets=('talkbox-proj.onbox.gitdir' 'talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir talkbox-proj.netbox.write.talkbox-wdata' 'talkbox-proj.offbox.worktree talkbox-proj.offbox.gitdir talkbox-proj.offbox.write.talkbox-wdata')
+	local -a roots=("" "talkbox-proj.netbox.root" "talkbox-proj.offbox.root")
+	local i c vol
+	for i in "${!containers[@]}"; do
+		c="${containers[$i]}"
+		export PODMAN_CONTAINERS="talkbox-proj.$c"
+		export PODMAN_INSPECT_MOUNTS="${volsets[$i]}"
+		export PODMAN_VOLUMES="${volsets[$i]}"
+		if [[ -n "${roots[$i]}" ]]; then
+			export PODMAN_IMAGES="$BASE_IMAGE ${roots[$i]}"
+		else
+			export PODMAN_IMAGES="$BASE_IMAGE"
+		fi
+		run_dispatcher "$c" --rm-container
+		[[ "$status" -eq 0 ]]
+		[[ -n "$(podman_line "^rm -f --volumes talkbox-proj.$c$")" ]]
+		# shellcheck disable=SC2206 # the volume set is intended word splitting
+		for vol in ${volsets[$i]}; do
+			[[ -n "$(podman_line "^volume rm -f $vol$")" ]]
+		done
+		if [[ -n "${roots[$i]}" ]]; then
+			[[ -n "$(podman_line "^rmi ${roots[$i]}$")" ]]
+			[[ "$(podman_line_no '^volume rm -f')" -lt "$(podman_line_no '^rmi ')" ]]
+		else
+			[[ "$(podman_count '^rmi ')" -eq 0 ]]
+			[[ "$(podman_count 'image exists')" -eq 0 ]]
+		fi
+		: >"$LOG"
+	done
 }
 
-@test "talkbox.sh offbox --rm-container removes the inspected write volume without repeating --write" {
+@test "talkbox.sh --rm-image removes the base image when it is not in use" {
 	use_podman_shim "$BASE_IMAGE"
-	export PODMAN_CONTAINERS="talkbox-proj.offbox"
-	export PODMAN_INSPECT_MOUNTS="talkbox-proj.offbox.write.talkbox-wdata"
-	export PODMAN_VOLUMES="talkbox-proj.offbox.write.talkbox-wdata"
-	run_dispatcher offbox --rm-container
-	[[ "$status" -eq 0 ]]
-	[[ -n "$(podman_line '^rm -f --volumes talkbox-proj.offbox$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.offbox.write.talkbox-wdata$')" ]]
-	[[ "$(podman_count '^volume rm -f')" -eq 1 ]]
-	[[ "$(podman_count '^rmi ')" -eq 0 ]]
-	[[ "$(podman_count 'inspect -f')" -ge 1 ]]
-}
-
-@test "talkbox.sh onbox --rm-container removes only the container and its gitdir volume" {
-	use_podman_shim "$BASE_IMAGE"
-	export PODMAN_CONTAINERS="talkbox-proj.onbox"
-	export PODMAN_INSPECT_MOUNTS="talkbox-proj.onbox.gitdir"
-	export PODMAN_VOLUMES="talkbox-proj.onbox.gitdir"
-	run_dispatcher onbox --rm-container
-	[[ "$status" -eq 0 ]]
-	[[ -n "$(podman_line '^rm -f --volumes talkbox-proj.onbox$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.onbox.gitdir$')" ]]
-	[[ "$(podman_count '^volume rm -f')" -eq 1 ]]
-	[[ "$(podman_count '^rmi ')" -eq 0 ]]
-	[[ "$(podman_count '^image exists')" -eq 0 ]]
-}
-
-@test "talkbox.sh onbox --rm-image removes the base image when it is not in use" {
-	use_podman_shim "$BASE_IMAGE"
-	run_dispatcher onbox --rm-image
-	[[ "$status" -eq 0 ]]
-	[[ "$(podman_line '^rmi ')" == "rmi ${TALKBOX_BASE_IMAGE:-talkbox/base:latest}" ]]
-	[[ "$(podman_count '^rm ')" -eq 0 ]]
+	local c
+	for c in onbox netbox offbox; do
+		run_dispatcher "$c" --rm-image
+		[[ "$status" -eq 0 ]]
+		[[ "$(podman_line '^rmi ')" == "rmi $BASE_IMAGE" ]]
+		[[ "$(podman_count '^rm ')" -eq 0 ]]
+		: >"$LOG"
+	done
 }
 
 @test "talkbox.sh without arguments prints the usage and exits 2" {
@@ -324,49 +311,47 @@ mk_talkbox_copy() {
 	[[ "$output" == *'usage: talkbox.sh <onbox|netbox|offbox> ...'* ]]
 }
 
-@test "talkbox.sh onbox refuses a file write source with a talkbox diagnostic and no podman call" {
+@test "talkbox.sh refuses a file write source with a talkbox diagnostic and no podman call" {
 	use_podman_shim "$BASE_IMAGE"
 	local file="$BATS_TEST_TMPDIR/notes.txt"
 	printf 'notes\n' >"$file"
-	run_dispatcher onbox --write "$file" -c --noninteractive true
-	[[ "$status" -ne 0 ]]
-	[[ "$output" == *'talkbox:'* ]]
-	[[ "$output" == *"$file"* ]]
-	[[ ! -s "$LOG" ]]
+	local c
+	for c in onbox netbox offbox; do
+		run_dispatcher "$c" --write "$file:/talkbox/wdata" -c --noninteractive true
+		[[ "$status" -ne 0 ]]
+		[[ "$output" == *'talkbox:'* ]]
+		[[ "$output" == *"$file"* ]]
+		[[ ! -s "$LOG" ]]
+	done
 }
 
-@test "talkbox.sh netbox refuses a file write source with a talkbox diagnostic and no podman call" {
-	use_podman_shim "$BASE_IMAGE"
-	local file="$BATS_TEST_TMPDIR/notes.txt"
-	printf 'notes\n' >"$file"
-	run_dispatcher netbox --write "$file:/talkbox/wdata" -c --noninteractive true
-	[[ "$status" -ne 0 ]]
-	[[ "$output" == *'talkbox:'* ]]
-	[[ "$output" == *"$file"* ]]
-	[[ ! -s "$LOG" ]]
-}
-
-@test "talkbox.sh netbox refuses a nonexistent write source with a talkbox diagnostic and no podman call" {
+@test "talkbox.sh refuses a nonexistent write source with a talkbox diagnostic and no podman call" {
 	use_podman_shim "$BASE_IMAGE"
 	local missing="$BATS_TEST_TMPDIR/no-such-dir"
-	run_dispatcher netbox --write "$missing:/talkbox/wdata" -c --noninteractive true
-	[[ "$status" -ne 0 ]]
-	[[ "$output" == *'talkbox:'* ]]
-	[[ "$output" == *"$missing"* ]]
-	[[ ! -s "$LOG" ]]
+	local c
+	for c in onbox netbox offbox; do
+		run_dispatcher "$c" --write "$missing:/talkbox/wdata" -c --noninteractive true
+		[[ "$status" -ne 0 ]]
+		[[ "$output" == *'talkbox:'* ]]
+		[[ "$output" == *"$missing"* ]]
+		[[ ! -s "$LOG" ]]
+	done
 }
 
-@test "talkbox.sh netbox refuses a defaults-file file-source write spec with a talkbox diagnostic and no podman call" {
+@test "talkbox.sh refuses a defaults-file file-source write spec with a talkbox diagnostic and no podman call" {
 	use_podman_shim "$BASE_IMAGE"
 	local file="$BATS_TEST_TMPDIR/notes.txt"
 	printf 'notes\n' >"$file"
-	local copy="$BATS_TEST_TMPDIR/talkbox-copy"
-	mk_talkbox_copy "$copy"
-	printf '%s : /talkbox/wdata\n' "$file" >>"$copy/defaults/write.mounts"
-	cd "$PROJECT" || return 1
-	run "$copy/talkbox.sh" netbox -c --noninteractive true
-	[[ "$status" -ne 0 ]]
-	[[ "$output" == *'talkbox:'* ]]
-	[[ "$output" == *"$file"* ]]
-	[[ ! -s "$LOG" ]]
+	local c copy
+	for c in onbox netbox offbox; do
+		copy="$BATS_TEST_TMPDIR/talkbox-copy-$c"
+		mk_talkbox_copy "$copy"
+		printf '%s : /talkbox/wdata\n' "$file" >>"$copy/defaults/write.mounts"
+		cd "$PROJECT" || return 1
+		run "$copy/talkbox.sh" "$c" -c --noninteractive true
+		[[ "$status" -ne 0 ]]
+		[[ "$output" == *'talkbox:'* ]]
+		[[ "$output" == *"$file"* ]]
+		[[ ! -s "$LOG" ]]
+	done
 }

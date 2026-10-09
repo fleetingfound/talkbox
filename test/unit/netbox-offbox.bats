@@ -108,40 +108,62 @@ setup() {
 	[[ "${volume_args[6]}" == 'talkbox-proj.netbox.worktree:/talkbox/source' ]]
 }
 
-@test "netbox and offbox populate plans open every podman run with the exact no-network prefix" {
+@test "netbox and offbox populate plans from plan_populate_and_create open every podman run with the exact no-network prefix" {
 	load_container_libs
+	use_podman_shim
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
-	local -a srcs=('/host/data') dsts=('/talkbox/wdata') plan=()
-	plan_netbox_populate plan "$PROJECT" srcs dsts
-	plan_offbox_populate plan "$PROJECT" base srcs dsts
-	[[ "$(plan_subcommands plan)" == $'run\nrun\nrun\nrun' ]]
-	local i
-	for ((i = 0; i < ${#plan[@]}; i++)); do
-		if [[ "${plan[i]}" == podman ]]; then
-			[[ "${plan[i + 1]}" == run ]]
-			[[ "${plan[i + 2]}" == --rm ]]
-			[[ "${plan[i + 3]}" == --network=none ]]
-			[[ "${plan[i + 4]}" == --userns=keep-id:uid=1000,gid=1000 ]]
-		fi
+	local -a srcs=('/host/data') dsts=('/talkbox/wdata')
+	local c i runs
+	for c in netbox offbox; do
+		# shellcheck disable=SC2034 # plan is consumed by nameref parameters
+		local -a plan=()
+		plan_populate_and_create plan "$c" no "$PROJECT" base "$(base_image_name)" READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS
+		runs=0
+		for ((i = 0; i < ${#plan[@]}; i++)); do
+			if [[ "${plan[i]}" == podman && "${plan[$((i + 1))]}" == run ]]; then
+				runs=$((runs + 1))
+				[[ "${plan[$((i + 2))]}" == --rm ]]
+				[[ "${plan[$((i + 3))]}" == --network=none ]]
+				[[ "${plan[$((i + 4))]}" == --userns=keep-id:uid=1000,gid=1000 ]]
+			fi
+		done
+		[[ "$runs" -eq 2 ]]
 	done
 }
 
-@test "netbox populate copies the worktree and write mounts from the host but never touches the gitdir volume" {
+@test "plan_populate_and_create seeds the netbox and offbox worktree and write volumes from the host for a base source, never the gitdir volume" {
 	load_container_libs
+	use_podman_shim
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
-	local -a srcs=('/host/data') dsts=('/talkbox/wdata') plan=()
-	plan_netbox_populate plan "$PROJECT" srcs dsts
-	[[ "$(plan_subcommands plan)" == $'run\nrun' ]]
-	array_has_none 'talkbox-proj.netbox.gitdir' "${plan[@]}"
+	local -a srcs=('/host/data') dsts=('/talkbox/wdata')
+	local c
+	for c in netbox offbox; do
+		# shellcheck disable=SC2034 # plan is consumed by nameref parameters
+		local -a plan=()
+		plan_populate_and_create plan "$c" no "$PROJECT" base "$(base_image_name)" READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS
+		array_contains "talkbox-proj.$c.worktree:/talkbox/target" "${plan[@]}"
+		array_contains "$PROJECT:/talkbox/source:ro" "${plan[@]}"
+		array_contains "talkbox-proj.$c.write.talkbox-wdata:/talkbox/target" "${plan[@]}"
+		array_contains '/host/data:/talkbox/source:ro' "${plan[@]}"
+		array_has_none "$c.gitdir:/talkbox/target" "${plan[@]}"
+	done
 }
 
-@test "offbox populate copies from the host when the root source is base and never touches the gitdir volume" {
+@test "run_container netbox always seeds its volumes from the host, even when inheriting from offbox" {
 	load_container_libs
-	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
-	local -a srcs=('/host/data') dsts=('/talkbox/wdata') plan=()
-	plan_offbox_populate plan "$PROJECT" base srcs dsts
-	[[ "$(plan_subcommands plan)" == $'run\nrun' ]]
-	array_has_none 'talkbox-proj.offbox.gitdir' "${plan[@]}"
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_CONTAINERS="talkbox-proj.offbox"
+	export PODMAN_VOLUMES="talkbox-proj.offbox.worktree"
+	# shellcheck disable=SC2034 # global consumed by the sourced containers.sh
+	TALKBOX_INHERIT=offbox
+	run run_container netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ -n "$(podman_line '^commit talkbox-proj.offbox talkbox-proj.netbox.root$')" ]]
+	local populate
+	populate="$(podman_line 'talkbox-proj.netbox.worktree:/talkbox/target')"
+	line_has_token "$populate" "$PROJECT:/talkbox/source:ro"
+	line_lacks_token "$populate" 'talkbox-proj.offbox.worktree:/talkbox/source'
 }
 
 @test "run_container netbox uses the base image and populates the worktree from the host when no source container exists" {
@@ -275,7 +297,7 @@ setup() {
 	mount_args read_mounts read "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
 	mount_entries srcs dsts write "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" "$wsrc:/talkbox/wdata"
 	# shellcheck disable=SC2034 # write_mounts is consumed by nameref in run_container
-	write_mounts=("-v" "$(netbox_write_volume "$PROJECT" "$(dest_slug "${dsts[0]}")"):${dsts[0]}")
+	write_mounts=("-v" "$(write_volume_of netbox "$PROJECT" "$(dest_slug "${dsts[0]}")"):${dsts[0]}")
 	run run_container netbox "$PROJECT" 'true' no read_mounts write_mounts srcs dsts PORTS DENY ALLOW
 	[[ "$status" -eq 0 ]]
 	local create populate
@@ -391,7 +413,7 @@ setup() {
 	mount_args read_mounts read "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" '/host/data:/talkbox/wdata'
 	mount_entries srcs dsts write "$BATS_TEST_TMPDIR/absent" "$PROJECT" "$home" "$wsrc:/talkbox/wdata"
 	# shellcheck disable=SC2034 # write_mounts is consumed by nameref in run_container
-	write_mounts=("-v" "$(offbox_write_volume "$PROJECT" "$(dest_slug "${dsts[0]}")"):${dsts[0]}")
+	write_mounts=("-v" "$(write_volume_of offbox "$PROJECT" "$(dest_slug "${dsts[0]}")"):${dsts[0]}")
 	run run_container offbox "$PROJECT" 'true' no read_mounts write_mounts srcs dsts PORTS DENY ALLOW
 	[[ "$status" -eq 0 ]]
 	local create populate
@@ -553,7 +575,7 @@ setup() {
 @test "run_container netbox applies the nft deny rules before running setup.sh and runs setup.sh before the user command" {
 	load_container_libs
 	local ctr
-	ctr="$(netbox_container_name "$PROJECT")"
+	ctr="$(container_name_of netbox "$PROJECT")"
 	use_podman_shim
 	export PODMAN_CONTAINERS="$ctr"
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
@@ -574,7 +596,7 @@ setup() {
 @test "run_container offbox runs setup.sh after start and before the user command, with no nft step" {
 	load_container_libs
 	local ctr
-	ctr="$(offbox_container_name "$PROJECT")"
+	ctr="$(container_name_of offbox "$PROJECT")"
 	use_podman_shim
 	export PODMAN_CONTAINERS="$ctr"
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
@@ -601,7 +623,7 @@ setup() {
 	# start for offbox) and a pattern that must not appear in the log (empty =
 	# no check).
 	local -a containers=(onbox netbox offbox)
-	local -a ctrs=("$(onbox_container_name "$PROJECT")" "$(netbox_container_name "$PROJECT")" "$(offbox_container_name "$PROJECT")")
+	local -a ctrs=("$(container_name_of onbox "$PROJECT")" "$(container_name_of netbox "$PROJECT")" "$(container_name_of offbox "$PROJECT")")
 	local -a pre_patterns=('unshare.*nsenter.*nft' 'unshare.*nsenter.*nft' '^start ')
 	local -a absent_patterns=('' '' 'nsenter')
 	local i c rebuild pre_line setup_line stop_line absent_count

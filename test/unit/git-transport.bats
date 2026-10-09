@@ -86,7 +86,7 @@ setup() {
 	mkdir -p "$project"
 	local base ctr script
 	base="$(project_base "$project")"
-	ctr="$(onbox_container_name "$project")"
+	ctr="$(container_name_of onbox "$project")"
 	script='source /talkbox/lib/merge.sh'
 	container_running() { return 0; }
 	local -a cmd=()

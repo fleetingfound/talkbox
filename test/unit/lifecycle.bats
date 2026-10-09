@@ -189,23 +189,61 @@ setup() {
 	[[ "$(podman_count 'image exists')" -eq 0 ]]
 }
 
-@test "run_rm_container removes the onbox container and only its gitdir volume" {
+@test "run_rm_container removes the container without volume or image commands when nothing exists" {
 	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
-	run run_rm_container onbox "$PROJECT"
-	[[ "$status" -eq 0 ]]
-	[[ -n "$(podman_line '^rm -f --volumes talkbox-proj.onbox$')" ]]
-	[[ "$(podman_count '^volume rm ')" -eq 0 ]]
-	[[ -z "$(podman_line '^create ')" ]]
-	[[ -z "$(podman_line '^start ')" ]]
-	: >"$LOG"
-	export PODMAN_VOLUMES="talkbox-proj.onbox.gitdir"
-	run run_rm_container onbox "$PROJECT"
-	[[ "$status" -eq 0 ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.onbox.gitdir$')" ]]
-	[[ "$(podman_count '^volume rm ')" -eq 1 ]]
-	[[ -z "$(podman_line '^rmi ')" ]]
+	local c
+	for c in onbox netbox offbox; do
+		: >"$LOG"
+		run run_rm_container "$c" "$PROJECT"
+		[[ "$status" -eq 0 ]]
+		[[ -n "$(podman_line "^rm -f --volumes talkbox-proj.$c$")" ]]
+		[[ "$(podman_count '^volume rm ')" -eq 0 ]]
+		[[ -z "$(podman_line '^create ')" ]]
+		[[ -z "$(podman_line '^start ')" ]]
+		[[ -z "$(podman_line '^rmi ')" ]]
+	done
+}
+
+@test "run_rm_container removes the container, its per-container volumes and its root image when present" {
+	load_container_libs
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	local -a containers=(onbox netbox offbox)
+	# shellcheck disable=SC2034 # per-container data arrays are indexed alongside containers
+	local -a volsets=('talkbox-proj.onbox.gitdir' 'talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir talkbox-proj.netbox.write.talkbox-wdata' 'talkbox-proj.offbox.worktree talkbox-proj.offbox.gitdir talkbox-proj.offbox.write.talkbox-wdata')
+	local -a roots=("" "talkbox-proj.netbox.root" "talkbox-proj.offbox.root")
+	local -a counts=(1 3 3)
+	local i c vol rm_line volrm_line rmi_line
+	for i in "${!containers[@]}"; do
+		c="${containers[$i]}"
+		: >"$LOG"
+		export PODMAN_CONTAINERS="talkbox-proj.$c"
+		export PODMAN_INSPECT_MOUNTS="${volsets[$i]}"
+		export PODMAN_VOLUMES="${volsets[$i]}"
+		export PODMAN_IMAGES="${roots[$i]}"
+		run run_rm_container "$c" "$PROJECT"
+		[[ "$status" -eq 0 ]]
+		[[ -n "$(podman_line "^rm -f --volumes talkbox-proj.$c$")" ]]
+		# shellcheck disable=SC2206 # the volume set is intended word splitting
+		for vol in ${volsets[$i]}; do
+			[[ -n "$(podman_line "^volume rm -f $vol$")" ]]
+			[[ "$(podman_count "^volume rm -f $vol$")" -eq 1 ]]
+		done
+		[[ "$(podman_count '^volume rm ')" -eq "${counts[$i]}" ]]
+		rm_line="$(podman_line_no "^rm -f --volumes talkbox-proj.$c$")"
+		volrm_line="$(podman_line_no "^volume rm -f talkbox-proj.$c.gitdir$")"
+		[[ -n "$rm_line" && -n "$volrm_line" ]]
+		[[ "$rm_line" -lt "$volrm_line" ]]
+		if [[ -n "${roots[$i]}" ]]; then
+			rmi_line="$(podman_line_no "^rmi ${roots[$i]}$")"
+			[[ -n "$rmi_line" ]]
+			[[ "$volrm_line" -lt "$rmi_line" ]]
+		else
+			[[ "$(podman_count '^rmi ')" -eq 0 ]]
+		fi
+	done
 }
 
 @test "run_recreate netbox no commits the source before removing and recreates volumes, container and image" {
@@ -452,135 +490,60 @@ setup() {
 	line_has_token "$populate" "$PROJECT:/talkbox/source:ro"
 }
 
-@test "run_rm_container netbox removes the container, its volumes and its root image when the root image exists" {
+@test "run_rm_container removes the inspected write volumes without write dsts" {
 	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
-	export PODMAN_CONTAINERS="talkbox-proj.netbox"
-	export PODMAN_INSPECT_MOUNTS="talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir talkbox-proj.netbox.write.talkbox-wdata"
-	export PODMAN_IMAGES="talkbox-proj.netbox.root"
-	export PODMAN_VOLUMES="talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir talkbox-proj.netbox.write.talkbox-wdata"
-	run run_rm_container netbox "$PROJECT"
-	[[ "$status" -eq 0 ]]
-	[[ -n "$(podman_line '^rm -f --volumes talkbox-proj.netbox$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.worktree$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.gitdir$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.write.talkbox-wdata$')" ]]
-	[[ "$(podman_count '^volume rm ')" -eq 3 ]]
-	[[ "$(podman_count '^volume rm -f talkbox-proj.netbox.worktree$')" -eq 1 ]]
-	[[ "$(podman_count '^volume rm -f talkbox-proj.netbox.gitdir$')" -eq 1 ]]
-	local rm_line volrm_line rmi_line
-	rm_line="$(podman_line_no '^rm -f --volumes talkbox-proj.netbox$')"
-	volrm_line="$(podman_line_no '^volume rm -f talkbox-proj.netbox.worktree$')"
-	rmi_line="$(podman_line_no '^rmi talkbox-proj.netbox.root$')"
-	[[ -n "$rm_line" && -n "$volrm_line" && -n "$rmi_line" ]]
-	[[ "$rm_line" -lt "$volrm_line" ]]
-	[[ "$volrm_line" -lt "$rmi_line" ]]
+	local c rm_line inspect_line
+	for c in netbox offbox; do
+		: >"$LOG"
+		export PODMAN_CONTAINERS="talkbox-proj.$c"
+		export PODMAN_INSPECT_MOUNTS="talkbox-proj.$c.write.talkbox-wdata talkbox-proj.$c.write.a-b-c"
+		export PODMAN_VOLUMES="talkbox-proj.$c.write.talkbox-wdata talkbox-proj.$c.write.a-b-c"
+		run run_rm_container "$c" "$PROJECT"
+		[[ "$status" -eq 0 ]]
+		rm_line="$(podman_line_no "^rm -f --volumes talkbox-proj.$c$")"
+		inspect_line="$(podman_line_no 'inspect -f')"
+		[[ -n "$rm_line" && -n "$inspect_line" ]]
+		[[ "$inspect_line" -lt "$rm_line" ]]
+		[[ -n "$(podman_line "^volume rm -f talkbox-proj.$c.write.talkbox-wdata$")" ]]
+		[[ -n "$(podman_line "^volume rm -f talkbox-proj.$c.write.a-b-c$")" ]]
+		[[ "$(podman_count '^volume rm ')" -eq 2 ]]
+		[[ "$(podman_count '^rmi ')" -eq 0 ]]
+	done
 }
 
-@test "run_rm_container netbox removes the inspected write volumes without write dsts" {
+@test "run_rm_container omits the rmi when the root image does not exist" {
 	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
-	export PODMAN_CONTAINERS="talkbox-proj.netbox"
-	export PODMAN_INSPECT_MOUNTS="talkbox-proj.netbox.write.talkbox-wdata talkbox-proj.netbox.write.a-b-c"
-	export PODMAN_VOLUMES="talkbox-proj.netbox.write.talkbox-wdata talkbox-proj.netbox.write.a-b-c"
-	run run_rm_container netbox "$PROJECT"
-	[[ "$status" -eq 0 ]]
-	local rm_line inspect_line
-	rm_line="$(podman_line_no '^rm -f --volumes talkbox-proj.netbox$')"
-	inspect_line="$(podman_line_no 'inspect -f')"
-	[[ -n "$rm_line" && -n "$inspect_line" ]]
-	[[ "$inspect_line" -lt "$rm_line" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.write.talkbox-wdata$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.write.a-b-c$')" ]]
-	[[ "$(podman_count '^volume rm ')" -eq 2 ]]
-	[[ "$(podman_count '^rmi ')" -eq 0 ]]
+	local c
+	for c in netbox offbox; do
+		: >"$LOG"
+		export PODMAN_VOLUMES="talkbox-proj.$c.worktree talkbox-proj.$c.gitdir"
+		run run_rm_container "$c" "$PROJECT"
+		[[ "$status" -eq 0 ]]
+		[[ -n "$(podman_line "^rm -f --volumes talkbox-proj.$c$")" ]]
+		[[ -n "$(podman_line "^volume rm -f talkbox-proj.$c.worktree$")" ]]
+		[[ -n "$(podman_line "^volume rm -f talkbox-proj.$c.gitdir$")" ]]
+		[[ "$(podman_count '^rmi ')" -eq 0 ]]
+		[[ "$(podman_count 'inspect -f')" -eq 0 ]]
+		[[ "$(podman_count "^volume rm -f talkbox-proj.$c.write")" -eq 0 ]]
+	done
 }
 
-@test "run_rm_container netbox omits the rmi when the root image does not exist" {
+@test "rm-container volume removal is guarded by volume existence for every container" {
 	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
-	export PODMAN_VOLUMES="talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir"
-	run run_rm_container netbox "$PROJECT"
-	[[ "$status" -eq 0 ]]
-	[[ -n "$(podman_line '^rm -f --volumes talkbox-proj.netbox$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.worktree$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.gitdir$')" ]]
-	[[ "$(podman_count '^rmi ')" -eq 0 ]]
-	[[ "$(podman_count 'inspect -f')" -eq 0 ]]
-	[[ "$(podman_count '^volume rm -f talkbox-proj.netbox.write')" -eq 0 ]]
-}
-
-@test "run_rm_container offbox removes the container, its volumes and its root image when the root image exists" {
-	load_container_libs
-	use_podman_shim
-	mkdir -p "$PROJECT/.git"
-	export PODMAN_CONTAINERS="talkbox-proj.offbox"
-	export PODMAN_INSPECT_MOUNTS="talkbox-proj.offbox.worktree talkbox-proj.offbox.gitdir talkbox-proj.offbox.write.talkbox-wdata"
-	export PODMAN_IMAGES="talkbox-proj.offbox.root"
-	export PODMAN_VOLUMES="talkbox-proj.offbox.worktree talkbox-proj.offbox.gitdir talkbox-proj.offbox.write.talkbox-wdata"
-	run run_rm_container offbox "$PROJECT"
-	[[ "$status" -eq 0 ]]
-	[[ -n "$(podman_line '^rm -f --volumes talkbox-proj.offbox$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.offbox.worktree$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.offbox.gitdir$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.offbox.write.talkbox-wdata$')" ]]
-	[[ "$(podman_count '^volume rm ')" -eq 3 ]]
-	[[ "$(podman_count '^volume rm -f talkbox-proj.offbox.worktree$')" -eq 1 ]]
-	[[ "$(podman_count '^volume rm -f talkbox-proj.offbox.gitdir$')" -eq 1 ]]
-	[[ -n "$(podman_line '^rmi talkbox-proj.offbox.root$')" ]]
-}
-
-@test "run_rm_container offbox removes the inspected write volumes without write dsts" {
-	load_container_libs
-	use_podman_shim
-	mkdir -p "$PROJECT/.git"
-	export PODMAN_CONTAINERS="talkbox-proj.offbox"
-	export PODMAN_INSPECT_MOUNTS="talkbox-proj.offbox.write.talkbox-wdata talkbox-proj.offbox.write.a-b-c"
-	export PODMAN_VOLUMES="talkbox-proj.offbox.write.talkbox-wdata talkbox-proj.offbox.write.a-b-c"
-	run run_rm_container offbox "$PROJECT"
-	[[ "$status" -eq 0 ]]
-	local rm_line inspect_line
-	rm_line="$(podman_line_no '^rm -f --volumes talkbox-proj.offbox$')"
-	inspect_line="$(podman_line_no 'inspect -f')"
-	[[ -n "$rm_line" && -n "$inspect_line" ]]
-	[[ "$inspect_line" -lt "$rm_line" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.offbox.write.talkbox-wdata$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.offbox.write.a-b-c$')" ]]
-	[[ "$(podman_count '^volume rm ')" -eq 2 ]]
-	[[ "$(podman_count '^rmi ')" -eq 0 ]]
-}
-
-@test "run_rm_container offbox omits the rmi when the root image does not exist" {
-	load_container_libs
-	use_podman_shim
-	mkdir -p "$PROJECT/.git"
-	export PODMAN_VOLUMES="talkbox-proj.offbox.worktree talkbox-proj.offbox.gitdir"
-	run run_rm_container offbox "$PROJECT"
-	[[ "$status" -eq 0 ]]
-	[[ -n "$(podman_line '^rm -f --volumes talkbox-proj.offbox$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.offbox.worktree$')" ]]
-	[[ -n "$(podman_line '^volume rm -f talkbox-proj.offbox.gitdir$')" ]]
-	[[ "$(podman_count '^rmi ')" -eq 0 ]]
-	[[ "$(podman_count 'inspect -f')" -eq 0 ]]
-	[[ "$(podman_count '^volume rm -f talkbox-proj.offbox.write')" -eq 0 ]]
-}
-
-@test "netbox and offbox rm-container volume removal is guarded by volume existence" {
-	load_container_libs
-	use_podman_shim
-	mkdir -p "$PROJECT/.git"
-	run run_rm_container netbox "$PROJECT"
-	[[ "$status" -eq 0 ]]
-	[[ "$(podman_count '^volume rm ')" -eq 0 ]]
-	[[ "$(podman_count 'inspect -f')" -eq 0 ]]
-	: >"$LOG"
-	run run_rm_container offbox "$PROJECT"
-	[[ "$status" -eq 0 ]]
-	[[ "$(podman_count '^volume rm ')" -eq 0 ]]
-	[[ "$(podman_count 'inspect -f')" -eq 0 ]]
+	local c
+	for c in onbox netbox offbox; do
+		: >"$LOG"
+		run run_rm_container "$c" "$PROJECT"
+		[[ "$status" -eq 0 ]]
+		[[ "$(podman_count '^volume rm ')" -eq 0 ]]
+		[[ "$(podman_count 'inspect -f')" -eq 0 ]]
+	done
 }
 
 @test "plan_volume_rm emits podman volume rm -f only when the volume exists" {

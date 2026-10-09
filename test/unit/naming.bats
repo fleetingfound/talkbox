@@ -44,26 +44,13 @@ load helpers
 	[[ "$(base_image_name)" == 'talkbox/base:latest' ]]
 }
 
-@test "onbox_container_name returns the project slug with a .onbox suffix" {
-	load_lib naming.sh
-	[[ "$(onbox_container_name '/tmp/My Project')" == 'my-project.onbox' ]]
-}
-
-@test "onbox_container_name derives the container name for an already-slugged path" {
-	load_lib naming.sh
-	[[ "$(onbox_container_name '/tmp/example-project')" == 'example-project.onbox' ]]
-}
-
-@test "netbox_container_name returns the project slug with a .netbox suffix" {
-	load_lib naming.sh
-	[[ "$(netbox_container_name '/tmp/My Project')" == 'my-project.netbox' ]]
-	[[ "$(netbox_container_name '/tmp/example-project')" == 'example-project.netbox' ]]
-}
-
-@test "offbox_container_name returns the project slug with a .offbox suffix" {
-	load_lib naming.sh
-	[[ "$(offbox_container_name '/tmp/My Project')" == 'my-project.offbox' ]]
-	[[ "$(offbox_container_name '/tmp/example-project')" == 'example-project.offbox' ]]
+@test "container_name_of names each container <project-slug>.<container>" {
+	load_container_libs
+	local c
+	for c in onbox netbox offbox; do
+		[[ "$(container_name_of "$c" '/tmp/My Project')" == "my-project.$c" ]]
+		[[ "$(container_name_of "$c" '/tmp/example-project')" == "example-project.$c" ]]
+	done
 }
 
 @test "dest_slug lowercases and hyphenates a dest path" {
@@ -110,34 +97,27 @@ load helpers
 	[[ "$(dest_slug 'My  Project_v2!')" == 'my-project-v2' ]]
 }
 
-@test "netbox_worktree_volume names the netbox worktree volume" {
-	load_lib naming.sh
-	[[ "$(netbox_worktree_volume '/tmp/My Project')" == 'my-project.netbox.worktree' ]]
+@test "worktree_volume_of names the netbox and offbox worktree volumes" {
+	load_container_libs
+	[[ "$(worktree_volume_of netbox '/tmp/My Project')" == 'my-project.netbox.worktree' ]]
+	[[ "$(worktree_volume_of offbox '/tmp/My Project')" == 'my-project.offbox.worktree' ]]
 }
 
-@test "offbox_worktree_volume names the offbox worktree volume" {
-	load_lib naming.sh
-	[[ "$(offbox_worktree_volume '/tmp/My Project')" == 'my-project.offbox.worktree' ]]
+@test "worktree_volume_of maps the onbox worktree to the host project path" {
+	load_container_libs
+	[[ "$(worktree_volume_of onbox '/tmp/My Project')" == '/tmp/My Project' ]]
 }
 
-@test "netbox_write_volume names the netbox write volume from a dest-slug" {
-	load_lib naming.sh
-	[[ "$(netbox_write_volume '/tmp/My Project' 'talkbox-wdata')" == 'my-project.netbox.write.talkbox-wdata' ]]
+@test "write_volume_of names the netbox and offbox write volumes from a dest-slug" {
+	load_container_libs
+	[[ "$(write_volume_of netbox '/tmp/My Project' 'talkbox-wdata')" == 'my-project.netbox.write.talkbox-wdata' ]]
+	[[ "$(write_volume_of offbox '/tmp/My Project' 'talkbox-wdata')" == 'my-project.offbox.write.talkbox-wdata' ]]
 }
 
-@test "offbox_write_volume names the offbox write volume from a dest-slug" {
-	load_lib naming.sh
-	[[ "$(offbox_write_volume '/tmp/My Project' 'talkbox-wdata')" == 'my-project.offbox.write.talkbox-wdata' ]]
-}
-
-@test "netbox_root_image names the netbox root image" {
-	load_lib naming.sh
-	[[ "$(netbox_root_image '/tmp/My Project')" == 'my-project.netbox.root' ]]
-}
-
-@test "offbox_root_image names the offbox root image" {
-	load_lib naming.sh
-	[[ "$(offbox_root_image '/tmp/My Project')" == 'my-project.offbox.root' ]]
+@test "root_image_of names the netbox and offbox root images" {
+	load_container_libs
+	[[ "$(root_image_of netbox '/tmp/My Project')" == 'my-project.netbox.root' ]]
+	[[ "$(root_image_of offbox '/tmp/My Project')" == 'my-project.offbox.root' ]]
 }
 
 @test "gitdir_volume names the onbox gitdir volume" {
