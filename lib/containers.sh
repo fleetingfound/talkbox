@@ -3,6 +3,7 @@
 
 TALKBOX_ROOT="${TALKBOX_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 source "$TALKBOX_ROOT/lib/common.sh"
+source "$TALKBOX_ROOT/lib/definitions.sh"
 source "$TALKBOX_ROOT/lib/naming.sh"
 source "$TALKBOX_ROOT/lib/git.sh"
 
@@ -39,37 +40,27 @@ plan_volume_rm() {
 }
 
 container_name_of() {
-	local source="$1" project="$2"
-	case "$source" in
-	onbox) printf '%s\n' "$(onbox_container_name "$project")" ;;
-	netbox) printf '%s\n' "$(netbox_container_name "$project")" ;;
-	offbox) printf '%s\n' "$(offbox_container_name "$project")" ;;
-	esac
+	local container="$1" project="$2"
+	printf '%s\n' "$(project_slug "$project").$container"
 }
 
 root_image_of() {
 	local container="$1" project="$2"
-	case "$container" in
-	netbox) printf '%s\n' "$(netbox_root_image "$project")" ;;
-	offbox) printf '%s\n' "$(offbox_root_image "$project")" ;;
-	esac
+	printf '%s\n' "$(project_slug "$project").$container.root"
 }
 
 worktree_volume_of() {
 	local container="$1" project="$2"
-	case "$container" in
-	onbox) printf '%s\n' "$project" ;;
-	netbox) printf '%s\n' "$(netbox_worktree_volume "$project")" ;;
-	offbox) printf '%s\n' "$(offbox_worktree_volume "$project")" ;;
-	esac
+	if [[ "$container" == onbox ]]; then
+		printf '%s\n' "$project"
+	else
+		printf '%s\n' "$(project_slug "$project").$container.worktree"
+	fi
 }
 
 write_volume_of() {
 	local container="$1" project="$2" dest_slug="$3"
-	case "$container" in
-	netbox) printf '%s\n' "$(netbox_write_volume "$project" "$dest_slug")" ;;
-	offbox) printf '%s\n' "$(offbox_write_volume "$project" "$dest_slug")" ;;
-	esac
+	printf '%s\n' "$(project_slug "$project").$container.write.$dest_slug"
 }
 
 container_volumes() {
@@ -77,7 +68,7 @@ container_volumes() {
 	local container="$2" project="$3"
 	local -n _dsts="$4"
 	_vols=()
-	if [[ "$container" != onbox ]]; then
+	if [[ "$(container_config named_worktree_volume "$container")" == yes ]]; then
 		_vols+=("$(worktree_volume_of "$container" "$project")")
 	fi
 	_vols+=("$(gitdir_volume "$project" "$container")")
@@ -108,7 +99,7 @@ container_write_volumes() {
 plan_container_volumes_rm() {
 	local -n _plan_out="$1"
 	local project="$2" container="$3"
-	if [[ "$container" != onbox ]]; then
+	if [[ "$(container_config named_worktree_volume "$container")" == yes ]]; then
 		plan_volume_rm "${!_plan_out}" "$(worktree_volume_of "$container" "$project")"
 	fi
 	plan_volume_rm "${!_plan_out}" "$(gitdir_volume "$project" "$container")"
@@ -120,14 +111,6 @@ plan_container_volumes_rm() {
 	done
 }
 
-container_net_suffix() {
-	local container="$1"
-	case "$container" in
-	offbox) printf '%s\n' '-i,lo,-I,talkbox0' ;;
-	*) printf '%s\n' '--dns-forward,169.254.1.1,--map-guest-addr,none' ;;
-	esac
-}
-
 pasta_net() {
 	local container="$1"
 	local -n _ports="$2"
@@ -136,7 +119,7 @@ pasta_net() {
 		printf -v port_list '%s,' "${_ports[@]}"
 		net+="$port_list"
 	fi
-	net+="$(container_net_suffix "$container")"
+	net+="$(container_config pasta_suffix "$container")"
 	printf '%s\n' "$net"
 }
 
@@ -200,43 +183,44 @@ plan_volume_populate() {
 	_plan_out+=("cp" "-a" "/talkbox/source/." "/talkbox/target/")
 }
 
-plan_netbox_populate() {
+plan_volume_populate_from() {
 	local -n _plan_out="$1"
-	local project="$2"
-	local -n _srcs="$3" _dsts="$4"
-	local -a vp=()
-	plan_volume_populate vp "$(netbox_worktree_volume "$project")" host "$project"
-	_plan_out+=("${vp[@]}")
-	local i
-	for ((i = 0; i < ${#_srcs[@]}; i++)); do
-		vp=()
-		plan_volume_populate vp "$(netbox_write_volume "$project" "$(dest_slug "${_dsts[$i]}")")" host "${_srcs[$i]}"
-		_plan_out+=("${vp[@]}")
-	done
+	local target="$2" source_volume="$3" host_source="$4"
+	if [[ -n "$source_volume" ]] && volume_exists "$source_volume"; then
+		plan_volume_populate "${!_plan_out}" "$target" volume "$source_volume"
+	else
+		plan_volume_populate "${!_plan_out}" "$target" host "$host_source"
+	fi
 }
 
-plan_offbox_populate() {
+plan_container_populate() {
 	local -n _plan_out="$1"
-	local project="$2" root_source="$3"
-	local -n _srcs="$4" _dsts="$5"
-	local -a vp=()
-	local netbox_wt netbox_wv
-	netbox_wt="$(netbox_worktree_volume "$project")"
-	if [[ "$root_source" == netbox ]] && volume_exists "$netbox_wt"; then
-		plan_volume_populate vp "$(offbox_worktree_volume "$project")" volume "$netbox_wt"
-	else
-		plan_volume_populate vp "$(offbox_worktree_volume "$project")" host "$project"
+	local container="$2" project="$3" source="$4"
+	local -n _srcs="$5" _dsts="$6"
+	local policy
+	policy="$(container_config populate_policy "$container")"
+	if [[ "$policy" == none ]]; then
+		return 0
 	fi
+	local from_source=no
+	if [[ "$policy" == source-else-host && "$(container_config write_style "$source")" == volume ]]; then
+		from_source=yes
+	fi
+	local -a vp=()
+	local i source_volume
+	source_volume=""
+	if [[ "$from_source" == yes ]]; then
+		source_volume="$(worktree_volume_of "$source" "$project")"
+	fi
+	plan_volume_populate_from vp "$(worktree_volume_of "$container" "$project")" "$source_volume" "$project"
 	_plan_out+=("${vp[@]}")
-	local i
 	for ((i = 0; i < ${#_srcs[@]}; i++)); do
 		vp=()
-		netbox_wv="$(netbox_write_volume "$project" "$(dest_slug "${_dsts[$i]}")")"
-		if [[ "$root_source" == netbox ]] && volume_exists "$netbox_wv"; then
-			plan_volume_populate vp "$(offbox_write_volume "$project" "$(dest_slug "${_dsts[$i]}")")" volume "$netbox_wv"
-		else
-			plan_volume_populate vp "$(offbox_write_volume "$project" "$(dest_slug "${_dsts[$i]}")")" host "${_srcs[$i]}"
+		source_volume=""
+		if [[ "$from_source" == yes ]]; then
+			source_volume="$(write_volume_of "$source" "$project" "$(dest_slug "${_dsts[$i]}")")"
 		fi
+		plan_volume_populate_from vp "$(write_volume_of "$container" "$project" "$(dest_slug "${_dsts[$i]}")")" "$source_volume" "${_srcs[$i]}"
 		_plan_out+=("${vp[@]}")
 	done
 }
@@ -246,10 +230,7 @@ plan_populate_and_create() {
 	local container="$2" interactive="$3" project="$4" source="$5" image="$6"
 	shift 6
 	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5"
-	case "$container" in
-	netbox) plan_netbox_populate "${!_plan_out}" "$project" "$3" "$4" ;;
-	offbox) plan_offbox_populate "${!_plan_out}" "$project" "$source" "$3" "$4" ;;
-	esac
+	plan_container_populate "${!_plan_out}" "$container" "$project" "$source" "$3" "$4"
 	plan_gitdir_volume "${!_plan_out}" "$project" "$container"
 	local -a create_args=()
 	plan_container create_args "$container" "$project" "$interactive" "$1" "$2" "$5" "$image"
@@ -269,7 +250,7 @@ plan_recreate() {
 	if [[ "$rebuild" == yes ]]; then
 		_plan_out+=("podman" "build" "-t" "$(base_image_name)" "-f" "$TALKBOX_ROOT/image/Containerfile" "$TALKBOX_ROOT/image")
 	fi
-	if [[ "$container" != onbox && "$source" != base ]]; then
+	if [[ "$(container_config root_image "$container")" == yes && "$source" != base ]]; then
 		image="$(root_image_of "$container" "$project")"
 		_plan_out+=("podman" "commit" "$(container_name_of "$source" "$project")" "$image")
 	fi
@@ -284,7 +265,7 @@ plan_rm_container() {
 	local container="$2" project="$3"
 	_plan_out+=("podman" "rm" "-f" "--volumes" "$(container_name_of "$container" "$project")")
 	plan_container_volumes_rm "${!_plan_out}" "$project" "$container"
-	if [[ "$container" != onbox ]] && podman image exists "$(root_image_of "$container" "$project")" >/dev/null 2>&1; then
+	if [[ "$(container_config root_image "$container")" == yes ]] && podman image exists "$(root_image_of "$container" "$project")" >/dev/null 2>&1; then
 		_plan_out+=("podman" "rmi" "$(root_image_of "$container" "$project")")
 	fi
 }
@@ -363,24 +344,14 @@ inherit_source() {
 		fi
 		return
 	fi
-	case "$container" in
-	netbox)
-		if [[ "$onbox_e" == yes ]]; then
-			printf '%s\n' onbox
-		else
-			printf '%s\n' base
+	local parent
+	for parent in $(container_config default_parents "$container"); do
+		if source_exists "$parent" "$onbox_e" "$netbox_e" "$offbox_e"; then
+			printf '%s\n' "$parent"
+			return
 		fi
-		;;
-	offbox)
-		if [[ "$netbox_e" == yes ]]; then
-			printf '%s\n' netbox
-		elif [[ "$onbox_e" == yes ]]; then
-			printf '%s\n' onbox
-		else
-			printf '%s\n' base
-		fi
-		;;
-	esac
+	done
+	printf '%s\n' base
 }
 
 image_in_use() {
@@ -463,7 +434,7 @@ exec_in_container() {
 
 inherit_source_for() {
 	local container="$1" project="$2"
-	inherit_source "$container" "$(exists_yn "$(onbox_container_name "$project")")" "$(exists_yn "$(netbox_container_name "$project")")" "$(exists_yn "$(offbox_container_name "$project")")" "$TALKBOX_FRESH" "$TALKBOX_INHERIT"
+	inherit_source "$container" "$(exists_yn "$(container_name_of onbox "$project")")" "$(exists_yn "$(container_name_of netbox "$project")")" "$(exists_yn "$(container_name_of offbox "$project")")" "$TALKBOX_FRESH" "$TALKBOX_INHERIT"
 }
 
 resolve_inheritance() {
@@ -471,9 +442,8 @@ resolve_inheritance() {
 	local -n _source_out="$4"
 	local -n _image_out="$5"
 	_image_out="$(base_image_name)"
-	if [[ "$container" == onbox ]]; then
-		_source_out=base
-	else
+	_source_out=base
+	if [[ "$(container_config root_image "$container")" == yes ]]; then
 		_source_out="$(inherit_source_for "$container" "$project")"
 		if [[ "$_source_out" != base ]]; then
 			_image_out="$(root_image_of "$container" "$project")"
@@ -510,7 +480,7 @@ run_container() {
 		create_sandbox "$container" "$project" "$interactive" "$1" "$2" "$3" "$4" "$5"
 	fi
 	podman start "$ctr"
-	if [[ "$container" != offbox ]]; then
+	if [[ "$(container_config nft_enforce "$container")" == yes ]]; then
 		install_nft_deny_or_die "$ctr" "$6" "$7"
 	fi
 	run_setup_in_container "$ctr"
@@ -529,7 +499,7 @@ run_recreate() {
 	if ! execute_plan "${plan[@]}"; then
 		rollback_creation_and_die "$container" "$project" "$4"
 	fi
-	if [[ "$container" != offbox ]]; then
+	if [[ "$(container_config nft_enforce "$container")" == yes ]]; then
 		install_nft_deny_or_die "$ctr" "$6" "$7"
 	fi
 	run_setup_in_container "$ctr"

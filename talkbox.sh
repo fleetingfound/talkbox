@@ -5,6 +5,7 @@ TALKBOX_ROOT="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 export TALKBOX_ROOT
 
 source "$TALKBOX_ROOT/lib/common.sh"
+source "$TALKBOX_ROOT/lib/definitions.sh"
 source "$TALKBOX_ROOT/lib/naming.sh"
 source "$TALKBOX_ROOT/lib/options.sh"
 source "$TALKBOX_ROOT/lib/mounts.sh"
@@ -19,14 +20,14 @@ container_action() {
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 	local read_mounts=() write_mounts=() ports=() write_srcs=() write_dsts=() deny_ips=() allow_ips=()
 	mount_args read_mounts read "$TALKBOX_ROOT/defaults/read.mounts" "$(pwd)" "$HOME" "${TALKBOX_READ[@]}"
-	if [[ "$container" == onbox ]]; then
+	if [[ "$(container_config write_style "$container")" == bind ]]; then
 		mount_args write_mounts write "$TALKBOX_ROOT/defaults/write.mounts" "$(pwd)" "$HOME" "${TALKBOX_WRITE[@]}"
 	else
 		mount_entries write_srcs write_dsts write "$TALKBOX_ROOT/defaults/write.mounts" "$(pwd)" "$HOME" "${TALKBOX_WRITE[@]}"
 		mount_volume_args write_mounts "$container" "$(pwd)" write_srcs write_dsts
 	fi
 	port_args ports "$TALKBOX_ROOT/defaults/ports" "${TALKBOX_PORT[@]}"
-	if [[ "$container" != offbox ]]; then
+	if [[ "$(container_config nft_enforce "$container")" == yes ]]; then
 		deny_allow_args deny_ips allow_ips "$TALKBOX_ROOT/defaults/deny.ip" "$TALKBOX_ROOT/defaults/allow.ip" TALKBOX_DENY_IP TALKBOX_ALLOW_IP
 	fi
 	case "$TALKBOX_VERB" in
