@@ -47,3 +47,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 22c: unit scaffolding consolidation and data-driven test folds](phase-22c-unit-scaffolding-and-data-driven-folds.gen.md)
 - [Phase 23a: write-mount folder validation and failed-creation volume rollback](phase-23a-write-mount-validation-and-rollback.gen.md)
 - [Phase 23b: `--rm-container`/recreate write-volume removal via container-mount inspection](phase-23b-rm-container-write-volume-inspection.gen.md)
+- [Phase 23c: e2e nested `sdrun` units die with the parent suite unit](phase-23c-e2e-nested-units-die-with-parent.gen.md)

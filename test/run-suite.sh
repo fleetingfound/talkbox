@@ -46,7 +46,8 @@ rc=0
 
 run_with_timeout() {
 	set +e
-	BATS_TEST_TIMEOUT="$INDIVIDUAL_TEST_TIMEOUT" \
+	env -u TALKBOX_SUITE_UNIT \
+		BATS_TEST_TIMEOUT="$INDIVIDUAL_TEST_TIMEOUT" \
 		timeout "$GLOBAL_TEST_TIMEOUT" bash -c 'exec bats --tap "$@"' -- "${files[@]}" \
 		>"$tap_file" 2>"$svc_err"
 	rc=$?
@@ -57,17 +58,27 @@ run_with_timeout() {
 }
 
 run_with_systemd() {
+	local suite_unit unit_path="$PATH"
+	# When this runner is itself invoked from a bats process (nested suite
+	# runs), bats has prepended its libexec dir to PATH; systemd-run does not
+	# carry the exported bats_readlinkf function into the unit, so the unit
+	# must resolve the standalone bats wrapper from the remaining PATH.
+	if [[ -n "${BATS_VERSION:-}" ]]; then
+		unit_path="${unit_path#*:}"
+	fi
+	suite_unit="talkbox-${target}-$(date +%s)-$$.service"
 	set +e
-	systemd-run --user --wait --collect \
+	systemd-run --user --wait --collect --unit="$suite_unit" \
 		-p "RuntimeMaxSec=$GLOBAL_TEST_TIMEOUT" \
 		-p KillMode=control-group \
 		-p "WorkingDirectory=$PROJECT_ROOT" \
 		-p "StandardOutput=file:$tap_file" \
 		-p "StandardError=file:$svc_err" \
-		-E "PATH=$PATH" \
+		-E "PATH=$unit_path" \
 		-E "GLOBAL_TEST_TIMEOUT=$GLOBAL_TEST_TIMEOUT" \
 		-E "INDIVIDUAL_TEST_TIMEOUT=$INDIVIDUAL_TEST_TIMEOUT" \
 		-E "BATS_TEST_TIMEOUT=$INDIVIDUAL_TEST_TIMEOUT" \
+		-E "TALKBOX_SUITE_UNIT=$suite_unit" \
 		-- bash -c 'exec bats --tap "$@"' -- "${files[@]}" \
 		>/dev/null 2>"$sd_err"
 	rc=$?

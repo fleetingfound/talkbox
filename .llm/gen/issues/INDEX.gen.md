@@ -26,7 +26,7 @@
 - [x] [`MAP.gen.md` is missing implemented core test files](map-gen-md-missing-test-files.gen.md)
 - [x] [`make_podman_shim` is shadowed by a different implementation in `network.bats`](make-podman-shim-shadowed-in-network-bats.gen.md) — resolved by [Phase 22a](../plans/phase-22a-podman-shim-factory.gen.md)
 - [x] [Onbox create/recontain no longer ensure the base image exists](onbox-base-image-no-longer-probed.gen.md) — resolved by [Phase 21](../plans/phase-21-onbox-base-image-probe.gen.md)
-- [ ] [Interrupted e2e suite run races the immediately following run](interrupted-e2e-suite-run-races-next-run.gen.md)
+- [x] [Interrupted e2e suite run races the immediately following run](interrupted-e2e-suite-run-races-next-run.gen.md) — resolved by [Phase 23c](../plans/phase-23c-e2e-nested-units-die-with-parent.gen.md)
 - [x] [`--rm-container` leaks write volumes unless `--write` is repeated on the removal invocation](rm-container-write-volumes-need-repeated-write.gen.md) — resolved by [Phase 23b](../plans/phase-23b-rm-container-write-volume-inspection.gen.md)
 - [ ] [`--recontain`/`--rebuild` silently ignore a `-c <command>` argument](recontain-rebuild-ignore-command.gen.md)
 - [x] [Write mounts are not validated to be folders, and a failed populate leaks auto-created volumes](write-mount-file-source-unvalidated.gen.md) — resolved by [Phase 23a](../plans/phase-23a-write-mount-validation-and-rollback.gen.md)

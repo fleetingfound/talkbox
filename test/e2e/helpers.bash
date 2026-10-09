@@ -7,7 +7,12 @@ SD_TIMEOUT="${SD_TIMEOUT:-$((INDIVIDUAL_TEST_TIMEOUT - 5))}"
 E2E_BASE_IMAGE='talkbox/base-e2e:latest'
 
 sdrun() {
+	local -a suite_prop=()
+	if [[ -n "${TALKBOX_SUITE_UNIT:-}" ]]; then
+		suite_prop=(-p "StopPropagatedFrom=$TALKBOX_SUITE_UNIT")
+	fi
 	systemd-run --user --wait --collect --pipe \
+		"${suite_prop[@]}" \
 		-p "RuntimeMaxSec=$SD_TIMEOUT" \
 		-p KillMode=control-group \
 		-E "PATH=$PATH" \

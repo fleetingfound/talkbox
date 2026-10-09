@@ -1,5 +1,5 @@
 target: test-canary
-started: '2026-09-23T15:15:53Z'
+started: '2026-10-09T01:12:29Z'
 exit: 1
 totals: { total: 2, pass: 0, fail: 2, skip: 0 }
 fail:
