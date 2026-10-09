@@ -1,5 +1,7 @@
 target: test-e2e
-started: '2026-10-08T23:34:23Z'
-exit: 0
-totals: { total: 74, pass: 74, fail: 0, skip: 0 }
+started: '2026-10-09T00:26:26Z'
+exit: 1
+totals: { total: 75, pass: 73, fail: 2, skip: 0 }
 fail:
+ - 'test/e2e/netbox-offbox.bats :: netbox --rm-container removes the container, its root image and named volumes'
+ - 'test/e2e/netbox-offbox.bats :: netbox --recontain leaves no write volume from the previous write-mount configuration'

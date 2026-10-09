@@ -261,20 +261,39 @@ mk_talkbox_copy() {
 
 @test "talkbox.sh netbox --rm-container removes the container, its volumes and its root image" {
 	use_podman_shim "$BASE_IMAGE"
-	export PODMAN_VOLUMES="talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir"
+	export PODMAN_CONTAINERS="talkbox-proj.netbox"
+	export PODMAN_INSPECT_MOUNTS="talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir talkbox-proj.netbox.write.talkbox-wdata"
+	export PODMAN_VOLUMES="talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir talkbox-proj.netbox.write.talkbox-wdata"
 	export PODMAN_IMAGES="${TALKBOX_BASE_IMAGE:-talkbox/base:latest} talkbox-proj.netbox.root"
 	run_dispatcher netbox --rm-container
 	[[ "$status" -eq 0 ]]
 	[[ -n "$(podman_line '^rm -f --volumes talkbox-proj.netbox$')" ]]
 	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.worktree$')" ]]
 	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.gitdir$')" ]]
-	[[ "$(podman_count '^volume rm -f talkbox-proj.netbox.write')" -eq 0 ]]
+	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.write.talkbox-wdata$')" ]]
+	[[ "$(podman_count '^volume rm ')" -eq 3 ]]
 	[[ -n "$(podman_line '^rmi talkbox-proj.netbox.root$')" ]]
 	[[ "$(podman_line_no '^volume rm -f')" -lt "$(podman_line_no '^rmi ')" ]]
 }
 
+@test "talkbox.sh offbox --rm-container removes the inspected write volume without repeating --write" {
+	use_podman_shim "$BASE_IMAGE"
+	export PODMAN_CONTAINERS="talkbox-proj.offbox"
+	export PODMAN_INSPECT_MOUNTS="talkbox-proj.offbox.write.talkbox-wdata"
+	export PODMAN_VOLUMES="talkbox-proj.offbox.write.talkbox-wdata"
+	run_dispatcher offbox --rm-container
+	[[ "$status" -eq 0 ]]
+	[[ -n "$(podman_line '^rm -f --volumes talkbox-proj.offbox$')" ]]
+	[[ -n "$(podman_line '^volume rm -f talkbox-proj.offbox.write.talkbox-wdata$')" ]]
+	[[ "$(podman_count '^volume rm -f')" -eq 1 ]]
+	[[ "$(podman_count '^rmi ')" -eq 0 ]]
+	[[ "$(podman_count 'inspect -f')" -ge 1 ]]
+}
+
 @test "talkbox.sh onbox --rm-container removes only the container and its gitdir volume" {
 	use_podman_shim "$BASE_IMAGE"
+	export PODMAN_CONTAINERS="talkbox-proj.onbox"
+	export PODMAN_INSPECT_MOUNTS="talkbox-proj.onbox.gitdir"
 	export PODMAN_VOLUMES="talkbox-proj.onbox.gitdir"
 	run_dispatcher onbox --rm-container
 	[[ "$status" -eq 0 ]]

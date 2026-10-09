@@ -133,7 +133,7 @@ teardown() {
 	[[ "$status" -eq 0 ]]
 	run sdrun podman volume exists "$PROJECT_SLUG.netbox.write.talkbox-wdata"
 	[[ "$status" -eq 0 ]]
-	run run_talkbox "$PROJECT" "$TALKBOX" netbox --rm-container --write "$data:/talkbox/wdata"
+	run run_talkbox "$PROJECT" "$TALKBOX" netbox --rm-container
 	[[ "$status" -eq 0 ]]
 	run sdrun podman image exists "$NETBOX_ROOT"
 	[[ "$status" -ne 0 ]]
@@ -146,6 +146,28 @@ teardown() {
 	run sdrun podman volume exists "$PROJECT_SLUG.netbox.write.talkbox-wdata"
 	[[ "$status" -ne 0 ]]
 	rm -rf "$data"
+}
+
+@test "netbox --recontain leaves no write volume from the previous write-mount configuration" {
+	local data alt
+	data="$(mktemp -d)"
+	alt="$(mktemp -d)"
+	e2e_register_dir "$data"
+	e2e_register_dir "$alt"
+	printf 'new-config\n' >"$alt/new.txt"
+	run run_talkbox "$PROJECT" "$TALKBOX" netbox --write "$data:/talkbox/wdata" -c --noninteractive true
+	[[ "$status" -eq 0 ]]
+	run sdrun podman volume exists "$PROJECT_SLUG.netbox.write.talkbox-wdata"
+	[[ "$status" -eq 0 ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" netbox --recontain --write "$alt:/talkbox/walt"
+	[[ "$status" -eq 0 ]]
+	run sdrun podman volume exists "$PROJECT_SLUG.netbox.write.talkbox-wdata"
+	[[ "$status" -ne 0 ]]
+	run sdrun podman volume exists "$PROJECT_SLUG.netbox.write.talkbox-walt"
+	[[ "$status" -eq 0 ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" netbox -c --noninteractive 'cat /talkbox/walt/new.txt'
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'new-config'* ]]
 }
 
 @test "netbox --rm-image removes the base image" {

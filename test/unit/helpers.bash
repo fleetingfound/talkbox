@@ -35,6 +35,7 @@ make_podman_shim() {
 #   PODMAN_EXTERNAL    IDs listed for external ancestor-filtered ps
 #   PODMAN_FAIL_PATTERN, PODMAN_FAIL_CODE  make matching invocations fail
 #   PODMAN_INSPECT_PID  PID printed for inspect -f {{.State.Pid}} (default 12345)
+#   PODMAN_INSPECT_MOUNTS  names printed for an inspect over container Mounts
 #   PODMAN_INSPECT_RC, PODMAN_INSPECT_STDERR  make inspect fail
 #   PODMAN_UNSHARE_RC, PODMAN_UNSHARE_STDERR  make unshare fail
 #   PODMAN_UNSHARE_LOG  file receiving one PATH= line per unshare invocation
@@ -61,7 +62,7 @@ if [[ "$1 $2" == 'image exists' ]]; then
 	done
 	exit 1
 fi
-if [[ "$1 $2" == 'inspect -f' ]]; then
+if [[ "$1" == inspect && ("$2" == -f || "$2" == --format) ]]; then
 	if [[ -n "${PODMAN_INSPECT_RC:-}" && "${PODMAN_INSPECT_RC}" != 0 ]]; then
 		printf '%s\n' "${PODMAN_INSPECT_STDERR:-podman inspect: container not found}" >&2
 		exit "${PODMAN_INSPECT_RC}"
@@ -76,6 +77,11 @@ if [[ "$1 $2" == 'inspect -f' ]]; then
 			}
 		done
 		printf 'false\n'
+	elif [[ "$3" == *'{{range .Mounts}}'* ]]; then
+		for mnt in ${PODMAN_INSPECT_MOUNTS:-}; do
+			printf '%s ' "$mnt"
+		done
+		printf '\n'
 	fi
 	exit 0
 fi
