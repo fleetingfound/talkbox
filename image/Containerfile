@@ -1,0 +1,58 @@
+FROM debian:trixie-slim
+
+ENV LANG=C.UTF-8
+
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    findutils \
+    fzf \
+    git \
+    less \
+    neovim \
+    sudo \
+    tmux \
+    tree \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+COPY --from=node:lts-slim /usr/local/bin/node /usr/local/bin/
+COPY --from=node:lts-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
+
+RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
+    ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+
+ENV UV_PYTHON_INSTALL_DIR=/usr/local/uv/python
+ENV UV_LINK_MODE=copy
+
+RUN uv python install 3.12 && \
+    uv_python_bin="$(dirname "$(uv python find)")" && \
+    ln -s "$uv_python_bin/python" /usr/local/bin/python && \
+    ln -s "$uv_python_bin/python3" /usr/local/bin/python3
+
+RUN groupadd -g 1000 dev && \
+    useradd -m -u 1000 -g 1000 -s /bin/bash dev && \
+    echo 'dev ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/dev && \
+    chmod 0440 /etc/sudoers.d/dev && \
+    visudo -cf /etc/sudoers.d/dev
+
+COPY --chmod=755 setup.sh /usr/local/bin/setup.sh
+
+RUN install -d -o dev -g dev /working
+
+USER dev
+
+ENV NPM_CONFIG_PREFIX=/home/dev/.npm-global
+ENV PATH=/home/dev/.npm-global/bin:/home/dev/.local/bin:$PATH
+
+RUN mkdir -p /home/dev/.npm-global /home/dev/.local/share/opencode
+
+RUN npm install -g --allow-scripts=@anthropic-ai/claude-code,opencode-ai @anthropic-ai/claude-code opencode-ai && \
+    npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+
+RUN uv tool install --python 3.12 aider-chat
+
+WORKDIR /working
