@@ -123,3 +123,10 @@
 - [x] [Write-volume discovery for `--rm-container` (revisited)](rm-container-write-volume-discovery-revisit.gen.md) - how `plan_container_volumes_rm` obtains the write volumes to remove, replacing the current-invocation dest-list derivation (name-pattern listing, container-mount inspection, or a persistent record). Selected: container-mount inspection.
 - [x] [Placement of the write-mount folder validation](write-mount-validation-placement.gen.md) - where the check that write-mount sources are existing directories lives (inside `mount_entries`, in the dispatcher after parsing, or in the container planners). Selected: inside `mount_entries`, mode-conditional.
 - [x] [Cleanup of auto-created volumes when container creation fails](populate-failure-volume-cleanup.gen.md) - how a failed populate stops the auto-created named volumes from leaking (executor rollback, explicit volume pre-creation, or validation only). Selected: executor rollback.
+
+## Container consolidation choices (Phase 25)
+
+- [x] [onbox `--recontain` start-time steps](onbox-recontain-start-steps.gen.md) - how the onbox recontain/rebuild skip of nft and `setup.sh` is resolved (align with `run_container`, formalize the skip as config, or skip for all containers). Selected: align with `run_container`.
+- [x] [Per-container configuration mechanism](container-config-mechanism.gen.md) - how the per-container configuration record is represented and where it lives (case-based lookup module, associative-array table, or per-field accessors). Selected: case-based lookup module.
+- [x] [Consolidation scope](container-consolidation-scope.gen.md) - whether all ~12 container-conditional branch points become configuration, or 2-3 readable cases (notably `inherit_source`) are retained. Selected: full config-driven.
+- [x] [Post-consolidation naming interface](container-naming-interface.gen.md) - what replaces the 9 naming one-liners and the 4 `*_of` dispatchers (genericized `*_of` dispatchers, one parametric resource-name helper, or no change). Selected: genericized `*_of` dispatchers.
