@@ -1,10 +1,5 @@
 target: test-unit
-started: '2026-10-09T16:56:27Z'
-exit: 1
-totals: { total: 315, pass: 310, fail: 5, skip: 0 }
+started: '2026-10-09T17:04:40Z'
+exit: 0
+totals: { total: 315, pass: 315, fail: 0, skip: 0 }
 fail:
- - 'test/unit/dispatcher.bats :: talkbox.sh onbox --recontain recreates without populating and installs nft and runs setup'
- - 'test/unit/dispatcher.bats :: talkbox.sh onbox --rebuild builds the base image before recreating'
- - 'test/unit/lifecycle.bats :: run_recreate onbox no removes, recreates and starts the onbox container, installing nft, running setup and stopping'
- - 'test/unit/lifecycle.bats :: run_recreate onbox yes builds the base image first, then installs nft and runs setup before stopping'
- - 'test/unit/netbox-offbox.bats :: run_recreate recontain and rebuild order start, the nft install, setup.sh and stop per container for onbox, netbox and offbox'

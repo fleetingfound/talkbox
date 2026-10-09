@@ -529,12 +529,10 @@ run_recreate() {
 	if ! execute_plan "${plan[@]}"; then
 		rollback_creation_and_die "$container" "$project" "$4"
 	fi
-	if [[ "$container" != onbox ]]; then
-		if [[ "$container" != offbox ]]; then
-			install_nft_deny_or_die "$ctr" "$6" "$7"
-		fi
-		run_setup_in_container "$ctr"
+	if [[ "$container" != offbox ]]; then
+		install_nft_deny_or_die "$ctr" "$6" "$7"
 	fi
+	run_setup_in_container "$ctr"
 	stop_container "$ctr"
 }
 
