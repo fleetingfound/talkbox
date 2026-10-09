@@ -1,14 +1,14 @@
-.git/
 .coreignore
 
 AGENTS.md
-SPEC*.md
+SPEC.gen.md
+MAP.gen.md
 opencode.json
 .opencode/
 
 test/
+Makefile
 
-*.gen.md
 .llm/
 
 .dotfiles/
