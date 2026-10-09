@@ -46,15 +46,6 @@ classify_git_dir() {
 	fi
 }
 
-list_submodule_git_dirs() {
-	local project="$1" gitdir modules
-	gitdir="$(resolve_git_dir "$project")"
-	modules="$gitdir/modules"
-	if [[ -d "$modules" ]]; then
-		find "$modules" -mindepth 1 -maxdepth 1 -type d -print | sort
-	fi
-}
-
 git_mounts_enabled() {
 	local project="$1"
 	git_tracked "$project" && [[ "$(classify_git_dir "$project")" == inside ]]

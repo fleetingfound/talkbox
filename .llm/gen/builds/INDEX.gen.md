@@ -49,3 +49,4 @@
 - [Phase 21: onbox create/recontain ensure the base image exists](.llm/gen/builds/phase-21-onbox-base-image-probe.gen.md)
 - [Phase 23a: write-mount folder validation and failed-creation volume rollback](.llm/gen/builds/phase-23a-write-mount-validation-and-rollback.gen.md)
 - [Phase 23b: `--rm-container`/recreate write-volume removal via container-mount inspection](.llm/gen/builds/phase-23b-rm-container-write-volume-inspection.gen.md)
+- [Phase 24: Remove the per-container `run_*` dispatch wrappers](.llm/gen/builds/phase-24-remove-run-dispatch-wrappers.gen.md)

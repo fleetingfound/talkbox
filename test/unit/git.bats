@@ -72,19 +72,6 @@ setup() {
 	[[ "$(classify_git_dir "$PROJECT")" == none ]]
 }
 
-@test "list_submodule_git_dirs lists the submodule git dirs under the top-level git dir" {
-	load_lib git.sh
-	mkdir -p "$PROJECT/.git/modules/sub1" "$PROJECT/.git/modules/sub2"
-	[[ "$(list_submodule_git_dirs "$PROJECT")" == "$PROJECT/.git/modules/sub1
-$PROJECT/.git/modules/sub2" ]]
-}
-
-@test "list_submodule_git_dirs yields nothing when the git dir has no submodules" {
-	load_lib git.sh
-	mkdir -p "$PROJECT/.git"
-	[[ -z "$(list_submodule_git_dirs "$PROJECT")" ]]
-}
-
 @test "current_branch on a detached HEAD produces a talkbox error" {
 	load_lib git.sh
 	git -C "$PROJECT" init -q

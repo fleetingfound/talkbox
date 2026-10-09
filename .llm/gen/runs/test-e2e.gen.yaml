@@ -1,5 +1,5 @@
 target: test-e2e
-started: '2026-10-09T01:13:03Z'
+started: '2026-10-09T15:52:26Z'
 exit: 0
-totals: { total: 0, pass: 0, fail: 0, skip: 0 }
+totals: { total: 78, pass: 78, fail: 0, skip: 0 }
 fail:

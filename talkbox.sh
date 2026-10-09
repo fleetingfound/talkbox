@@ -29,10 +29,6 @@ container_action() {
 	if [[ "$container" != offbox ]]; then
 		deny_allow_args deny_ips allow_ips "$TALKBOX_ROOT/defaults/deny.ip" "$TALKBOX_ROOT/defaults/allow.ip" TALKBOX_DENY_IP TALKBOX_ALLOW_IP
 	fi
-	local -a write_entries=()
-	if [[ "$container" != onbox ]]; then
-		write_entries=(write_srcs write_dsts)
-	fi
 	case "$TALKBOX_VERB" in
 	fetch)
 		run_fetch "$(pwd)" "$container" "$TALKBOX_ALL"
@@ -45,21 +41,21 @@ container_action() {
 		;;
 	recontain)
 		prepare_git_host "$(pwd)"
-		"run_${container}_recontain" "$(pwd)" "$TALKBOX_INTERACTIVE" read_mounts write_mounts "${write_entries[@]}" ports deny_ips allow_ips
+		run_recreate "$container" no "$(pwd)" "$TALKBOX_INTERACTIVE" read_mounts write_mounts write_srcs write_dsts ports deny_ips allow_ips
 		;;
 	rebuild)
 		prepare_git_host "$(pwd)"
-		"run_${container}_rebuild" "$(pwd)" "$TALKBOX_INTERACTIVE" read_mounts write_mounts "${write_entries[@]}" ports deny_ips allow_ips
+		run_recreate "$container" yes "$(pwd)" "$TALKBOX_INTERACTIVE" read_mounts write_mounts write_srcs write_dsts ports deny_ips allow_ips
 		;;
 	rm-container)
-		"run_${container}_rm_container" "$(pwd)"
+		run_rm_container "$container" "$(pwd)"
 		;;
 	rm-image)
-		"run_${container}_rm_image" "$(pwd)"
+		run_rm_image "$container" "$(pwd)"
 		;;
 	*)
 		prepare_git_host "$(pwd)"
-		"run_${container}" "$(pwd)" "$TALKBOX_COMMAND" "$TALKBOX_INTERACTIVE" read_mounts write_mounts "${write_entries[@]}" ports deny_ips allow_ips
+		run_container "$container" "$(pwd)" "$TALKBOX_COMMAND" "$TALKBOX_INTERACTIVE" read_mounts write_mounts write_srcs write_dsts ports deny_ips allow_ips
 		;;
 	esac
 }
