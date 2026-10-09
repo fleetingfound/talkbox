@@ -311,6 +311,34 @@ mk_talkbox_copy() {
 	[[ "$output" == *'usage: talkbox.sh <onbox|netbox|offbox> ...'* ]]
 }
 
+@test "talkbox.sh --help and -h print the reference and exit 0 without podman calls" {
+	use_podman_shim "$BASE_IMAGE"
+	local flag
+	for flag in --help -h; do
+		cd "$PROJECT" || return 1
+		run "$PROJECT_ROOT/talkbox.sh" "$flag"
+		[[ "$status" -eq 0 ]]
+		[[ "$output" == *'usage: onbox|netbox|offbox'* ]]
+		[[ "$output" == *'--read'* ]]
+		[[ "$output" == *'--rm-image'* ]]
+		[[ ! -s "$LOG" ]]
+	done
+}
+
+@test "talkbox.sh <container> --help prints the reference and exits 0 without podman calls" {
+	use_podman_shim "$BASE_IMAGE"
+	local c
+	for c in onbox netbox offbox; do
+		run_dispatcher "$c" --help
+		[[ "$status" -eq 0 ]]
+		[[ "$output" == *'usage: onbox|netbox|offbox'* ]]
+		[[ "$output" == *'onbox'* ]]
+		[[ "$output" == *'netbox'* ]]
+		[[ "$output" == *'offbox'* ]]
+		[[ ! -s "$LOG" ]]
+	done
+}
+
 @test "talkbox.sh refuses a file write source with a talkbox diagnostic and no podman call" {
 	use_podman_shim "$BASE_IMAGE"
 	local file="$BATS_TEST_TMPDIR/notes.txt"

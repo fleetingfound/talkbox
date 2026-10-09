@@ -3,6 +3,41 @@
 TALKBOX_ROOT="${TALKBOX_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 source "$TALKBOX_ROOT/lib/common.sh"
 
+print_talkbox_help() {
+	cat <<'EOF'
+usage: onbox|netbox|offbox [options] [fetch|merge|sync [<branchname>]]
+
+containers:
+  onbox    internet access, edits the host project directly
+  netbox   internet access, no host edits
+  offbox   no internet access, no host edits
+
+options:
+  -c, --command <command>     run <command> in the container
+  --interactive               run the command interactively (default)
+  --noninteractive            run the command noninteractively
+  --read <source>[:<dest>]    extra read-only mount (repeatable)
+  --write <source>[:<dest>]   extra read-write mount (repeatable)
+  --port <port>               extra host port to reach (repeatable)
+  --deny-ip <address>         blocked IP or CIDR range (repeatable, onbox/netbox)
+  --allow-ip <address>        allowed IP or CIDR range overriding denials (repeatable)
+  --fresh                     skip default root filesystem and volume inheritance
+  --inherit <container>       inherit from onbox, netbox or offbox
+  --gpu                       expose host Nvidia GPUs
+  --all                       fetch, merge or sync every branch
+  --recontain                 recreate the container and its volumes
+  --rebuild                   rebuild the image and recreate the container
+  --rm-container              remove the container and its volumes
+  --rm-image                  remove the image
+  -h, --help                  show this help
+
+git subcommands:
+  fetch [<branchname>]        fetch container git history to the host
+  merge [<branchname>]        apply container changes to the host repository
+  sync [<branchname>]         apply host changes to the container repository
+EOF
+}
+
 # shellcheck disable=SC2034
 parse_talkbox_options() {
 	TALKBOX_COMMAND=""
@@ -21,6 +56,10 @@ parse_talkbox_options() {
 	local after_command=no
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
+		-h | --help)
+			print_talkbox_help
+			exit 0
+			;;
 		-c | --command)
 			after_command=yes
 			;;

@@ -52,3 +52,4 @@
 - [Phase 24: Remove the per-container `run_*` dispatch wrappers](.llm/gen/builds/phase-24-remove-run-dispatch-wrappers.gen.md)
 - [Phase 25a: onbox `--recontain`/`--rebuild` install the nft deny rules and run `setup.sh`](.llm/gen/builds/phase-25a-onbox-recontain-nft-setup.gen.md)
 - [Phase 25b: per-container configuration consolidation of the container implementation](.llm/gen/builds/phase-25b-container-config-consolidation.gen.md)
+- [Help flag (`--help` / `-h`)](.llm/gen/builds/help-flag.gen.md)

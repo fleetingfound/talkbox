@@ -66,6 +66,33 @@ setup() {
 	[[ "$output" == *"talkbox: unknown option: --bogus"* ]]
 }
 
+@test "--help prints the container and option reference and exits 0" {
+	load_lib options.sh
+	run parse_talkbox_options --help
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'usage: onbox|netbox|offbox'* ]]
+	[[ "$output" == *'netbox'* ]]
+	[[ "$output" == *'offbox'* ]]
+	[[ "$output" == *'--read'* ]]
+	[[ "$output" == *'--write'* ]]
+	[[ "$output" == *'--rm-image'* ]]
+	[[ "$output" == *'fetch'* ]]
+}
+
+@test "-h is an alias for --help" {
+	load_lib options.sh
+	run parse_talkbox_options -h
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'usage: onbox|netbox|offbox'* ]]
+}
+
+@test "--help is honoured after other options" {
+	load_lib options.sh
+	run parse_talkbox_options --fresh --gpu --help
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'usage: onbox|netbox|offbox'* ]]
+}
+
 @test "--read as the final argument requires a value and exits 2" {
 	load_lib options.sh
 	run parse_talkbox_options --read

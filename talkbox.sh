@@ -76,6 +76,10 @@ case "$container" in
 onbox | netbox | offbox)
 	container_action "$container" "$@"
 	;;
+-h | --help)
+	print_talkbox_help
+	exit 0
+	;;
 *)
 	die "unknown container: $container" 2
 	;;
