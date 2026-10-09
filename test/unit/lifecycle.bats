@@ -71,7 +71,7 @@ setup() {
 	LOG="$BATS_TEST_TMPDIR/podman.log"
 }
 
-@test "run_recreate onbox no removes, recreates and starts the onbox container, running no nft, setup or user command" {
+@test "run_recreate onbox no removes, recreates and starts the onbox container, installing nft, running setup and stopping" {
 	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
@@ -80,21 +80,22 @@ setup() {
 	export PODMAN_VOLUMES="talkbox-proj.onbox.gitdir"
 	run run_recreate onbox no "$PROJECT" no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
 	[[ "$status" -eq 0 ]]
-	local rm_line volrm_line create_line start_line stop_line
+	local rm_line volrm_line create_line start_line nft_line setup_line stop_line
 	rm_line="$(podman_line_no '^rm -f --volumes talkbox-proj.onbox$')"
 	volrm_line="$(podman_line_no '^volume rm -f talkbox-proj.onbox.gitdir$')"
 	create_line="$(podman_line_no '^create ')"
 	start_line="$(podman_line_no '^start talkbox-proj.onbox$')"
+	nft_line="$(podman_line_no 'unshare.*nsenter.*nft')"
+	setup_line="$(podman_line_no '^exec talkbox-proj.onbox setup.sh$')"
 	stop_line="$(podman_line_no '^stop -t 5 talkbox-proj.onbox$')"
-	[[ -n "$rm_line" && -n "$volrm_line" && -n "$create_line" && -n "$start_line" && -n "$stop_line" ]]
+	[[ -n "$rm_line" && -n "$volrm_line" && -n "$create_line" && -n "$start_line" && -n "$nft_line" && -n "$setup_line" && -n "$stop_line" ]]
 	[[ "$rm_line" -lt "$volrm_line" ]]
 	[[ "$volrm_line" -lt "$create_line" ]]
 	[[ "$create_line" -lt "$start_line" ]]
-	[[ "$start_line" -lt "$stop_line" ]]
+	[[ "$start_line" -lt "$nft_line" ]]
+	[[ "$nft_line" -lt "$setup_line" ]]
+	[[ "$setup_line" -lt "$stop_line" ]]
 	[[ -z "$(podman_line '^volume create ')" ]]
-	[[ "$(podman_count 'unshare')" -eq 0 ]]
-	[[ "$(podman_count 'nsenter')" -eq 0 ]]
-	[[ "$(podman_count '^exec ')" -eq 0 ]]
 	local probe_line
 	probe_line="$(podman_line_no "^image exists $(base_image_name)$")"
 	[[ -n "$probe_line" ]]
@@ -156,7 +157,7 @@ setup() {
 	[[ "$(podman_line_no '^volume create talkbox-proj.onbox.gitdir$')" -lt "$(podman_line_no '^create ')" ]]
 }
 
-@test "run_recreate onbox yes builds the base image first, then recreates and starts the onbox container" {
+@test "run_recreate onbox yes builds the base image first, then installs nft and runs setup before stopping" {
 	load_container_libs
 	use_podman_shim
 	mkdir -p "$PROJECT/.git"
@@ -165,24 +166,26 @@ setup() {
 	export PODMAN_VOLUMES="talkbox-proj.onbox.gitdir"
 	run run_recreate onbox yes "$PROJECT" no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
 	[[ "$status" -eq 0 ]]
-	local build_line rm_line create_line start_line stop_line
+	local build_line rm_line create_line start_line nft_line setup_line stop_line
 	build_line="$(podman_line_no '^build ')"
 	rm_line="$(podman_line_no '^rm -f --volumes talkbox-proj.onbox$')"
 	create_line="$(podman_line_no '^create ')"
 	start_line="$(podman_line_no '^start talkbox-proj.onbox$')"
+	nft_line="$(podman_line_no 'unshare.*nsenter.*nft')"
+	setup_line="$(podman_line_no '^exec talkbox-proj.onbox setup.sh$')"
 	stop_line="$(podman_line_no '^stop -t 5 talkbox-proj.onbox$')"
-	[[ -n "$build_line" && -n "$rm_line" && -n "$create_line" && -n "$start_line" && -n "$stop_line" ]]
+	[[ -n "$build_line" && -n "$rm_line" && -n "$create_line" && -n "$start_line" && -n "$nft_line" && -n "$setup_line" && -n "$stop_line" ]]
 	[[ "$build_line" -lt "$rm_line" ]]
 	[[ "$rm_line" -lt "$create_line" ]]
 	[[ "$create_line" -lt "$start_line" ]]
-	[[ "$start_line" -lt "$stop_line" ]]
+	[[ "$start_line" -lt "$nft_line" ]]
+	[[ "$nft_line" -lt "$setup_line" ]]
+	[[ "$setup_line" -lt "$stop_line" ]]
 	local build
 	build="$(podman_line '^build ')"
 	line_has_token "$build" '-t'
 	line_has_token "$build" "$(base_image_name)"
 	line_has_token "$build" "$TALKBOX_ROOT/image/Containerfile"
-	[[ "$(podman_count 'unshare')" -eq 0 ]]
-	[[ "$(podman_count '^exec ')" -eq 0 ]]
 	[[ "$(podman_count 'image exists')" -eq 0 ]]
 }
 

@@ -92,11 +92,23 @@ EXPECT
 	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'echo stale > /tmp/talkbox-recontain-probe && git config user.email c@example.com && git config user.name container && git commit --allow-empty -m container-commit && git log --oneline | grep -q container-commit && echo PRESENT'
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'PRESENT'* ]]
+	local log shimdir
+	log="$BATS_TEST_TMPDIR/podman-recontain.log"
+	shimdir="$(mk_podman_logging_shim "$log")"
+	e2e_register_dir "$shimdir"
+	e2e_use_podman_shim "$shimdir"
 	run run_talkbox "$PROJECT" "$TALKBOX" onbox --recontain
 	[[ "$status" -eq 0 ]]
 	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'test ! -e /tmp/talkbox-recontain-probe && (git log --oneline | grep -q container-commit && echo STALE || echo FRESH)'
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'FRESH'* ]]
+	local start_line setup_line stop_line
+	start_line="$(log_line_no "^start $CTR$" "$log")"
+	setup_line="$(log_line_no "exec $CTR setup.sh$" "$log")"
+	stop_line="$(log_line_no "^stop -t 5 $CTR$" "$log")"
+	[[ -n "$start_line" && -n "$setup_line" && -n "$stop_line" ]]
+	[[ "$start_line" -lt "$setup_line" ]]
+	[[ "$setup_line" -lt "$stop_line" ]]
 }
 
 @test "onbox --rebuild rebuilds the base image and starts the container" {

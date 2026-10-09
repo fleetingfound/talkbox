@@ -48,3 +48,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 23a: write-mount folder validation and failed-creation volume rollback](phase-23a-write-mount-validation-and-rollback.gen.md)
 - [Phase 23b: `--rm-container`/recreate write-volume removal via container-mount inspection](phase-23b-rm-container-write-volume-inspection.gen.md)
 - [Phase 23c: e2e nested `sdrun` units die with the parent suite unit](phase-23c-e2e-nested-units-die-with-parent.gen.md)
+- [Phase 25a: onbox `--recontain`/`--rebuild` install the nft deny rules and run `setup.sh`](phase-25a-onbox-recontain-nft-setup.gen.md)

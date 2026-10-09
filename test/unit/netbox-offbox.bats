@@ -591,18 +591,19 @@ setup() {
 	[[ "$(grep -c 'nsenter' "$PODMAN_LOG" || true)" -eq 0 ]]
 }
 
-@test "run_recreate recontain and rebuild order start, the nft install, setup.sh and stop per container for netbox and offbox" {
+@test "run_recreate recontain and rebuild order start, the nft install, setup.sh and stop per container for onbox, netbox and offbox" {
 	load_container_libs
 	use_podman_shim
 	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
 	local -a deny=(1.1.1.1) allow=() srcs=() dsts=()
 	# Per-container expectations indexed alongside containers: the step that
-	# must precede setup.sh (the nft deny install for netbox, the start for
-	# offbox) and a pattern that must not appear in the log (empty = no check).
-	local -a containers=(netbox offbox)
-	local -a ctrs=("$(netbox_container_name "$PROJECT")" "$(offbox_container_name "$PROJECT")")
-	local -a pre_patterns=('unshare.*nsenter.*nft' '^start ')
-	local -a absent_patterns=('' 'nsenter')
+	# must precede setup.sh (the nft deny install for onbox and netbox, the
+	# start for offbox) and a pattern that must not appear in the log (empty =
+	# no check).
+	local -a containers=(onbox netbox offbox)
+	local -a ctrs=("$(onbox_container_name "$PROJECT")" "$(netbox_container_name "$PROJECT")" "$(offbox_container_name "$PROJECT")")
+	local -a pre_patterns=('unshare.*nsenter.*nft' 'unshare.*nsenter.*nft' '^start ')
+	local -a absent_patterns=('' '' 'nsenter')
 	local i c rebuild pre_line setup_line stop_line absent_count
 	for i in "${!containers[@]}"; do
 		c="${containers[$i]}"

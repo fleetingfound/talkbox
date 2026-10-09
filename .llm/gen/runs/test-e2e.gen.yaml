@@ -1,5 +1,6 @@
 target: test-e2e
-started: '2026-10-09T15:52:26Z'
-exit: 0
-totals: { total: 78, pass: 78, fail: 0, skip: 0 }
+started: '2026-10-09T16:48:47Z'
+exit: 1
+totals: { total: 78, pass: 77, fail: 1, skip: 0 }
 fail:
+ - 'test/e2e/lifecycle.bats :: onbox --recontain recreates the container and starts it'

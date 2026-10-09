@@ -199,20 +199,23 @@ mk_talkbox_copy() {
 	[[ -n "$(podman_line '^stop -t 5 talkbox-proj.netbox$')" ]]
 }
 
-@test "talkbox.sh onbox --recontain recreates without populating, nft or setup" {
+@test "talkbox.sh onbox --recontain recreates without populating and installs nft and runs setup" {
 	use_podman_shim "$BASE_IMAGE"
 	run_dispatcher onbox --recontain
 	[[ "$status" -eq 0 ]]
 	[[ "$(podman_count '^run ')" -eq 0 ]]
 	[[ "$(podman_count '^commit ')" -eq 0 ]]
 	[[ "$(podman_count '^build ')" -eq 0 ]]
-	[[ "$(podman_count '^unshare ')" -eq 0 ]]
-	[[ "$(podman_count '^exec ')" -eq 0 ]]
 	[[ -n "$(podman_line '^rm -f --volumes talkbox-proj.onbox$')" ]]
 	[[ "$(podman_line_no '^rm -f --volumes')" -lt "$(podman_line_no '^volume create')" ]]
 	[[ "$(podman_line_no '^volume create')" -lt "$(podman_line_no '^create ')" ]]
 	[[ -n "$(podman_line '^start talkbox-proj.onbox$')" ]]
+	[[ -n "$(podman_line '^unshare nsenter')" ]]
+	[[ "$(podman_line_no '^start talkbox-proj.onbox$')" -lt "$(podman_line_no '^unshare nsenter')" ]]
+	[[ -n "$(podman_line '^exec talkbox-proj.onbox setup.sh$')" ]]
+	[[ "$(podman_line_no '^unshare nsenter')" -lt "$(podman_line_no '^exec talkbox-proj.onbox setup.sh$')" ]]
 	[[ -n "$(podman_line '^stop -t 5 talkbox-proj.onbox$')" ]]
+	[[ "$(podman_line_no '^exec talkbox-proj.onbox setup.sh$')" -lt "$(podman_line_no '^stop -t 5 talkbox-proj.onbox$')" ]]
 }
 
 @test "talkbox.sh onbox --rebuild builds the base image before recreating" {
@@ -223,8 +226,10 @@ mk_talkbox_copy() {
 	[[ "$(podman_line_no '^build -t')" -lt "$(podman_line_no '^rm -f --volumes')" ]]
 	[[ "$(podman_line_no '^rm -f --volumes')" -lt "$(podman_line_no '^create ')" ]]
 	[[ "$(podman_count '^commit ')" -eq 0 ]]
-	[[ "$(podman_count '^unshare ')" -eq 0 ]]
-	[[ "$(podman_count '^exec ')" -eq 0 ]]
+	[[ -n "$(podman_line '^unshare nsenter')" ]]
+	[[ -n "$(podman_line '^exec talkbox-proj.onbox setup.sh$')" ]]
+	[[ "$(podman_line_no '^start talkbox-proj.onbox$')" -lt "$(podman_line_no '^unshare nsenter')" ]]
+	[[ "$(podman_line_no '^unshare nsenter')" -lt "$(podman_line_no '^exec talkbox-proj.onbox setup.sh$')" ]]
 	[[ -n "$(podman_line '^start talkbox-proj.onbox$')" ]]
 }
 
