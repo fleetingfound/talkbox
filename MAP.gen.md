@@ -29,21 +29,6 @@ Core files implemented for the test harness:
 
 - [Makefile](Makefile) - top-level makefile which includes the test harness definitions from `test/runner.mk`.
 
-The remaining harness files live under `test/`:
-
-- [test/runner.mk](test/runner.mk) - defines the `test-unit`, `test-e2e`, `test-canary` and `test-timeout` targets, the `GLOBAL_TEST_TIMEOUT` and `INDIVIDUAL_TEST_TIMEOUT` defaults, and the `lint` and `format` targets.
-- [test/run-suite.sh](test/run-suite.sh) - runs a bats suite under the global timeout (via `systemd-run` with a `timeout(1)` fallback which unsets the suite-unit export), enforces the individual timeout via `BATS_TEST_TIMEOUT`, starts the systemd path under a deterministic, run-unique transient unit exported to the suite as `TALKBOX_SUITE_UNIT` (dropping the bats-libexec PATH entry on bats-nested runs so the unit resolves the standalone bats wrapper), parses the TAP output and writes the run record for the suite.
-- [test/lib.bash](test/lib.bash) - helper functions that parse bats TAP output into totals and failing test names, escape YAML single quotes, and write the YAML run record.
-- [test/unit/smoke.bats](test/unit/smoke.bats) - unit smoke tests which verify harness basics such as the timeout environment variables, per-test temporary directories and the bats runner.
-- [test/unit/dispatcher.bats](test/unit/dispatcher.bats) - dispatcher-level unit tests which drive `talkbox.sh <container>` as a subprocess over a logging podman shim, pinning per-container verb execution (default create, recontain, rebuild, rm-container, rm-image), the write-mount volume naming/collapse/merge behaviour, per-container pasta port threading, and the usage error surface.
-- [test/unit/parse-tap.bats](test/unit/parse-tap.bats) - unit tests for `parse_tap()` which source `test/lib.bash` and feed it crafted TAP fragments, covering diagnostic-branch and fallback `FAIL_NAMES` entries (including the `(unnamed)` placeholder for empty descriptions) and the `ok`/`# skip` paths that leave `FAIL` untouched.
-- [test/e2e/smoke.bats](test/e2e/smoke.bats) - end-to-end smoke tests which verify the harness from the outside, e.g. that `make` exposes the four test targets and that the runner writes run records.
-- [test/e2e/suite-unit.bats](test/e2e/suite-unit.bats) - harness tests for the suite-unit mechanism: `sdrun` declares or omits `StopPropagatedFrom` depending on the exported `TALKBOX_SUITE_UNIT`, and a nested `sdrun` unit started inside a real nested suite run is stopped when the suite wrapper unit is stopped, with every wait bounded by poll loops and the harness timeouts.
-- [test/e2e/helpers.bash](test/e2e/helpers.bash) - shared e2e helpers: the `sdrun` wrapper (per-invocation `systemd-run --user` unit with `RuntimeMaxSec=$SD_TIMEOUT` and `KillMode=control-group`, plus a `StopPropagatedFrom=$TALKBOX_SUITE_UNIT` dependency so its units die with the exported suite wrapper unit), the `mk_project`/`mk_talkbox`/`e2e_setup`/`e2e_teardown` fixture lifecycle with the minimal-image swap, the talkbox invocation delegates (`run_onbox_noninteractive`, `run_talkbox`, `run_talkbox_symlink`, the podman logging shim) and the HTTP-server/port-wait helpers.
-- [test/e2e/host_http_server.py](test/e2e/host_http_server.py) - e2e `--port` test server which binds a socket to port 0, prints the kernel-assigned port as its sole stdout line, then serves a given directory over HTTP using that already-bound socket (eliminating the probe-then-rebind race).
-- [test/canary/false.bats](test/canary/false.bats) - canary tests which intentionally assert something false and are expected to fail under `make test-canary`.
-- [test/timeout/hang.bats](test/timeout/hang.bats) - timeout canary test which runs a non-terminating command and is expected to fail under `make test-timeout`.
-
 Repository meta files:
 
 - [.gitignore](.gitignore) - ignores the untracked `.tmp/` scratch and `.mdi/` working directories.
