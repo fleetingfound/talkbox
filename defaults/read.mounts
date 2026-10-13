@@ -1,1 +1,2 @@
-~/.local/share/opencode/auth.json : /home/dev/.local/share/opencode/auth.json
+# Disabled by default; uncomment to mount host OpenCode credentials read-only.
+# ~/.local/share/opencode/auth.json : /home/dev/.local/share/opencode/auth.json
