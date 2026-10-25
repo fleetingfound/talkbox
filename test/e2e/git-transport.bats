@@ -13,6 +13,16 @@ teardown() {
 	e2e_teardown "$PLAIN_CTR"
 }
 
+mk_submodule_source() {
+	local dir="$1"
+	git -C "$dir" init -q
+	git -C "$dir" config user.email t@example.com
+	git -C "$dir" config user.name talkbox-test
+	printf 'submodule-file\n' >"$dir/file.txt"
+	git -C "$dir" add .
+	git -C "$dir" commit -q -m submodule-initial
+}
+
 @test "onbox exposes the host git history as the host remote inside the container" {
 	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git remote get-url host'
 	[[ "$status" -eq 0 ]]
@@ -88,20 +98,74 @@ teardown() {
 	done
 }
 
-@test "git operations inside a submodule are blocked within the container" {
+@test "submodule reads work in the container while submodule history writes are prevented" {
 	local remote
 	remote="$(mktemp -d)"
 	e2e_register_dir "$remote"
-	git -C "$remote" init -q
-	git -C "$remote" config user.email t@example.com
-	git -C "$remote" config user.name talkbox-test
-	printf 'submodule-file\n' >"$remote/file.txt"
-	git -C "$remote" add .
-	git -C "$remote" commit -q -m submodule-initial
+	mk_submodule_source "$remote"
 	git -C "$PROJECT" -c protocol.file.allow=always submodule add -q "$remote" sub
 	git -C "$PROJECT" commit -q -m add-submodule
 	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git -C sub status'
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'working tree clean'* ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git -C sub update-ref refs/heads/sub-blocked HEAD'
 	[[ "$status" -ne 0 ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git -C sub commit --allow-empty -m submodule-write'
+	[[ "$status" -ne 0 ]]
+}
+
+@test "superproject status and add succeed in the container with an absorbed submodule" {
+	local remote
+	remote="$(mktemp -d)"
+	e2e_register_dir "$remote"
+	mk_submodule_source "$remote"
+	git -C "$PROJECT" -c protocol.file.allow=always submodule add -q "$remote" sub
+	git -C "$PROJECT" commit -q -m add-submodule
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git status --porcelain && git add -A --dry-run'
+	[[ "$status" -eq 0 ]]
+	[[ -z "$output" ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'printf dirt >>sub/file.txt && git status --porcelain'
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *' M sub'* ]]
+}
+
+@test "the container resolves an absorbed module gitdir against the container submodule path" {
+	local remote
+	remote="$(mktemp -d)"
+	e2e_register_dir "$remote"
+	mk_submodule_source "$remote"
+	git -C "$PROJECT" -c protocol.file.allow=always submodule add -q --name module-name "$remote" sub
+	git -C "$PROJECT" commit -q -m add-submodule
+	git -C "$PROJECT" config --file .git/modules/module-name/config core.worktree "$PROJECT/sub"
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git -C sub rev-parse --show-toplevel'
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == "/working/$PROJECT_BASE/sub" ]]
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git -C sub status'
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'working tree clean'* ]]
+}
+
+@test "the container modules tree is refreshed from the host on every setup run" {
+	local remote
+	remote="$(mktemp -d)"
+	e2e_register_dir "$remote"
+	mk_submodule_source "$remote"
+	git -C "$PROJECT" -c protocol.file.allow=always submodule add -q "$remote" sub
+	git -C "$PROJECT" commit -q -m add-submodule
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git -C sub status'
+	[[ "$status" -eq 0 ]]
+	local remote2
+	remote2="$(mktemp -d)"
+	e2e_register_dir "$remote2"
+	mk_submodule_source "$remote2"
+	printf 'second-submodule-file\n' >"$remote2/file.txt"
+	git -C "$remote2" add .
+	git -C "$remote2" commit -q -m submodule-second-initial
+	git -C "$PROJECT" -c protocol.file.allow=always submodule add -q "$remote2" sub2
+	git -C "$PROJECT" commit -q -m add-second-submodule
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git -C sub2 status && git -C sub status'
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'working tree clean'* ]]
 }
 
 @test "onbox fetch brings a container commit into the host repo via a bundle without transferring configs or hooks" {
