@@ -1,5 +1,10 @@
 # Choices
 
+## Unresolved-issue resolutions (submodule gitdir inclusion)
+
+- [x] [Submodule modules inclusion mechanism](submodule-modules-inclusion-mechanism.gen.md) - how the absorbed `modules/` tree becomes reachable in the container gitdir volume (copy with `core.worktree` rewrite vs read-only bind-mount vs config-based descent skip). Selected: copy into the gitdir volume via `setup.sh`.
+- [x] [Submodule write prevention in the container](submodule-write-prevention-in-container.gen.md) - how "submodule git operations are prevented" is enforced once the module gitdirs are reachable (targeted read-only `objects/`/`refs/`, no enforcement, or fully read-only modules). Selected: targeted read-only `objects/`/`refs`.
+
 ## Implementation design choices
 
 - [x] [Module Structure](module-structure.gen.md) - how to split `talkbox.sh` logic across `lib/`.
