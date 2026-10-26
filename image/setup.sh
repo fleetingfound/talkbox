@@ -20,6 +20,31 @@ ensure_host_remote() {
 	git -C "$repo" remote add host /host/git/ 2>/dev/null || git -C "$repo" remote set-url host /host/git/ 2>/dev/null || true
 }
 
+include_host_modules() {
+	local repo="$1" src="/host/git/modules" dst config dir name path prefix
+	dst="$repo/.git/modules"
+	[[ -d "$src" ]] || return 0
+	[[ -n "$(find "$src" -mindepth 1 -maxdepth 1 -print -quit)" ]] || return 0
+	if [[ -d "$dst" ]]; then
+		chmod -R u+w "$dst"
+		rm -rf "$dst"
+	fi
+	cp -a "$src" "$dst"
+	while IFS= read -r -d '' config; do
+		dir="${config%/config}"
+		name="${dir#"$dst"/}"
+		path="$(git config --file "$repo/.gitmodules" --get "submodule.$name.path" 2>/dev/null || true)"
+		if [[ -n "$path" ]]; then
+			prefix="$(realpath -m --relative-to="$dir" "$repo")/"
+			git config --file "$config" core.worktree "$prefix$path"
+		fi
+		chmod -R u-w "$dir/objects" "$dir/refs"
+		if [[ -f "$dir/packed-refs" ]]; then
+			chmod u-w "$dir/packed-refs"
+		fi
+	done < <(find "$dst" -type f -name config -print0)
+}
+
 if [[ -d /host/git ]]; then
 	repo="$(pwd)"
 	if ! git -C "$repo" rev-parse --git-dir >/dev/null 2>&1; then
@@ -36,4 +61,5 @@ if [[ -d /host/git ]]; then
 	else
 		ensure_host_remote "$repo"
 	fi
+	include_host_modules "$repo"
 fi

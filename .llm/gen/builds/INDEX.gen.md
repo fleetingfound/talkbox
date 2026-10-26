@@ -53,3 +53,4 @@
 - [Phase 25a: onbox `--recontain`/`--rebuild` install the nft deny rules and run `setup.sh`](.llm/gen/builds/phase-25a-onbox-recontain-nft-setup.gen.md)
 - [Phase 25b: per-container configuration consolidation of the container implementation](.llm/gen/builds/phase-25b-container-config-consolidation.gen.md)
 - [Help flag (`--help` / `-h`)](.llm/gen/builds/help-flag.gen.md)
+- [Submodule gitdirs included in the container gitdir volume](.llm/gen/builds/submodule-gitdir-inclusion-in-container.gen.md)

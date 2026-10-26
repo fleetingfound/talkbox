@@ -4,3 +4,4 @@ Dispute documents describing tests whose implementation is erroneous or inconsis
 
 - [x] [Netbox/offbox write-mount assertions are internally contradictory](phase-3-mount-write-assertion-contradiction.gen.md)
 - [x] [`onbox sync` e2e test expects a fast-forward the plan now refuses (Case 1 untracked-file conflict)](phase-5b-sync-fast-forward-refusal.gen.md)
+- [ ] [Submodule e2e tests assert exact/empty `$output` that the SPEC-mandated `sdrun` harness makes unsatisfiable](submodule-tests-assert-noise-free-output.gen.md)

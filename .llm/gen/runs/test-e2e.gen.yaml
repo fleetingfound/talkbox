@@ -1,9 +1,7 @@
 target: test-e2e
-started: '2026-10-25T23:34:58Z'
+started: '2026-10-26T00:07:36Z'
 exit: 1
-totals: { total: 81, pass: 77, fail: 4, skip: 0 }
+totals: { total: 81, pass: 79, fail: 2, skip: 0 }
 fail:
- - 'test/e2e/git-transport.bats :: submodule reads work in the container while submodule history writes are prevented'
  - 'test/e2e/git-transport.bats :: superproject status and add succeed in the container with an absorbed submodule'
  - 'test/e2e/git-transport.bats :: the container resolves an absorbed module gitdir against the container submodule path'
- - 'test/e2e/git-transport.bats :: the container modules tree is refreshed from the host on every setup run'
