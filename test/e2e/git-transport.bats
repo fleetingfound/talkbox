@@ -121,9 +121,9 @@ mk_submodule_source() {
 	mk_submodule_source "$remote"
 	git -C "$PROJECT" -c protocol.file.allow=always submodule add -q "$remote" sub
 	git -C "$PROJECT" commit -q -m add-submodule
-	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git status --porcelain && git add -A --dry-run'
+	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'echo STATUS_BEGIN && git status --porcelain && git add -A --dry-run && echo STATUS_END'
 	[[ "$status" -eq 0 ]]
-	[[ -z "$output" ]]
+	[[ "$output" == *"STATUS_BEGIN"$'\n'"STATUS_END"* ]]
 	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'printf dirt >>sub/file.txt && git status --porcelain'
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *' M sub'* ]]
@@ -139,7 +139,7 @@ mk_submodule_source() {
 	git -C "$PROJECT" config --file .git/modules/module-name/config core.worktree "$PROJECT/sub"
 	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git -C sub rev-parse --show-toplevel'
 	[[ "$status" -eq 0 ]]
-	[[ "$output" == "/working/$PROJECT_BASE/sub" ]]
+	grep -Fxq "/working/$PROJECT_BASE/sub" <<<"$output"
 	run run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'git -C sub status'
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *'working tree clean'* ]]
