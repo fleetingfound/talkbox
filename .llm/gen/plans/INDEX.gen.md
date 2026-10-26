@@ -65,4 +65,4 @@ Resolution of the remaining unchecked issues:
 - [x] [Phase 24: Remove the per-container `run_*` dispatch wrappers](phase-24-remove-run-dispatch-wrappers.gen.md) #flow/unified #model/default
 - [x] [Phase 25a: onbox `--recontain`/`--rebuild` install the nft deny rules and run `setup.sh`](phase-25a-onbox-recontain-nft-setup.gen.md) #flow/redgreen #model/default
 - [x] [Phase 25b: per-container configuration consolidation of the container implementation](phase-25b-container-config-consolidation.gen.md) #flow/refactor #model/big
-- [ ] [Fix the dangling submodule gitfile: include absorbed `modules/` in the container gitdir volume](submodule-gitdir-inclusion-in-container.gen.md) #flow/redgreen #model/default
+- [x] [Fix the dangling submodule gitfile: include absorbed `modules/` in the container gitdir volume](submodule-gitdir-inclusion-in-container.gen.md) #flow/redgreen #model/default

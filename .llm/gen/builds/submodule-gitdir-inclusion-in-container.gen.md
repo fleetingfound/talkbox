@@ -2,7 +2,7 @@
 
 *Date: 2026-10-26*
 
-Status: **BLOCKED**
+Status: **SUCCESS**
 
 ## overview
 
@@ -10,16 +10,16 @@ Implemented the plan in [submodule-gitdir-inclusion-in-container.gen.md](../plan
 
 ## verification
 
-- `make test-unit`: 307/307 pass
-- `make test-e2e`: 79/81 pass
-- `shellcheck image/setup.sh` and `shfmt -d image/setup.sh`: green
+- `make lint` and `make format`: green
+- `make test-unit`: `total=307 pass=307 fail=0 skip=0 exit=0`
+- `make test-e2e`: `total=81 pass=81 fail=0 skip=0 exit=0`
 
-The passing submodule e2e coverage: submodule reads succeed while submodule history writes (`update-ref`, `commit`) fail with permission errors; the modules tree refreshes from the host on every setup run; the dirt-check phase (`git status --porcelain` reporting ` M sub`) and the behaviour asserted by the two blocked tests were additionally demonstrated correct via isolated replicas of the test bodies.
+The e2e coverage includes the plan's cases: submodule reads succeed while submodule history writes (`update-ref`, `commit`) fail with permission errors; superproject `git status`/`git add -A --dry-run` succeed with an absorbed submodule and dirtiness is tracked (` M sub`); the container resolves an absorbed module gitdir against the container submodule path (including a name≠path module with a host-planted absolute `core.worktree`); and the modules tree refreshes from the host on every setup run.
 
-## blocked on
+## dispute resolution
 
-Two of the plan's revised e2e tests assert on the entirety of `$output` (`[[ -z "$output" ]]` and exact equality), which the SPEC-mandated `sdrun`/bats harness makes unsatisfiable: `systemd-run --pipe --wait` prints unit-lifecycle lines to stderr, bats `run` folds stderr into `$output`, and first-run `podman volume create`/`create`/`start` stdout adds volume/container names. Captures show the asserted behaviour holding with only harness noise around it. Full details and suggested substring-style fixes: [the dispute document](../disputes/submodule-tests-assert-noise-free-output.gen.md), summarised here in one sentence — the two tests in test/e2e/git-transport.bats use exact/empty output assertions inconsistent with the harness noise floor that every other test in the suite accommodates via substring matching.
+The e2e suite initially reported 79/81 pass: the two revised submodule tests asserted exact/empty `$output` captures that the SPEC-mandated `sdrun` harness makes unsatisfiable. [The dispute document](../disputes/submodule-tests-assert-noise-free-output.gen.md) was resolved by [the verdict document](../verdicts/submodule-tests-assert-noise-free-output.gen.md), which found both tests `BROKEN_TEST` and prescribed marker-adjacency/`grep -Fxq` assertion repairs; those repairs are applied in [test/e2e/git-transport.bats](../../../test/e2e/git-transport.bats) and both tests now pass. The dispute and verdict are marked complete in their indexes.
 
 ## resolution
 
-This resolves [the dangling-gitfile issue](../issues/submodule-gitfile-dangling-in-container.gen.md) (marked complete in the issues index). The plan stays unchecked in the plans index pending resolution of the dispute.
+This resolves [the dangling-gitfile issue](../issues/submodule-gitfile-dangling-in-container.gen.md) (marked complete in the issues index). The plan is marked complete in the plans index.
