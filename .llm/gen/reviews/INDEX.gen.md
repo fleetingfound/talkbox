@@ -1,3 +1,1 @@
-# Reviews
-
-- [Per-container dedication and the feasibility of a common container implementation](container-common-implementation.gen.md) - extent to which onbox/netbox/offbox rely on dedicated functions, and feasibility of a config-driven common implementation.
+- [Investigation: `onbox merge` reporting "no git history in the onbox gitdir volume" despite an existing multi-commit history](onbox-merge-git-history-probe.gen.md)
