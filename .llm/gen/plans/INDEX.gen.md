@@ -66,4 +66,4 @@ Resolution of the remaining unchecked issues:
 - [x] [Phase 25a: onbox `--recontain`/`--rebuild` install the nft deny rules and run `setup.sh`](phase-25a-onbox-recontain-nft-setup.gen.md) #flow/redgreen #model/default
 - [x] [Phase 25b: per-container configuration consolidation of the container implementation](phase-25b-container-config-consolidation.gen.md) #flow/refactor #model/big
 - [x] [Fix the dangling submodule gitfile: include absorbed `modules/` in the container gitdir volume](submodule-gitdir-inclusion-in-container.gen.md) #flow/redgreen #model/default
-- [ ] [Podman-backed gitdir history probe in `require_git_history`](gitdir-history-podman-probe.gen.md) #flow/redgreen #model/default
+- [x] [Podman-backed gitdir history probe in `require_git_history`](gitdir-history-podman-probe.gen.md) #flow/redgreen #model/default
