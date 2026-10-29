@@ -229,7 +229,6 @@ podman() {
 		mock_container_run "$@"
 		;;
 	esac
-	return 0
 }
 
 mock_volume_mountpoint() {
