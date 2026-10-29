@@ -135,3 +135,8 @@
 - [x] [Per-container configuration mechanism](container-config-mechanism.gen.md) - how the per-container configuration record is represented and where it lives (case-based lookup module, associative-array table, or per-field accessors). Selected: case-based lookup module.
 - [x] [Consolidation scope](container-consolidation-scope.gen.md) - whether all ~12 container-conditional branch points become configuration, or 2-3 readable cases (notably `inherit_source`) are retained. Selected: full config-driven.
 - [x] [Post-consolidation naming interface](container-naming-interface.gen.md) - what replaces the 9 naming one-liners and the 4 `*_of` dispatchers (genericized `*_of` dispatchers, one parametric resource-name helper, or no change). Selected: genericized `*_of` dispatchers.
+
+## Gitdir history probe (`require_git_history`)
+
+- [x] [Gitdir history probe mechanism](gitdir-history-probe-mechanism.gen.md) - how `require_git_history` validates the gitdir volume contents (podman-run volume-mounted HEAD probe, drop the pre-check in favour of downstream failure mapping, or host-stat with podman fallback). Selected: podman-run volume-mounted HEAD probe.
+- [x] [Gitdir probe failure diagnostics](gitdir-probe-failure-diagnostics.gen.md) - how probe failures are reported (three-way exit-code interpretation with surfaced podman stderr vs uniform "no git history" message). Selected: three-way exit-code interpretation with surfaced stderr.
