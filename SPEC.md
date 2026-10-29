@@ -106,7 +106,6 @@ It includes the following mounts:
 - the host's working tree `<project>/`, bind-mounted to `/working/<project-base>/` (read-write bind-mount)
 - the host's git folder `<project>/.git/`, bind-mounted to `/host/git/` (read-only bind-mount)
 - the volume `<project-slug>.onbox.gitdir` is mounted to `/working/<project-base>/.git/` (read-write volume)
-
   - After creating and mounting the volume, `/host/git/` is set as a remote and `/working/<project-base>/` as its working tree.
 
 - the global dotfiles folder `defaults/dotfiles/` from this repository, bind-mounted to `/talkbox/dotfiles.global/` (read-only bind-mount)
@@ -121,12 +120,10 @@ At the time of creation of the `netbox` container, if the `onbox` container exis
 The `netbox` container includes the following mounts:
 
 - the volume `<project-slug>.netbox.worktree`, mounted to `/working/<project-base>/` (read-write volume)
-
   - created by copying the contents of the host's working tree `<project>/` into the volume
 
 - the host's git folder `<project>/.git/`, bind-mounted to `/host/git/` (read-only bind-mount)
 - the volume `<project-slug>.netbox.gitdir` is mounted to `/working/<project-base>/.git/` (read-write volume)
-
   - After creating and mounting the volume, `/host/git/` is set as a remote and `/working/<project-base>/` as its working tree.
 
 - the global dotfiles folder `defaults/dotfiles/` from this repository, bind-mounted to `/talkbox/dotfiles.global/` (read-only bind-mount)
@@ -143,20 +140,17 @@ At the time of creation of the `offbox` container, if the `netbox` container exi
 The `offbox` container includes the following mounts:
 
 - the volume `<project-slug>.offbox.worktree`, mounted to `/working/<project-base>/` (read-write volume)
-
   - created as a copy of `<project-slug>.netbox.worktree` if that volume exists
   - created by copying the contents of the host's working tree `<project>/` into the volume otherwise
 
 - the host's git folder `<project>/.git/`, bind-mounted to `/host/git/` (read-only bind-mount)
 - the volume `<project-slug>.offbox.gitdir` is mounted to `/working/<project-base>/.git/` (read-write volume)
-
   - After creating and mounting the volume, `/host/git/` is set as a remote and `/working/<project-base>/` as its working tree.
 
 - the global dotfiles folder `defaults/dotfiles/` from this repository, bind-mounted to `/talkbox/dotfiles.global/` (read-only bind-mount)
 - the project dotfiles folder `<project>/.dotfiles/`, bind-mounted to `/talkbox/dotfiles.project/` when it exists on the host (read-only bind-mount)
 - every read mount as a read-only bind-mount (read-only bind-mount)
 - every write mount as a read-write volume (read-write volume)
-
   - initialized as a copy of the corresponding `netbox` write mount volume if that volume exists, or copied from `<source>` on the host otherwise
 
 The `offbox` container is never given write access to the host system. Every mount it receives is either a read-only bind-mount or a volume.
@@ -284,7 +278,7 @@ All merge operations performed by these commands are fast-forward only.
 
 None of the git-related subcommands should affect the contents of the working tree except when fast-forwarding a branch with no staged changes and a clean worktree.
 
-Submodules are supported. When `onbox`, `netbox` or `offbox` are used to create a container, the submodules are absorbed into the host's top-level git directory and then included in 
+Submodules are supported. When `onbox`, `netbox` or `offbox` are used to create a container, the submodules are absorbed into the host's top-level git directory and then included in the container.
 
 However, git operations within a submodule are prevented within the container and must be made on the host instead.
 

@@ -118,6 +118,15 @@ host_fetch_cmd() {
 	_out+=("git" "fetch" "$bundle" "+refs/heads/*:refs/remotes/$container/*")
 }
 
+gitdir_probe_cmd() {
+	local -n _out="$1"
+	local project="$2" container="$3"
+	plan_no_net_run "${!_out}"
+	_out+=("-v" "$(gitdir_volume "$project" "$container"):/gitdir:ro")
+	_out+=("$(base_image_name)")
+	_out+=("test" "-e" "/gitdir/HEAD")
+}
+
 plan_fetch() {
 	local -n _bundle_cmd="$1"
 	local -n _fetch_cmd="$2"
@@ -211,15 +220,19 @@ require_gitdir_volume() {
 }
 
 require_git_history() {
-	local project="$1" container="$2" vol mountpoint
+	local project="$1" container="$2" stderr rc=0
 	if ! git_tracked "$project"; then
 		die "not a git repository: $project" 1
 	fi
 	require_gitdir_volume "$project" "$container"
-	vol="$(gitdir_volume "$project" "$container")"
-	mountpoint="$(podman volume inspect --format '{{.Mountpoint}}' "$vol" 2>/dev/null)"
-	if [[ -z "$mountpoint" || ! -e "$mountpoint/HEAD" ]]; then
+	local -a probe_cmd=()
+	gitdir_probe_cmd probe_cmd "$project" "$container"
+	stderr="$("${probe_cmd[@]}" 2>&1 >/dev/null)" || rc=$?
+	if ((rc == 1)); then
 		die "no git history in the $container gitdir volume; start the container first" 1
+	fi
+	if ((rc != 0)); then
+		die "the git history probe for the $container gitdir volume failed${stderr:+: $stderr}" 1
 	fi
 }
 
