@@ -204,11 +204,16 @@ setup() {
 
 # Function-based podman mock for exercising run_fetch/run_merge.
 # PODMAN_VOLUMES lists existing volume names; PODMAN_FAIL_PATTERN/PODMAN_FAIL_CODE
-# make matching invocations fail; mock_volume_mountpoint supplies volume mountpoints;
-# mock_container_run executes the `podman run` bundle command.
+# make matching invocations fail, printing PODMAN_FAIL_STDERR to stderr when set;
+# PODMAN_MOUNTPOINTS maps volume names to the host path standing in for the
+# volume contents; mock_container_run executes the `podman run` bundle command
+# and resolves the gitdir HEAD probe through PODMAN_MOUNTPOINTS.
 podman() {
 	printf '%s\n' "$*" >>"$PODMAN_LOG"
 	if [[ -n "${PODMAN_FAIL_PATTERN:-}" && "$*" == *"$PODMAN_FAIL_PATTERN"* ]]; then
+		if [[ -n "${PODMAN_FAIL_STDERR:-}" ]]; then
+			printf '%s\n' "$PODMAN_FAIL_STDERR" >&2
+		fi
 		return "${PODMAN_FAIL_CODE:-1}"
 	fi
 	case "$1 $2" in
@@ -219,9 +224,6 @@ podman() {
 			[[ "$vol" == "$3" ]] && return 0
 		done
 		return 1
-		;;
-	"volume inspect")
-		mock_volume_mountpoint "$5"
 		;;
 	"run "*)
 		mock_container_run "$@"
@@ -236,7 +238,7 @@ mock_volume_mountpoint() {
 
 mock_container_run() {
 	local -a args=("$@")
-	local i spec vol repo="" hostdir="" name=""
+	local i spec vol repo="" hostdir="" name="" probe=""
 	for ((i = 1; i < ${#args[@]}; i++)); do
 		if [[ "${args[i]}" == -v ]]; then
 			spec="${args[i + 1]}"
@@ -251,8 +253,14 @@ mock_container_run() {
 			esac
 		elif [[ "${args[i]}" == /host/bundle/* ]]; then
 			name="${args[i]#/host/bundle/}"
+		elif [[ "${args[i]}" == test && "${args[i + 1]}" == -e && "${args[i + 2]}" == /gitdir/HEAD ]]; then
+			probe=yes
 		fi
 	done
+	if [[ "$probe" == yes ]]; then
+		[[ -n "$repo" && -e "$repo/HEAD" ]]
+		return
+	fi
 	[[ -n "$repo" && -n "$hostdir" && -n "$name" ]] || return 1
 	git --git-dir="$repo" bundle create "$hostdir/$name" --all
 }
@@ -331,15 +339,36 @@ bundle_tmp_dir_from_log() {
 @test "run_merge dies with the start the container first message when the gitdir volume has no HEAD" {
 	load_lib git.sh
 	PODMAN_VOLUMES="$VOL"
-	local empty_mp="$BATS_TEST_TMPDIR/empty-mount"
-	mkdir -p "$empty_mp"
-	PODMAN_MOUNTPOINTS["$VOL"]="$empty_mp"
+	local empty_gitdir="$BATS_TEST_TMPDIR/empty-gitdir"
+	mkdir -p "$empty_gitdir"
+	PODMAN_MOUNTPOINTS["$VOL"]="$empty_gitdir"
 	local head_before
 	head_before="$(git -C "$WORK" rev-parse HEAD)"
 	cd "$WORK"
 	run run_merge "$WORK" onbox no ''
 	[[ "$status" -ne 0 ]]
 	[[ "$output" == *'talkbox: no git history in the onbox gitdir volume; start the container first'* ]]
+	[[ "$(git -C "$WORK" rev-parse HEAD)" == "$head_before" ]]
+	grep -q 'test -e /gitdir/HEAD' "$PODMAN_LOG"
+	[[ -z "$(grep 'volume inspect' "$PODMAN_LOG" || true)" ]]
+}
+
+@test "run_merge reports a distinct infra diagnostic with the podman stderr when the history probe run fails" {
+	load_lib git.sh
+	PODMAN_VOLUMES="$VOL"
+	PODMAN_MOUNTPOINTS["$VOL"]="$CTR_REPO/.git"
+	PODMAN_FAIL_PATTERN='test -e /gitdir/HEAD'
+	PODMAN_FAIL_CODE=125
+	PODMAN_FAIL_STDERR='podman: cannot connect to the podman socket'
+	local head_before
+	head_before="$(git -C "$WORK" rev-parse HEAD)"
+	cd "$WORK"
+	run run_merge "$WORK" onbox no ''
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$output" == *'onbox'* ]]
+	[[ "$output" != *'no git history in the onbox gitdir volume'* ]]
+	[[ "$output" == *'podman: cannot connect to the podman socket'* ]]
 	[[ "$(git -C "$WORK" rev-parse HEAD)" == "$head_before" ]]
 }
 

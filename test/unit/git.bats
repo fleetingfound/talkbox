@@ -155,3 +155,22 @@ setup() {
 	[[ "${cmd[9]}" == -e ]]
 	[[ "${cmd[10]}" == 'GIT_DIR=/gitdir' ]]
 }
+
+@test "gitdir_probe_cmd opens with the exact no-network run prefix, the read-only gitdir mount and the HEAD probe" {
+	load_lib git.sh
+	load_lib naming.sh
+	local -a cmd=()
+	gitdir_probe_cmd cmd "$PROJECT" onbox
+	[[ "${cmd[0]}" == podman ]]
+	[[ "${cmd[1]}" == run ]]
+	[[ "${cmd[2]}" == --rm ]]
+	[[ "${cmd[3]}" == --network=none ]]
+	[[ "${cmd[4]}" == --userns=keep-id:uid=1000,gid=1000 ]]
+	[[ "${cmd[5]}" == -v ]]
+	[[ "${cmd[6]}" == 'proj.onbox.gitdir:/gitdir:ro' ]]
+	[[ "${cmd[7]}" == "$(base_image_name)" ]]
+	[[ "${cmd[8]}" == test ]]
+	[[ "${cmd[9]}" == -e ]]
+	[[ "${cmd[10]}" == /gitdir/HEAD ]]
+	[[ "${#cmd[@]}" -eq 11 ]]
+}
