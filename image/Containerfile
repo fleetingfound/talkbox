@@ -11,6 +11,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     fzf \
     git \
     less \
+    libatomic1 \
     neovim \
     sudo \
     tmux \
