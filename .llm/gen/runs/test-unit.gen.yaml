@@ -1,10 +1,6 @@
 target: test-unit
-started: '2026-10-29T17:32:34Z'
+started: '2026-10-29T17:41:06Z'
 exit: 1
-totals: { total: 309, pass: 304, fail: 5, skip: 0 }
+totals: { total: 309, pass: 308, fail: 1, skip: 0 }
 fail:
- - 'test/unit/git.bats :: gitdir_probe_cmd opens with the exact no-network run prefix, the read-only gitdir mount and the HEAD probe'
  - 'test/unit/git-transport.bats :: run_merge dies with the start the container first message when the gitdir volume has no HEAD'
- - 'test/unit/git-transport.bats :: run_merge reports a distinct infra diagnostic with the podman stderr when the history probe run fails'
- - 'test/unit/git-transport.bats :: run_merge fetches the container bundle and fast-forwards the current branch'
- - 'test/unit/git-transport.bats :: run_merge surfaces a failed bundle command as a non-zero result without merging'
