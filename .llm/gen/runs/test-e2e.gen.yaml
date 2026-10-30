@@ -1,7 +1,6 @@
 target: test-e2e
-started: '2026-10-30T02:51:46Z'
+started: '2026-10-30T03:10:51Z'
 exit: 1
-totals: { total: 83, pass: 81, fail: 2, skip: 0 }
+totals: { total: 83, pass: 82, fail: 1, skip: 0 }
 fail:
- - 'test/e2e/lifecycle.bats :: onbox concurrent sessions: a short session exits without stopping a live longer session'
  - 'test/e2e/lifecycle.bats :: onbox concurrent sessions: the container stops only after the last session exits when the short session starts it'

@@ -1,10 +1,5 @@
 target: test-unit
-started: '2026-10-30T02:51:02Z'
-exit: 1
-totals: { total: 314, pass: 309, fail: 5, skip: 0 }
+started: '2026-10-30T03:10:04Z'
+exit: 0
+totals: { total: 314, pass: 314, fail: 0, skip: 0 }
 fail:
- - 'test/unit/containers.bats :: run_container consults the exec-session listing after the exec and stops when no sessions remain'
- - 'test/unit/containers.bats :: run_container leaves the container running when exec sessions remain after its exec exits'
- - 'test/unit/containers.bats :: run_container returns the exec exit status and defers the stop when exec sessions remain'
- - 'test/unit/containers.bats :: run_container stops the container when the exec-session listing fails or is unsupported'
- - 'test/unit/containers.bats :: run_container leaves the container running when exec sessions remain after an interactive session'

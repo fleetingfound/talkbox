@@ -379,6 +379,14 @@ stop_container() {
 	podman stop -t "$STOP_GRACE_SECONDS" "$1" >/dev/null 2>&1 || true
 }
 
+stop_container_when_no_sessions_remain() {
+	local ctr="$1" sessions
+	if sessions="$(podman container inspect -f '{{json .ExecIDs}}' "$ctr" 2>/dev/null)" && [[ "$sessions" == *'"'* ]]; then
+		return 0
+	fi
+	stop_container "$ctr"
+}
+
 stop_and_die() {
 	local ctr="$1" message="$2"
 	stop_container "$ctr"
@@ -428,7 +436,7 @@ exec_in_container() {
 	else
 		podman exec --interactive --tty "$ctr" /bin/bash || status=$?
 	fi
-	stop_container "$ctr"
+	stop_container_when_no_sessions_remain "$ctr"
 	return "$status"
 }
 

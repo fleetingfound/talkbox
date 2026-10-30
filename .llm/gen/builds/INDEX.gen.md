@@ -55,3 +55,4 @@
 - [Help flag (`--help` / `-h`)](.llm/gen/builds/help-flag.gen.md)
 - [Phase 26: submodule gitdirs included in the container gitdir volume](.llm/gen/builds/phase-26-submodule-gitdir-inclusion-in-container.gen.md)
 - [Phase 27: podman-backed gitdir history probe in `require_git_history`](.llm/gen/builds/phase-27-gitdir-history-podman-probe.gen.md)
+- [Phase 28a: stop the container only when no exec sessions remain](.llm/gen/builds/phase-28a-concurrent-session-stop-on-last-session.gen.md)
