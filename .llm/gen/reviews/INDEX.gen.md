@@ -1,1 +1,2 @@
 - [Investigation: `onbox merge` reporting "no git history in the onbox gitdir volume" despite an existing multi-commit history](onbox-merge-git-history-probe.gen.md)
+- [Review: multiple terminals attached to the same container](multi-terminal-container-sessions.gen.md)
