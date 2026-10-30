@@ -69,6 +69,7 @@ setup() {
 	ALLOW=()
 	SHIM="$BATS_TEST_TMPDIR/shim"
 	LOG="$BATS_TEST_TMPDIR/podman.log"
+	export TALKBOX_LOCK_DIR="$BATS_TEST_TMPDIR/locks"
 }
 
 @test "run_recreate onbox no removes, recreates and starts the onbox container, installing nft, running setup and stopping" {
@@ -632,4 +633,92 @@ setup() {
 		[[ "$ext_line" -lt "$rm_line" ]]
 		[[ "$rm_line" -lt "$rmi_line" ]]
 	done
+}
+
+@test "run_recreate holds the container lock across the whole plan execution" {
+	load_container_libs
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_VOLUMES="talkbox-proj.onbox.gitdir"
+	local path probe_log hook
+	path="$(container_lock_path talkbox-proj.onbox)"
+	probe_log="$BATS_TEST_TMPDIR/probe.log"
+	hook="$BATS_TEST_TMPDIR/lock-probe.sh"
+	make_lock_probe_hook "$hook"
+	export LOCK_PROBE_PATH="$path" LOCK_PROBE_LOG="$probe_log"
+	export PODMAN_STALL_PATTERN='talkbox-proj.onbox' PODMAN_STALL_SECONDS=0.1 PODMAN_STALL_HOOK="$hook"
+	run run_recreate onbox no "$PROJECT" no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ "$(grep_count '^held rm -f --volumes talkbox-proj.onbox$' "$probe_log")" -eq 1 ]]
+	[[ "$(grep_count '^held volume rm -f talkbox-proj.onbox.gitdir$' "$probe_log")" -eq 1 ]]
+	[[ "$(grep_count '^held create ' "$probe_log")" -eq 1 ]]
+	[[ "$(grep_count '^held start talkbox-proj.onbox$' "$probe_log")" -eq 1 ]]
+	run lock_is_free "$path"
+	[[ "$status" -eq 0 ]]
+}
+
+@test "run_recreate holds the container lock through the rollback when the plan fails" {
+	load_container_libs
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_VOLUMES="talkbox-proj.onbox.gitdir"
+	export PODMAN_FAIL_PATTERN='start talkbox-proj.onbox'
+	local path probe_log hook
+	path="$(container_lock_path talkbox-proj.onbox)"
+	probe_log="$BATS_TEST_TMPDIR/probe.log"
+	hook="$BATS_TEST_TMPDIR/lock-probe.sh"
+	make_lock_probe_hook "$hook"
+	export LOCK_PROBE_PATH="$path" LOCK_PROBE_LOG="$probe_log"
+	export PODMAN_STALL_PATTERN='rm -f talkbox-proj.onbox' PODMAN_STALL_SECONDS=0.1 PODMAN_STALL_HOOK="$hook"
+	run run_recreate onbox no "$PROJECT" no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$(grep_count '^held rm -f talkbox-proj.onbox$' "$probe_log")" -eq 1 ]]
+	[[ "$(grep_count '^free rm -f talkbox-proj.onbox$' "$probe_log")" -eq 0 ]]
+	[[ -n "$(podman_line '^volume rm -f talkbox-proj.onbox.gitdir$')" ]]
+	run lock_is_free "$path"
+	[[ "$status" -eq 0 ]]
+}
+
+@test "run_rm_container holds the container lock across the plan execution" {
+	load_container_libs
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_CONTAINERS="talkbox-proj.netbox"
+	export PODMAN_INSPECT_MOUNTS="talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir talkbox-proj.netbox.write.talkbox-wdata"
+	export PODMAN_VOLUMES="talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir talkbox-proj.netbox.write.talkbox-wdata"
+	export PODMAN_IMAGES="talkbox-proj.netbox.root"
+	local path probe_log hook
+	path="$(container_lock_path talkbox-proj.netbox)"
+	probe_log="$BATS_TEST_TMPDIR/probe.log"
+	hook="$BATS_TEST_TMPDIR/lock-probe.sh"
+	make_lock_probe_hook "$hook"
+	export LOCK_PROBE_PATH="$path" LOCK_PROBE_LOG="$probe_log"
+	export PODMAN_STALL_PATTERN='talkbox-proj.netbox' PODMAN_STALL_SECONDS=0.1 PODMAN_STALL_HOOK="$hook"
+	run run_rm_container netbox "$PROJECT"
+	[[ "$status" -eq 0 ]]
+	[[ "$(grep_count '^held rm -f --volumes talkbox-proj.netbox$' "$probe_log")" -eq 1 ]]
+	[[ "$(grep_count '^held volume rm -f talkbox-proj.netbox.gitdir$' "$probe_log")" -eq 1 ]]
+	[[ "$(grep_count '^held rmi talkbox-proj.netbox.root$' "$probe_log")" -eq 1 ]]
+	run lock_is_free "$path"
+	[[ "$status" -eq 0 ]]
+}
+
+@test "run_rm_image holds the container lock across the plan execution" {
+	load_container_libs
+	use_podman_shim
+	export PODMAN_EXTERNAL="ext1"
+	local path probe_log hook base
+	base="$(base_image_name)"
+	path="$(container_lock_path talkbox-proj.onbox)"
+	probe_log="$BATS_TEST_TMPDIR/probe.log"
+	hook="$BATS_TEST_TMPDIR/lock-probe.sh"
+	make_lock_probe_hook "$hook"
+	export LOCK_PROBE_PATH="$path" LOCK_PROBE_LOG="$probe_log"
+	export PODMAN_STALL_PATTERN="$base" PODMAN_STALL_SECONDS=0.1 PODMAN_STALL_HOOK="$hook"
+	run run_rm_image onbox "$PROJECT"
+	[[ "$status" -eq 0 ]]
+	[[ "$(grep_count "^held rmi $base\$" "$probe_log")" -eq 1 ]]
+	run lock_is_free "$path"
+	[[ "$status" -eq 0 ]]
 }

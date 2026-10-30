@@ -7,12 +7,16 @@ SD_TIMEOUT="${SD_TIMEOUT:-$((INDIVIDUAL_TEST_TIMEOUT - 5))}"
 E2E_BASE_IMAGE='talkbox/base-e2e:latest'
 
 sdrun() {
-	local -a suite_prop=()
+	local -a suite_prop=() lock_env=()
 	if [[ -n "${TALKBOX_SUITE_UNIT:-}" ]]; then
 		suite_prop=(-p "StopPropagatedFrom=$TALKBOX_SUITE_UNIT")
 	fi
+	if [[ -n "${E2E_LOCK_DIR:-}" ]]; then
+		lock_env=(-E "TALKBOX_LOCK_DIR=$E2E_LOCK_DIR")
+	fi
 	systemd-run --user --wait --collect --pipe \
 		"${suite_prop[@]}" \
+		"${lock_env[@]}" \
 		-p "RuntimeMaxSec=$SD_TIMEOUT" \
 		-p KillMode=control-group \
 		-E "PATH=$PATH" \
@@ -152,6 +156,11 @@ e2e_setup() {
 	E2E_EXTRA_DIRS=()
 	E2E_SERVER_PIDS=()
 	E2E_PODMAN_SHIM_DIR=''
+	# Per-test lock directory for the container lock (TALKBOX_LOCK_DIR override,
+	# forwarded into every unit by sdrun) so concurrent-invocation tests never
+	# touch the user's real runtime-dir lock directory.
+	E2E_LOCK_DIR="$BATS_TEST_TMPDIR/locks"
+	mkdir -p "$E2E_LOCK_DIR"
 	PROJECT="$(mk_project)"
 	TALKBOX="$(mk_talkbox)"
 	ensure_base_image_e2e "$TALKBOX"
@@ -238,10 +247,16 @@ run_onbox_session_holding_unit() {
 	# container the session started, since conmon and pasta live in the unit's
 	# cgroup, so a test that observes a started container after its session
 	# exits must hold the unit open; the bounded hold stays below the unit's
-	# RuntimeMaxSec.
+	# RuntimeMaxSec. When e2e_use_podman_shim has registered a shim directory,
+	# PATH="$shimdir:$PATH" is prepended for the wrapped talkbox invocation so
+	# its podman calls reach the shim.
 	local project="$1" talkbox="$2" cmd="$3" hold="$4" status_file="$5"
+	local -a env_args=()
+	if [[ -n "$E2E_PODMAN_SHIM_DIR" ]]; then
+		env_args=("PATH=$E2E_PODMAN_SHIM_DIR:$PATH")
+	fi
 	# shellcheck disable=SC2016 # $0/$1/$2/$3/$4 expand inside the wrapped bash -c
-	sdrun bash -c 'cd "$1" && "$0/talkbox.sh" onbox -c --noninteractive "$2"; st=$?; printf "%s\n" "$st" >"$3"; sleep "$4"; exit "$st"' "$talkbox" "$project" "$cmd" "$status_file" "$hold"
+	sdrun env "${env_args[@]}" bash -c 'cd "$1" && "$0/talkbox.sh" onbox -c --noninteractive "$2"; st=$?; printf "%s\n" "$st" >"$3"; sleep "$4"; exit "$st"' "$talkbox" "$project" "$cmd" "$status_file" "$hold"
 }
 
 run_talkbox() {
@@ -297,6 +312,30 @@ esac
 EOF
 	fi
 	cat >>"$dir/podman" <<EOF
+exec '$real' "\$@"
+EOF
+	chmod +x "$dir/podman"
+	printf '%s\n' "$dir"
+}
+
+mk_podman_stalling_shim() {
+	# $1: log file path; $2: podman subcommand to stall (empty: never stall);
+	# $3: stall seconds (default 0). Every invocation is logged as
+	# "<epoch-millis>\t<args>" and then delegated to the real podman; a
+	# matching subcommand sleeps before delegating, which keeps the talkbox
+	# critical section around that invocation open so concurrent-invocation
+	# tests can launch a second invocation into the open section. The
+	# timestamped log lets a test order one invocation's step against
+	# another's across two shim directories.
+	local log="$1" sub="${2:-}" secs="${3:-0}" dir real
+	dir="$(mktemp -d)"
+	real="$(command -v podman)"
+	cat >"$dir/podman" <<EOF
+#!/usr/bin/env bash
+printf '%s\t%s\n' "\$(date +%s%3N)" "\$*" >>'$log'
+if [[ -n '$sub' && "\$1" == '$sub' ]]; then
+	sleep '$secs'
+fi
 exec '$real' "\$@"
 EOF
 	chmod +x "$dir/podman"

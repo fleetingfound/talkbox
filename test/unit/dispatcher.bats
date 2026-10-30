@@ -16,6 +16,7 @@ setup() {
 	git -C "$PROJECT" config user.email host@example.com
 	SHIM="$BATS_TEST_TMPDIR/shim"
 	LOG="$BATS_TEST_TMPDIR/podman.log"
+	export TALKBOX_LOCK_DIR="$BATS_TEST_TMPDIR/locks"
 	make_podman_shim "$SHIM"
 }
 

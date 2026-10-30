@@ -1,3 +1,4 @@
+# shellcheck disable=SC2030,SC2031 # bats runs each test in a subshell; the E2E_PODMAN_SHIM_DIR exports are scoped to their own test
 load helpers
 
 setup() {
@@ -207,4 +208,86 @@ container_exec_sessions() {
 	astatus=0
 	wait "$apid_first" || astatus=$?
 	[[ "$astatus" -eq 0 ]]
+}
+
+@test "onbox concurrent first invocations: both succeed and attach to the one created container" {
+	local log shimdir log1 log2 pid1 pid2 s1 s2
+	log="$BATS_TEST_TMPDIR/podman-race.log"
+	shimdir="$(mk_podman_logging_shim "$log")"
+	e2e_register_dir "$shimdir"
+	# A non-git project keeps the two concurrent setup.sh runs free of git
+	# ref-lock contention; the create-race behaviour under test is
+	# git-independent.
+	rm -rf "$PROJECT/.git"
+	log1="$BATS_TEST_TMPDIR/race-first.log"
+	log2="$BATS_TEST_TMPDIR/race-second.log"
+	# Both invocations are held open past their session: whichever invocation
+	# wins the create race starts the container inside its unit, and that
+	# unit's deactivation (KillMode=control-group) would destroy the container
+	# while the concurrent session is still using it.
+	{
+		export E2E_PODMAN_SHIM_DIR="$shimdir"
+		run_onbox_session_holding_unit "$PROJECT" "$TALKBOX" 'sleep 2' 10 "$BATS_TEST_TMPDIR/race-first.status"
+	} >"$log1" 2>&1 &
+	pid1=$!
+	{
+		export E2E_PODMAN_SHIM_DIR="$shimdir"
+		run_onbox_session_holding_unit "$PROJECT" "$TALKBOX" 'sleep 2' 10 "$BATS_TEST_TMPDIR/race-second.status"
+	} >"$log2" 2>&1 &
+	pid2=$!
+	wait_for_session_marker "$BATS_TEST_TMPDIR/race-first.status"
+	wait_for_session_marker "$BATS_TEST_TMPDIR/race-second.status"
+	[[ "$(cat "$BATS_TEST_TMPDIR/race-first.status")" == 0 ]]
+	[[ "$(cat "$BATS_TEST_TMPDIR/race-second.status")" == 0 ]]
+	# exactly one of the two invocations created the container
+	[[ "$(grep -c '^create ' "$log" || true)" -eq 1 ]]
+	# no rollback fired against the shared container
+	[[ "$(grep -c "^rm -f $CTR\$" "$log" || true)" -eq 0 ]]
+	# the container survived the race and is usable afterwards
+	run sdrun podman container exists "$CTR"
+	[[ "$status" -eq 0 ]]
+	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'echo USABLE > .race-probe && cat .race-probe'
+	[[ "$status" -eq 0 ]]
+	[[ "$output" == *'USABLE'* ]]
+	# reap the holding units
+	s1=0
+	wait "$pid1" || s1=$?
+	s2=0
+	wait "$pid2" || s2=$?
+	[[ "$s1" -eq 0 ]]
+	[[ "$s2" -eq 0 ]]
+}
+
+@test "onbox concurrent rm-container serializes behind the create instead of interleaving with it" {
+	local create_log rm_log create_shim rm_shim pid_create pid_rm s_rm create_ms rm_ms
+	create_log="$BATS_TEST_TMPDIR/rm-race-create.log"
+	rm_log="$BATS_TEST_TMPDIR/rm-race-rm.log"
+	create_shim="$(mk_podman_stalling_shim "$create_log" 'create' 4)"
+	rm_shim="$(mk_podman_stalling_shim "$rm_log")"
+	e2e_register_dir "$create_shim"
+	e2e_register_dir "$rm_shim"
+	(
+		export E2E_PODMAN_SHIM_DIR="$create_shim"
+		run_talkbox "$PROJECT" "$TALKBOX" onbox -c --noninteractive 'true'
+	) >/dev/null 2>&1 &
+	pid_create=$!
+	sleep 0.5
+	(
+		export E2E_PODMAN_SHIM_DIR="$rm_shim"
+		run_talkbox "$PROJECT" "$TALKBOX" onbox --rm-container
+	) >/dev/null 2>&1 &
+	pid_rm=$!
+	s_rm=0
+	wait "$pid_rm" || s_rm=$?
+	[[ "$s_rm" -eq 0 ]]
+	wait "$pid_create" || true
+	# the removal ran only after the create critical section (which covers the
+	# exists-check, the create and the start) had completed
+	create_ms="$(awk -F'\t' '$2 ~ /^start / { print $1; exit }' "$create_log")"
+	rm_ms="$(awk -F'\t' '$2 ~ /^rm -f --volumes / { print $1; exit }' "$rm_log")"
+	[[ -n "$create_ms" && -n "$rm_ms" ]]
+	[[ "$rm_ms" -gt "$create_ms" ]]
+	# the serialized removal completed
+	run sdrun podman container exists "$CTR"
+	[[ "$status" -ne 0 ]]
 }

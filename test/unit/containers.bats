@@ -14,6 +14,7 @@ setup() {
 	ALLOW=()
 	SHIM="$BATS_TEST_TMPDIR/shim"
 	LOG="$BATS_TEST_TMPDIR/podman.log"
+	export TALKBOX_LOCK_DIR="$BATS_TEST_TMPDIR/locks"
 }
 
 @test "run_container creates each container with the workdir, userns and capability drops, probing the base image" {
@@ -602,4 +603,135 @@ setup() {
 		[[ "$exec_line" -lt "$session_line" ]]
 		[[ "$(podman_count "^stop -t 5 $ctr$")" -eq 0 ]]
 	done
+}
+
+@test "the container lock is exclusive and blocks a second acquirer until the holder releases" {
+	load_container_libs
+	[[ -f "$PROJECT_ROOT/lib/locking.sh" ]]
+	local path elapsed
+	path="$(container_lock_path talkbox-proj.onbox)"
+	[[ "$path" == "$TALKBOX_LOCK_DIR/talkbox-proj.onbox" ]]
+	(
+		acquire_container_lock talkbox-proj.onbox
+		sleep 1.5
+		release_container_lock
+	) &
+	local holder=$!
+	sleep 0.4
+	[[ -e "$path" ]]
+	run flock -n -x "$path" true
+	[[ "$status" -ne 0 ]]
+	SECONDS=0
+	run flock -w 10 -x "$path" true
+	elapsed=$SECONDS
+	[[ "$status" -eq 0 ]]
+	[[ "$elapsed" -ge 1 ]]
+	wait "$holder" 2>/dev/null || true
+	run lock_is_free "$path"
+	[[ "$status" -eq 0 ]]
+}
+
+@test "lock files land under the configured per-user lock directory and are named per container" {
+	load_container_libs
+	local uid xdg dir path
+	uid="$(id -u)"
+	path="$(container_lock_path talkbox-proj.netbox)"
+	[[ "$path" == "$TALKBOX_LOCK_DIR/talkbox-proj.netbox" ]]
+	acquire_container_lock talkbox-proj.netbox
+	[[ -e "$TALKBOX_LOCK_DIR/talkbox-proj.netbox" ]]
+	release_container_lock
+	xdg="$BATS_TEST_TMPDIR/xdg"
+	dir="$(
+		export XDG_RUNTIME_DIR="$xdg"
+		TALKBOX_LOCK_DIR=
+		talkbox_lock_dir
+	)"
+	[[ "$dir" == "$xdg/talkbox/locks" ]]
+	dir="$(
+		unset XDG_RUNTIME_DIR TALKBOX_LOCK_DIR TMPDIR
+		talkbox_lock_dir
+	)"
+	[[ "$dir" == "/tmp/talkbox-locks-$uid" ]]
+	dir="$(
+		TMPDIR="$BATS_TEST_TMPDIR"
+		unset XDG_RUNTIME_DIR TALKBOX_LOCK_DIR
+		talkbox_lock_dir
+	)"
+	[[ "$dir" == "$BATS_TEST_TMPDIR/talkbox-locks-$uid" ]]
+}
+
+@test "the container lock is released when the holding process dies" {
+	load_container_libs
+	local path holder n
+	path="$(container_lock_path talkbox-proj.onbox)"
+	(
+		acquire_container_lock talkbox-proj.onbox
+		sleep 15
+	) &
+	holder=$!
+	for ((n = 0; n < 50; n++)); do
+		if [[ -e "$path" ]]; then
+			break
+		fi
+		sleep 0.1
+	done
+	[[ -e "$path" ]]
+	run flock -n -x "$path" true
+	[[ "$status" -ne 0 ]]
+	pkill -9 -P "$holder" 2>/dev/null || true
+	kill -9 "$holder" 2>/dev/null || true
+	wait "$holder" 2>/dev/null || true
+	sleep 0.2
+	run lock_is_free "$path"
+	[[ "$status" -eq 0 ]]
+}
+
+@test "run_container holds the container lock across the exists-check, create and start and runs the exec tail unlocked" {
+	load_container_libs
+	use_podman_shim
+	local path probe_log hook
+	path="$(container_lock_path talkbox-proj.onbox)"
+	probe_log="$BATS_TEST_TMPDIR/probe.log"
+	hook="$BATS_TEST_TMPDIR/lock-probe.sh"
+	make_lock_probe_hook "$hook"
+	export LOCK_PROBE_PATH="$path" LOCK_PROBE_LOG="$probe_log"
+	export PODMAN_STALL_PATTERN='talkbox-proj.onbox' PODMAN_STALL_SECONDS=0.1 PODMAN_STALL_HOOK="$hook"
+	run run_container onbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+	[[ "$status" -eq 0 ]]
+	[[ "$(grep_count '^held container exists talkbox-proj.onbox$' "$probe_log")" -eq 1 ]]
+	[[ "$(grep_count '^held create ' "$probe_log")" -eq 1 ]]
+	[[ "$(grep_count '^held start talkbox-proj.onbox$' "$probe_log")" -eq 1 ]]
+	[[ "$(grep_count '^free exec talkbox-proj.onbox setup.sh$' "$probe_log")" -eq 1 ]]
+	[[ "$(grep_count '^free exec talkbox-proj.onbox bash -c true$' "$probe_log")" -eq 1 ]]
+	[[ "$(grep_count '^free stop -t 5 talkbox-proj.onbox$' "$probe_log")" -eq 1 ]]
+	run lock_is_free "$path"
+	[[ "$status" -eq 0 ]]
+}
+
+@test "a failed create holds the container lock through the rollback of this invocation's resources" {
+	load_container_libs
+	use_podman_shim
+	mkdir -p "$PROJECT/.git"
+	export PODMAN_VOLUMES="talkbox-proj.netbox.worktree talkbox-proj.netbox.gitdir talkbox-proj.netbox.write.talkbox-wdata"
+	# shellcheck disable=SC2034 # arrays are consumed by nameref parameters
+	local -a srcs=('/host/data') dsts=('/talkbox/wdata')
+	export PODMAN_FAIL_PATTERN='create '
+	local path probe_log hook
+	path="$(container_lock_path talkbox-proj.netbox)"
+	probe_log="$BATS_TEST_TMPDIR/probe.log"
+	hook="$BATS_TEST_TMPDIR/lock-probe.sh"
+	make_lock_probe_hook "$hook"
+	export LOCK_PROBE_PATH="$path" LOCK_PROBE_LOG="$probe_log"
+	export PODMAN_STALL_PATTERN='volume rm -f talkbox-proj.netbox' PODMAN_STALL_SECONDS=0.1 PODMAN_STALL_HOOK="$hook"
+	run run_container netbox "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS srcs dsts PORTS DENY ALLOW
+	[[ "$status" -ne 0 ]]
+	[[ "$output" == *'talkbox:'* ]]
+	[[ "$(grep_count '^held volume rm -f talkbox-proj.netbox' "$probe_log")" -eq 3 ]]
+	[[ "$(grep_count '^free volume rm -f talkbox-proj.netbox' "$probe_log")" -eq 0 ]]
+	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.worktree$')" ]]
+	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.gitdir$')" ]]
+	[[ -n "$(podman_line '^volume rm -f talkbox-proj.netbox.write.talkbox-wdata$')" ]]
+	[[ "$(podman_count '^volume rm -f ')" -eq 3 ]]
+	run lock_is_free "$path"
+	[[ "$status" -eq 0 ]]
 }

@@ -43,8 +43,19 @@ make_podman_shim() {
 #     `exec list`, a JSON array for an inspect over a .ExecIDs format)
 #   PODMAN_EXEC_SESSIONS_RC, PODMAN_EXEC_SESSIONS_STDERR  make the
 #     exec-session listing fail (unsupported subcommand / listing error)
+#   PODMAN_STALL_PATTERN, PODMAN_STALL_SECONDS  make matching invocations
+#     sleep before responding; PODMAN_STALL_HOOK is an optional script run
+#     with the full invocation as $1 when a stall fires, so a test can probe
+#     external state (e.g. a lock file) from inside the stalled invocation.
+#     The shim itself stays oblivious to any locking.
 cat >/dev/null 2>&1 || true
 printf '%s\n' "$*" >>"$PODMAN_LOG"
+if [[ -n "${PODMAN_STALL_PATTERN:-}" && "$*" == *"$PODMAN_STALL_PATTERN"* ]]; then
+	if [[ -n "${PODMAN_STALL_HOOK:-}" ]]; then
+		bash "$PODMAN_STALL_HOOK" "$*" || true
+	fi
+	sleep "${PODMAN_STALL_SECONDS:-0}"
+fi
 if [[ -n "${PODMAN_FAIL_PATTERN:-}" && "$*" == *"$PODMAN_FAIL_PATTERN"* ]]; then
 	exit "${PODMAN_FAIL_CODE:-1}"
 fi
@@ -248,4 +259,36 @@ array_has_none() {
 		fi
 	done
 	return 0
+}
+
+grep_count() {
+	grep -c -- "$1" "$2" || true
+}
+
+# Writes a probe hook for the podman shim's stall feature. The shim runs the
+# hook with a stalled podman invocation as $1; the hook records whether the
+# lock at $LOCK_PROBE_PATH is held or free, as "held|free <invocation>", to
+# $LOCK_PROBE_LOG. A missing lock file means no lock was ever taken (free);
+# otherwise a nonblocking exclusive flock in the probe's own open file
+# description decides, without disturbing the holder.
+make_lock_probe_hook() {
+	local hook="$1"
+	cat >"$hook" <<'EOF'
+#!/usr/bin/env bash
+if [[ ! -e "$LOCK_PROBE_PATH" ]] || flock -n -x "$LOCK_PROBE_PATH" true 2>/dev/null; then
+	state=free
+else
+	state=held
+fi
+printf '%s %s\n' "$state" "$1" >>"$LOCK_PROBE_LOG"
+EOF
+}
+
+# Succeeds when the lock at $1 is not held: a missing lock file means no lock
+# was ever taken, an existing one must be acquirable non-blockingly.
+lock_is_free() {
+	local path="$1"
+	if [[ -e "$path" ]]; then
+		flock -n -x "$path" true 2>/dev/null
+	fi
 }

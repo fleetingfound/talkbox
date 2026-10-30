@@ -14,6 +14,7 @@ setup() {
 	ALLOW=()
 	SHIM="$BATS_TEST_TMPDIR/shim"
 	LOG="$BATS_TEST_TMPDIR/podman.log"
+	export TALKBOX_LOCK_DIR="$BATS_TEST_TMPDIR/locks"
 }
 
 @test "inheritance planner uses the base image when no source container exists" {

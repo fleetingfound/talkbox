@@ -53,3 +53,4 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 26: submodule gitdirs in the container (gitdir-volume inclusion and targeted write prevention)](phase-26-submodule-gitdir-inclusion-in-container.gen.md)
 - [Phase 27: podman-backed gitdir history probe in `require_git_history`](phase-27-gitdir-history-podman-probe.gen.md)
 - [Phase 28a: stop the container only when no exec sessions remain](phase-28a-concurrent-session-stop-on-last-session.gen.md)
+- [Phase 28b: serialize the create/recreate/rm paths with a per-container lock](phase-28b-concurrent-create-race-lock.gen.md)

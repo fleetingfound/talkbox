@@ -1,5 +1,14 @@
 target: test-unit
-started: '2026-10-30T04:09:27Z'
-exit: 0
-totals: { total: 314, pass: 314, fail: 0, skip: 0 }
+started: '2026-10-30T04:55:44Z'
+exit: 1
+totals: { total: 323, pass: 314, fail: 9, skip: 0 }
 fail:
+ - 'test/unit/containers.bats :: the container lock is exclusive and blocks a second acquirer until the holder releases'
+ - 'test/unit/containers.bats :: lock files land under the configured per-user lock directory and are named per container'
+ - 'test/unit/containers.bats :: the container lock is released when the holding process dies'
+ - 'test/unit/containers.bats :: run_container holds the container lock across the exists-check, create and start and runs the exec tail unlocked'
+ - 'test/unit/containers.bats :: a failed create holds the container lock through the rollback of this invocation''s resources'
+ - 'test/unit/lifecycle.bats :: run_recreate holds the container lock across the whole plan execution'
+ - 'test/unit/lifecycle.bats :: run_recreate holds the container lock through the rollback when the plan fails'
+ - 'test/unit/lifecycle.bats :: run_rm_container holds the container lock across the plan execution'
+ - 'test/unit/lifecycle.bats :: run_rm_image holds the container lock across the plan execution'
