@@ -2,7 +2,7 @@
 
 Linked dispute: [submodule-tests-assert-noise-free-output.gen.md](../disputes/submodule-tests-assert-noise-free-output.gen.md)
 
-Linked plan: [submodule-gitdir-inclusion-in-container.gen.md](../plans/submodule-gitdir-inclusion-in-container.gen.md) — summarised in one sentence: the plan adds an `include_host_modules` step to `image/setup.sh` (copy `/host/git/modules` into the container gitdir volume, rewrite each module's `core.worktree` to a gitdir-relative path resolved from `.gitmodules`, and make `objects/`/`refs/`/`packed-refs` non-writable) and revises the submodule e2e tests accordingly.
+Linked plan: [phase-26-submodule-gitdir-inclusion-in-container.gen.md](../plans/phase-26-submodule-gitdir-inclusion-in-container.gen.md) — summarised in one sentence: the plan adds an `include_host_modules` step to `image/setup.sh` (copy `/host/git/modules` into the container gitdir volume, rewrite each module's `core.worktree` to a gitdir-relative path resolved from `.gitmodules`, and make `objects/`/`refs/`/`packed-refs` non-writable) and revises the submodule e2e tests accordingly.
 
 No new issue documents were created: the implementation claims in the dispute were independently validated (see Verification below) and the core implementation is correct; both failures were errors in the tests' assertions.
 

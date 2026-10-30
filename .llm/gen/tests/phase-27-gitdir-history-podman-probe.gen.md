@@ -1,6 +1,6 @@
-# Podman-backed gitdir history probe in `require_git_history`
+# Tests: Phase 27 podman-backed gitdir history probe in `require_git_history`
 
-Red/green test suite for [the plan](../plans/gitdir-history-podman-probe.gen.md), which replaces the host-side `podman volume inspect` mountpoint stat in `require_git_history` with a no-network `podman run` HEAD probe (mirroring `gitdir_bundle_cmd`) and interprets the probe outcome three ways (0 = present, 1 = missing history, other = infrastructure failure with surfaced stderr). The plan resolves [the gitdir-volume host-path-check issue](../issues/onbox-merge-gitdir-volume-host-path-check.gen.md); no new issue documents were created for this phase.
+Red/green test suite for [the plan](../plans/phase-27-gitdir-history-podman-probe.gen.md), which replaces the host-side `podman volume inspect` mountpoint stat in `require_git_history` with a no-network `podman run` HEAD probe (mirroring `gitdir_bundle_cmd`) and interprets the probe outcome three ways (0 = present, 1 = missing history, other = infrastructure failure with surfaced stderr). The plan resolves [the gitdir-volume host-path-check issue](../issues/onbox-merge-gitdir-volume-host-path-check.gen.md); no new issue documents were created for this phase.
 
 No core files were edited. Only [test/unit/git-transport.bats](../../../test/unit/git-transport.bats), [test/unit/git.bats](../../../test/unit/git.bats) and this document were changed. The plan also lists `MAP.gen.md` under "Files to modify"; that update describes the implemented state and is left to the implementation phase.
 

@@ -1,4 +1,4 @@
-# Podman-backed gitdir history probe in `require_git_history`
+# Phase 27: podman-backed gitdir history probe in `require_git_history`
 
 #flow/redgreen #model/default
 

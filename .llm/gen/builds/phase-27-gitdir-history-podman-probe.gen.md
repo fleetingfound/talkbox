@@ -1,8 +1,8 @@
-# Build: Podman-backed gitdir history probe in `require_git_history`
+# Phase 27: podman-backed gitdir history probe in `require_git_history`
 
 Status: `SUCCESS`
 
-Implements [the plan](../plans/gitdir-history-podman-probe.gen.md), which resolves [the gitdir host-path-check issue](../issues/onbox-merge-gitdir-volume-host-path-check.gen.md) by replacing `require_git_history`'s host-side `podman volume inspect` mountpoint stat with a no-network `podman run` HEAD probe and interpreting the probe outcome three ways; the build was initially blocked solely by [the dispute over the unit `podman()` mock swallowing the probe's not-found exit](../disputes/gitdir-history-probe-not-found-exit-swallowed.gen.md), which [the verdict](../verdicts/gitdir-history-probe-not-found-exit-swallowed.gen.md) resolved with a test-helper-only repair, after which the full suite passes unchanged against this implementation.
+Implements [the plan](../plans/phase-27-gitdir-history-podman-probe.gen.md), which resolves [the gitdir host-path-check issue](../issues/onbox-merge-gitdir-volume-host-path-check.gen.md) by replacing `require_git_history`'s host-side `podman volume inspect` mountpoint stat with a no-network `podman run` HEAD probe and interpreting the probe outcome three ways; the build was initially blocked solely by [the dispute over the unit `podman()` mock swallowing the probe's not-found exit](../disputes/gitdir-history-probe-not-found-exit-swallowed.gen.md), which [the verdict](../verdicts/gitdir-history-probe-not-found-exit-swallowed.gen.md) resolved with a test-helper-only repair, after which the full suite passes unchanged against this implementation.
 
 ## Changes
 
@@ -20,8 +20,8 @@ Implements [the plan](../plans/gitdir-history-podman-probe.gen.md), which resolv
 
 ## Linked documents
 
-- Plan: [gitdir-history-podman-probe.gen.md](../plans/gitdir-history-podman-probe.gen.md) — replaces the host-side mountpoint stat with the podman-run HEAD probe and three-way diagnostics.
-- Test suite: [gitdir-history-podman-probe.gen.md](../tests/gitdir-history-podman-probe.gen.md) — the red/green suite pinning the planner structure, the three outcomes and the rewritten fixtures.
+- Plan: [phase-27-gitdir-history-podman-probe.gen.md](../plans/phase-27-gitdir-history-podman-probe.gen.md) — replaces the host-side mountpoint stat with the podman-run HEAD probe and three-way diagnostics.
+- Test suite: [phase-27-gitdir-history-podman-probe.gen.md](../tests/phase-27-gitdir-history-podman-probe.gen.md) — the red/green suite pinning the planner structure, the three outcomes and the rewritten fixtures.
 - Dispute: [gitdir-history-probe-not-found-exit-swallowed.gen.md](../disputes/gitdir-history-probe-not-found-exit-swallowed.gen.md) — the unit `podman()` mock discards `mock_container_run`'s exit status, making the missing-HEAD `run_merge` unit test unpassable for any conforming implementation.
 - Verdict: [gitdir-history-probe-not-found-exit-swallowed.gen.md](../verdicts/gitdir-history-probe-not-found-exit-swallowed.gen.md) — the disputed `podman()` mock is repaired (trailing `return 0` removed so the probe's exit status propagates) and the disputed test is correct as written; no core-file change was needed.
 - Issue resolved: [onbox-merge-gitdir-volume-host-path-check.gen.md](../issues/onbox-merge-gitdir-volume-host-path-check.gen.md) — marked complete; the mountpoint stat it describes no longer exists.

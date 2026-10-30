@@ -65,10 +65,10 @@ Resolution of the remaining unchecked issues:
 - [x] [Phase 24: Remove the per-container `run_*` dispatch wrappers](phase-24-remove-run-dispatch-wrappers.gen.md) #flow/unified #model/default
 - [x] [Phase 25a: onbox `--recontain`/`--rebuild` install the nft deny rules and run `setup.sh`](phase-25a-onbox-recontain-nft-setup.gen.md) #flow/redgreen #model/default
 - [x] [Phase 25b: per-container configuration consolidation of the container implementation](phase-25b-container-config-consolidation.gen.md) #flow/refactor #model/big
-- [x] [Fix the dangling submodule gitfile: include absorbed `modules/` in the container gitdir volume](submodule-gitdir-inclusion-in-container.gen.md) #flow/redgreen #model/default
-- [x] [Podman-backed gitdir history probe in `require_git_history`](gitdir-history-podman-probe.gen.md) #flow/redgreen #model/default
+- [x] [Phase 26: submodule gitdir inclusion in the container and prevention of submodule writes](phase-26-submodule-gitdir-inclusion-in-container.gen.md) #flow/redgreen #model/default
+- [x] [Phase 27: podman-backed gitdir history probe in `require_git_history`](phase-27-gitdir-history-podman-probe.gen.md) #flow/redgreen #model/default
 
-## Issue resolutions: concurrent session lifecycle
+Support for one container open in multiple terminals:
 
-- [ ] [Stop the container only when no exec sessions remain](concurrent-session-stop-on-last-session.gen.md) #flow/redgreen #model/default
-- [ ] [Serialize the create/recreate/rm paths with a per-container lock](concurrent-create-race-lock.gen.md) #flow/redgreen #model/default
+- [ ] [Phase 28a: stop the container only when no exec sessions remain](phase-28a-concurrent-session-stop-on-last-session.gen.md) #flow/redgreen #model/default
+- [ ] [Phase 28b: serialize the create/recreate/rm paths with a per-container lock](phase-28b-concurrent-create-race-lock.gen.md) #flow/redgreen #model/default

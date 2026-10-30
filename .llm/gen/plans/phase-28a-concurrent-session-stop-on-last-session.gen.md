@@ -1,4 +1,4 @@
-# Plan: Stop the container only when no exec sessions remain (concurrent session-exit fix)
+# Phase 28a: stop the container only when no exec sessions remain
 
 #flow/redgreen #model/default
 

@@ -50,5 +50,5 @@ Test documents describing the test suites and their relationship to the implemen
 - [Phase 23c: e2e nested `sdrun` units die with the parent suite unit](phase-23c-e2e-nested-units-die-with-parent.gen.md)
 - [Phase 25a: onbox `--recontain`/`--rebuild` install the nft deny rules and run `setup.sh`](phase-25a-onbox-recontain-nft-setup.gen.md)
 - [Phase 25b: per-container configuration consolidation of the container implementation](phase-25b-container-config-consolidation.gen.md)
-- [Submodule gitdirs in the container: gitdir-volume inclusion and targeted write prevention](submodule-gitdir-inclusion-in-container.gen.md)
-- [Podman-backed gitdir history probe in `require_git_history`](gitdir-history-podman-probe.gen.md)
+- [Phase 26: submodule gitdirs in the container (gitdir-volume inclusion and targeted write prevention)](phase-26-submodule-gitdir-inclusion-in-container.gen.md)
+- [Phase 27: podman-backed gitdir history probe in `require_git_history`](phase-27-gitdir-history-podman-probe.gen.md)

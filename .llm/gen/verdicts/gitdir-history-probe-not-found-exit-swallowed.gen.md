@@ -2,7 +2,7 @@
 
 Linked dispute: [gitdir-history-probe-not-found-exit-swallowed.gen.md](../disputes/gitdir-history-probe-not-found-exit-swallowed.gen.md)
 
-Linked plan: [gitdir-history-podman-probe.gen.md](../plans/gitdir-history-podman-probe.gen.md) — summarised in one sentence: the plan replaces the host-side `podman volume inspect` mountpoint stat in `require_git_history` with a no-network `podman run` HEAD probe (`gitdir_probe_cmd`) interpreted three ways (0 = present, 1 = missing history, other = infra failure with surfaced stderr). No new issue documents were created: the defect was located entirely in the test helper, the core implementation was independently validated as correct, and no core-file issue remains outstanding.
+Linked plan: [phase-27-gitdir-history-podman-probe.gen.md](../plans/phase-27-gitdir-history-podman-probe.gen.md) — summarised in one sentence: the plan replaces the host-side `podman volume inspect` mountpoint stat in `require_git_history` with a no-network `podman run` HEAD probe (`gitdir_probe_cmd`) interpreted three ways (0 = present, 1 = missing history, other = infra failure with surfaced stderr). No new issue documents were created: the defect was located entirely in the test helper, the core implementation was independently validated as correct, and no core-file issue remains outstanding.
 
 ## Test helper: the file-scope `podman()` mock (with `mock_container_run`)
 
@@ -16,7 +16,7 @@ The plan requires the mock's `run` handler to:
 
 > "extend the `podman` mock's `run` handler to recognise the probe invocation and resolve the volume's `HEAD` through the existing `PODMAN_MOUNTPOINTS` map"
 
-and the [test-suite document](../tests/gitdir-history-podman-probe.gen.md) pins the fixture contract as:
+and the [test-suite document](../tests/phase-27-gitdir-history-podman-probe.gen.md) pins the fixture contract as:
 
 > "`mock_container_run` recognises the probe invocation (consecutive `test -e /gitdir/HEAD` tokens) and resolves the volume's `HEAD` through the existing `PODMAN_MOUNTPOINTS` map, **returning the probe's not-found exit (1) when `HEAD` is absent in the mapped path**"
 

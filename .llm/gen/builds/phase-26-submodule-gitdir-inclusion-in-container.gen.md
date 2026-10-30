@@ -1,4 +1,4 @@
-# Submodule gitdirs included in the container gitdir volume
+# Phase 26: submodule gitdirs included in the container gitdir volume
 
 *Date: 2026-10-26*
 
@@ -6,7 +6,7 @@ Status: **SUCCESS**
 
 ## overview
 
-Implemented the plan in [submodule-gitdir-inclusion-in-container.gen.md](../plans/submodule-gitdir-inclusion-in-container.gen.md): a new `include_host_modules` step in the git section of [image/setup.sh](../../../image/setup.sh) replaces `<worktree>/.git/modules` with an idempotent copy of `/host/git/modules` (stale copy made user-writable before removal), rewrites each copied module's `core.worktree` to a gitdir-relative path derived from the worktree's `.gitmodules` (`submodule.<name>.path`, with a `realpath -m --relative-to` prefix that generalises the plan's `../../../` to nested module names), and makes each module's `objects/`/`refs/` (and `packed-refs`) non-writable while leaving the module top level (notably `index`) writable. It runs in both the fresh-init and existing-repository branches, guarded on `/host/git/modules` existing and being non-empty. [MAP.gen.md](../../../MAP.gen.md) updated the `image/setup.sh` entry; no other core file changed (`lib/git.sh` untouched).
+Implemented the plan in [phase-26-submodule-gitdir-inclusion-in-container.gen.md](../plans/phase-26-submodule-gitdir-inclusion-in-container.gen.md): a new `include_host_modules` step in the git section of [image/setup.sh](../../../image/setup.sh) replaces `<worktree>/.git/modules` with an idempotent copy of `/host/git/modules` (stale copy made user-writable before removal), rewrites each copied module's `core.worktree` to a gitdir-relative path derived from the worktree's `.gitmodules` (`submodule.<name>.path`, with a `realpath -m --relative-to` prefix that generalises the plan's `../../../` to nested module names), and makes each module's `objects/`/`refs/` (and `packed-refs`) non-writable while leaving the module top level (notably `index`) writable. It runs in both the fresh-init and existing-repository branches, guarded on `/host/git/modules` existing and being non-empty. [MAP.gen.md](../../../MAP.gen.md) updated the `image/setup.sh` entry; no other core file changed (`lib/git.sh` untouched).
 
 ## verification
 

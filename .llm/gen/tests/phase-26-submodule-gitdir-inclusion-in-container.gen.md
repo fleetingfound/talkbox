@@ -1,6 +1,6 @@
-# Tests: Submodule gitdirs in the container (gitdir-volume inclusion and targeted write prevention)
+# Tests: Phase 26 submodule gitdirs in the container (gitdir-volume inclusion and targeted write prevention)
 
-Linked plan: [submodule-gitdir-inclusion-in-container.gen.md](../plans/submodule-gitdir-inclusion-in-container.gen.md) — implements the second half of SPEC.md's submodule support ("absorbed into the host's top-level git directory **and then included in the container**") by copying `/host/git/modules` into the container gitdir volume in `image/setup.sh` with a per-module `core.worktree` rewrite and targeted read-only `objects/`/`refs/` permissions, and revises the submodule e2e test accordingly.
+Linked plan: [phase-26-submodule-gitdir-inclusion-in-container.gen.md](../plans/phase-26-submodule-gitdir-inclusion-in-container.gen.md) — implements the second half of SPEC.md's submodule support ("absorbed into the host's top-level git directory **and then included in the container**") by copying `/host/git/modules` into the container gitdir volume in `image/setup.sh` with a per-module `core.worktree` rewrite and targeted read-only `objects/`/`refs/` permissions, and revises the submodule e2e test accordingly.
 
 Related documents: [submodule-gitfile-dangling-in-container.gen.md](../issues/submodule-gitfile-dangling-in-container.gen.md), [submodule-modules-inclusion-mechanism.gen.md](../choices/submodule-modules-inclusion-mechanism.gen.md), [submodule-write-prevention-in-container.gen.md](../choices/submodule-write-prevention-in-container.gen.md).
 

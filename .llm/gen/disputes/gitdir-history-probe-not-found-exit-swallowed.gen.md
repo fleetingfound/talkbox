@@ -1,8 +1,8 @@
 # Dispute: the `podman()` unit mock swallows the probe's not-found exit, making the missing-HEAD `run_merge` test unpassable
 
-Linked plan: [gitdir-history-podman-probe.gen.md](../plans/gitdir-history-podman-probe.gen.md) — summarised in one sentence: the plan replaces the host-side `podman volume inspect` mountpoint stat in `require_git_history` with a no-network `podman run` HEAD probe (`gitdir_probe_cmd`) and interprets the probe outcome three ways (0 = present, 1 = missing history, other = infra failure with surfaced stderr).
+Linked plan: [phase-27-gitdir-history-podman-probe.gen.md](../plans/phase-27-gitdir-history-podman-probe.gen.md) — summarised in one sentence: the plan replaces the host-side `podman volume inspect` mountpoint stat in `require_git_history` with a no-network `podman run` HEAD probe (`gitdir_probe_cmd`) and interprets the probe outcome three ways (0 = present, 1 = missing history, other = infra failure with surfaced stderr).
 
-Related test-suite document: [gitdir-history-podman-probe.gen.md](../tests/gitdir-history-podman-probe.gen.md) (the red/green fixture contract referenced below).
+Related test-suite document: [phase-27-gitdir-history-podman-probe.gen.md](../tests/phase-27-gitdir-history-podman-probe.gen.md) (the red/green fixture contract referenced below).
 
 Related core files: [lib/git.sh](../../../lib/git.sh) (`gitdir_probe_cmd`, `require_git_history`).
 

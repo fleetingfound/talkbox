@@ -1,4 +1,4 @@
-# Submodule gitdirs in the container: fix the dangling gitfile and prevent submodule writes
+# Phase 26: submodule gitdir inclusion in the container and prevention of submodule writes
 
 #flow/redgreen #model/default
 

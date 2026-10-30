@@ -1,4 +1,4 @@
-# Plan: Serialize the create/recreate/rm paths with a per-container lock (concurrent create race fix)
+# Phase 28b: serialize the create/recreate/rm paths with a per-container lock
 
 #flow/redgreen #model/default
 

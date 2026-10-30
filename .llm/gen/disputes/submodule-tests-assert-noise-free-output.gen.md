@@ -1,6 +1,6 @@
 # Dispute: submodule e2e tests assert exact/empty `$output` that the SPEC-mandated `sdrun` harness makes unsatisfiable
 
-Linked plan: [submodule-gitdir-inclusion-in-container.gen.md](../plans/submodule-gitdir-inclusion-in-container.gen.md)
+Linked plan: [phase-26-submodule-gitdir-inclusion-in-container.gen.md](../plans/phase-26-submodule-gitdir-inclusion-in-container.gen.md)
 
 The plan's implementation ([image/setup.sh](../../../image/setup.sh) `include_host_modules`) is complete and demonstrably correct: an isolated replica of the two disputed test bodies (identical fixtures, commands and helpers, run outside the suite) shows the expected command behaviour inside the container — superproject `git status --porcelain && git add -A --dry-run` exits 0 producing no git output, and `git -C sub rev-parse --show-toplevel` prints `/working/<project-base>/sub` for a module whose host-side `core.worktree` was set to an absolute host path. Both disputed tests fail only on assertions about the *shape* of `$output`, which no core implementation can satisfy.
 
