@@ -118,3 +118,85 @@ EXPECT
 	[[ "$status" -eq 0 ]]
 	[[ "$output" == *"/working/$PROJECT_BASE"* ]]
 }
+
+wait_for_session_marker() {
+	local marker="$1" n
+	for ((n = 0; n < 80; n++)); do
+		[[ -f "$marker" ]] && return 0
+		sleep 0.5
+	done
+	return 1
+}
+
+wait_for_container_e2e() {
+	local ctr="$1" n
+	for ((n = 0; n < 60; n++)); do
+		sdrun podman container exists "$ctr" >/dev/null 2>&1 && return 0
+		sleep 0.5
+	done
+	return 1
+}
+
+wait_until_stopped() {
+	local ctr="$1" n
+	for ((n = 0; n < 60; n++)); do
+		container_stopped "$ctr" && return 0
+		sleep 0.5
+	done
+	return 1
+}
+
+container_exec_sessions() {
+	sdrun podman inspect -f '{{json .ExecIDs}}' "$1" 2>/dev/null | tail -n1
+}
+
+@test "onbox concurrent sessions: a short session exits without stopping a live longer session" {
+	local bglog apid astatus sessions
+	bglog="$BATS_TEST_TMPDIR/session-first.log"
+	# first session: creates the container and stays live; the marker file in
+	# the bind-mounted worktree proves its main exec is running
+	{ run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'echo ready > .session-ready && sleep 30'; } >"$bglog" 2>&1 &
+	apid=$!
+	wait_for_session_marker "$PROJECT/.session-ready"
+	sdrun podman inspect -f '{{.State.Running}}' "$CTR" 2>/dev/null | grep -qx 'true'
+	# second short session attaches to the running container and exits
+	run run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'true'
+	[[ "$status" -eq 0 ]]
+	# the container must still be running with the first session live
+	sdrun podman inspect -f '{{.State.Running}}' "$CTR" 2>/dev/null | grep -qx 'true'
+	sessions="$(container_exec_sessions "$CTR")"
+	[[ -n "$sessions" && "$sessions" != '[]' ]]
+	# the last session's exit stops the container
+	astatus=0
+	wait "$apid" || astatus=$?
+	[[ "$astatus" -eq 0 ]]
+	wait_until_stopped "$CTR"
+}
+
+@test "onbox concurrent sessions: the container stops only after the last session exits when the short session starts it" {
+	local bglog_first bglog_second apid_first apid_second astatus sessions
+	bglog_first="$BATS_TEST_TMPDIR/session-short.log"
+	bglog_second="$BATS_TEST_TMPDIR/session-long.log"
+	# short session: creates and starts the container, stays live for a while
+	{ run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'sleep 8'; } >"$bglog_first" 2>&1 &
+	apid_first=$!
+	wait_for_container_e2e "$CTR"
+	# long session attaches while the first is still live; the marker proves
+	# its main exec is running before the short session's exec ends
+	{ run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'echo ready > .session-ready && sleep 25'; } >"$bglog_second" 2>&1 &
+	apid_second=$!
+	wait_for_session_marker "$PROJECT/.session-ready"
+	sdrun podman inspect -f '{{.State.Running}}' "$CTR" 2>/dev/null | grep -qx 'true'
+	astatus=0
+	wait "$apid_first" || astatus=$?
+	[[ "$astatus" -eq 0 ]]
+	# the starter's exit must not stop the container while the other is live
+	sdrun podman inspect -f '{{.State.Running}}' "$CTR" 2>/dev/null | grep -qx 'true'
+	sessions="$(container_exec_sessions "$CTR")"
+	[[ -n "$sessions" && "$sessions" != '[]' ]]
+	# the last (attaching) session's exit stops the container
+	astatus=0
+	wait "$apid_second" || astatus=$?
+	[[ "$astatus" -eq 0 ]]
+	wait_until_stopped "$CTR"
+}

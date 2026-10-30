@@ -39,10 +39,34 @@ make_podman_shim() {
 #   PODMAN_INSPECT_RC, PODMAN_INSPECT_STDERR  make inspect fail
 #   PODMAN_UNSHARE_RC, PODMAN_UNSHARE_STDERR  make unshare fail
 #   PODMAN_UNSHARE_LOG  file receiving one PATH= line per unshare invocation
+#   PODMAN_EXEC_SESSIONS  live exec sessions of the container (one row each for
+#     `exec list`, a JSON array for an inspect over a .ExecIDs format)
+#   PODMAN_EXEC_SESSIONS_RC, PODMAN_EXEC_SESSIONS_STDERR  make the
+#     exec-session listing fail (unsupported subcommand / listing error)
 cat >/dev/null 2>&1 || true
 printf '%s\n' "$*" >>"$PODMAN_LOG"
 if [[ -n "${PODMAN_FAIL_PATTERN:-}" && "$*" == *"$PODMAN_FAIL_PATTERN"* ]]; then
 	exit "${PODMAN_FAIL_CODE:-1}"
+fi
+if [[ "$*" == *ExecIDs* ]] || [[ "$1 $2" == 'exec list' ]]; then
+	if [[ -n "${PODMAN_EXEC_SESSIONS_RC:-}" && "${PODMAN_EXEC_SESSIONS_RC}" != 0 ]]; then
+		printf '%s\n' "${PODMAN_EXEC_SESSIONS_STDERR:-podman exec list: unsupported subcommand}" >&2
+		exit "${PODMAN_EXEC_SESSIONS_RC}"
+	fi
+	if [[ "$1" == exec ]]; then
+		for session in ${PODMAN_EXEC_SESSIONS:-}; do
+			printf '%s\n' "$session"
+		done
+	else
+		out='['
+		sep=''
+		for session in ${PODMAN_EXEC_SESSIONS:-}; do
+			out+="$sep\"$session\""
+			sep=','
+		done
+		printf '%s]\n' "$out"
+	fi
+	exit 0
 fi
 if [[ "$1 $2" == 'container exists' ]]; then
 	for ctr in $PODMAN_CONTAINERS; do
@@ -147,6 +171,17 @@ podman_line_no() {
 # shellcheck disable=SC2154 # PODMAN_LOG is exported by the test using the shim
 podman_count() {
 	grep -c -- "$1" "$PODMAN_LOG" || true
+}
+
+# Line number of the exec-session listing invocation for a container in the
+# podman log, matching either `podman exec list <ctr>` or an inspect over a
+# .ExecIDs format; prints nothing when the listing was never invoked.
+# shellcheck disable=SC2154 # PODMAN_LOG is exported by the test using the shim
+podman_session_line_no() {
+	local ctr="$1" match
+	match="$(grep -n -E 'ExecIDs|exec list' "$PODMAN_LOG" | grep -m1 -- "$ctr")" || true
+	[[ -n "$match" ]] && printf '%s\n' "${match%%:*}"
+	return 0
 }
 
 # shellcheck disable=SC2154 # PODMAN_LOG is exported by the test using the shim

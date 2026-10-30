@@ -515,3 +515,91 @@ setup() {
 		fi
 	done
 }
+
+@test "run_container consults the exec-session listing after the exec and stops when no sessions remain" {
+	load_container_libs
+	use_podman_shim
+	local c ctr exec_line session_line stop_line
+	for c in onbox netbox offbox; do
+		ctr="$(container_name_of "$c" "$PROJECT")"
+		: >"$LOG"
+		export PODMAN_EXEC_SESSIONS=''
+		run run_container "$c" "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+		[[ "$status" -eq 0 ]]
+		exec_line="$(podman_line_no "^exec $ctr bash -c true$")"
+		session_line="$(podman_session_line_no "$ctr")"
+		stop_line="$(podman_line_no "^stop -t 5 $ctr$")"
+		[[ -n "$exec_line" && -n "$session_line" && -n "$stop_line" ]]
+		[[ "$exec_line" -lt "$session_line" ]]
+		[[ "$session_line" -lt "$stop_line" ]]
+	done
+}
+
+@test "run_container leaves the container running when exec sessions remain after its exec exits" {
+	load_container_libs
+	use_podman_shim
+	local c ctr session_line
+	for c in onbox netbox offbox; do
+		ctr="$(container_name_of "$c" "$PROJECT")"
+		: >"$LOG"
+		export PODMAN_EXEC_SESSIONS='other-session'
+		run run_container "$c" "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+		[[ "$status" -eq 0 ]]
+		session_line="$(podman_session_line_no "$ctr")"
+		[[ -n "$session_line" ]]
+		[[ "$(podman_count "^stop -t 5 $ctr$")" -eq 0 ]]
+	done
+}
+
+@test "run_container returns the exec exit status and defers the stop when exec sessions remain" {
+	load_container_libs
+	use_podman_shim
+	export PODMAN_FAIL_PATTERN='bash -c exit 3'
+	export PODMAN_FAIL_CODE=7
+	local c ctr session_line
+	for c in onbox netbox offbox; do
+		ctr="$(container_name_of "$c" "$PROJECT")"
+		: >"$LOG"
+		export PODMAN_EXEC_SESSIONS='other-session'
+		run run_container "$c" "$PROJECT" 'exit 3' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+		[[ "$status" -eq 7 ]]
+		session_line="$(podman_session_line_no "$ctr")"
+		[[ -n "$session_line" ]]
+		[[ "$(podman_count "^stop -t 5 $ctr$")" -eq 0 ]]
+	done
+}
+
+@test "run_container stops the container when the exec-session listing fails or is unsupported" {
+	load_container_libs
+	use_podman_shim
+	export PODMAN_EXEC_SESSIONS_RC=125
+	local c ctr session_line stop_line
+	for c in onbox netbox offbox; do
+		ctr="$(container_name_of "$c" "$PROJECT")"
+		: >"$LOG"
+		run run_container "$c" "$PROJECT" 'true' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+		[[ "$status" -eq 0 ]]
+		session_line="$(podman_session_line_no "$ctr")"
+		stop_line="$(podman_line_no "^stop -t 5 $ctr$")"
+		[[ -n "$session_line" && -n "$stop_line" ]]
+		[[ "$session_line" -lt "$stop_line" ]]
+	done
+}
+
+@test "run_container leaves the container running when exec sessions remain after an interactive session" {
+	load_container_libs
+	use_podman_shim
+	local c ctr exec_line session_line
+	for c in onbox netbox offbox; do
+		ctr="$(container_name_of "$c" "$PROJECT")"
+		: >"$LOG"
+		export PODMAN_EXEC_SESSIONS='other-session'
+		run run_container "$c" "$PROJECT" '' no READ_MOUNTS WRITE_MOUNTS SRCS DSTS PORTS DENY ALLOW
+		[[ "$status" -eq 0 ]]
+		exec_line="$(podman_line_no "^exec --interactive --tty $ctr /bin/bash$")"
+		session_line="$(podman_session_line_no "$ctr")"
+		[[ -n "$exec_line" && -n "$session_line" ]]
+		[[ "$exec_line" -lt "$session_line" ]]
+		[[ "$(podman_count "^stop -t 5 $ctr$")" -eq 0 ]]
+	done
+}
