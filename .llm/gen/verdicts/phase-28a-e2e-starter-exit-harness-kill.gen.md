@@ -1,0 +1,41 @@
+# Verdict: the phase-28a e2e "short session starts the container" test requires the container to outlive its starting session's `sdrun` unit, which `KillMode=control-group` kills
+
+Linked dispute: [phase-28a-e2e-starter-exit-harness-kill.gen.md](../disputes/phase-28a-e2e-starter-exit-harness-kill.gen.md)
+
+Linked plan: [phase-28a-concurrent-session-stop-on-last-session.gen.md](../plans/phase-28a-concurrent-session-stop-on-last-session.gen.md) — summarised in one sentence: the plan gates `exec_in_container`'s trailing stop on the container's live exec sessions (enumerated after this session's own exec terminates, falling back to an unconditional stop when the listing fails) so a container is stopped only when no sessions remain, whatever the start/exit interleaving, and adds unit and e2e tests for concurrent sessions in both exit orders.
+
+No new issue documents were created: the implementation claims in the dispute were independently validated (see Verification below) and the core implementation is correct; the failure was an error in the test's interaction with the SPEC-mandated harness.
+
+## Test: `onbox concurrent sessions: the container stops only after the last session exits when the short session starts it`
+
+- Test file: [test/e2e/lifecycle.bats](../../../test/e2e/lifecycle.bats) (pre-repair lines 176–202; failing assertion at line 194)
+- Verdict: `BROKEN_TEST`
+
+### Justification
+
+The test's assertions after the starter session's exit — line 194 ("the container is still running"), line 196 ("exec sessions non-empty") and lines 199–200 ("the surviving session exits 0") — require the container to outlive the transient unit that started it. That is unsatisfiable for any core implementation, because SPEC.md ("testing") mandates the wrapper through which every podman-invoking command must pass:
+
+> Any test which invokes `podman`, including those which call `talkbox.sh`, `onbox`, `netbox` or `offbox`, must be called via `systemd-run` with the options `RuntimeMaxSec` and `KillMode=control-group` passed via the flag `-p` in order to prevent commands from hanging indefinitely.
+
+[sdrun](../../../test/e2e/helpers.bash) implements this as `systemd-run --user --wait --collect --pipe -p RuntimeMaxSec=… -p KillMode=control-group …`. Under this harness the container's `conmon` and `pasta` processes are members of the starting session's unit cgroup (empirically confirmed: `systemd-cgls --user-unit <starter unit>` shows `/usr/bin/conmon …` and `/usr/bin/pasta …` beside the session's talkbox bash), and rootless podman offers no option to move them out: per [the podman `--cgroups` reference](../../../.llm/ref/podman.docs/options/cgroups.md), "The **enabled** option creates a new cgroup under the cgroup-parent", "The **no-conmon** option disables a new cgroup only for the **conmon** process" and "The **split** option splits the current cgroup in two sub-cgroups" — every mode leaves conmon and pasta inside the caller's cgroup subtree. When the starter session's talkbox exits 0 and its unit deactivates, the `KillMode=control-group` sweep kills conmon and pasta, destroying the container and every exec session in it, regardless of any talkbox behaviour.
+
+Empirically reproduced with a timestamped podman logging shim on the starter session under the harness-shaped units: the starter's podman invocation log ends with `exec <ctr> bash -c sleep 8` followed by the exec-session listing `container inspect -f {{json .ExecIDs}} <ctr>` and contains **no `stop` invocation at all**; the starter's unit exits with status 0; the container is `Running=false` (exit code 143, i.e. SIGTERM-swept) within ~40 ms of that listing — killed by the unit deactivation, not by talkbox. The surviving session's exec is killed in the crossfire and its unit exits 137, so the original line 200 `[[ "$astatus" -eq 0 ]]` is unpassable under the harness as well.
+
+The implementation nevertheless satisfies the plan, which requires ("External-facing functionality") that "When a session's exec exits, the container is stopped only if no live exec sessions remain in the container" and that "The last session to exit stops the container, whichever one started it and whatever the start/exit interleaving", and ("Tests") an "ordering variation with the short session first" "driven per SPEC's systemd-run and `-c --noninteractive` conventions". Driving the identical two-session scenario without the systemd units (plain shells, i.e. production semantics) shows the plan behaviour exactly: after the short starter's exit the container is still `Running=true` with the survivor's exec listed in `{{json .ExecIDs}}`, and the container stops exactly when the last session exits (with both sessions exiting 0). The failure is therefore caused by the harness kill, not by the implementation; the test as written is inconsistent with the SPEC-mandated harness constraints.
+
+No test helper was disputed. The e2e helpers (`sdrun`, `run_onbox_noninteractive`, `mk_podman_logging_shim`, `container_exec_sessions`, the `wait_for_*` pollers) are consistent with SPEC.md and the plan and were not modified, except for the repair addition described below.
+
+### Repair
+
+The plan's ordering variation is kept, as is every behavioural assertion of the original test; only the hosting of the starter session changes, so that the harness artefact (the unit deactivation kill) cannot destroy the scenario under test:
+
+- A new helper, [run_onbox_session_holding_unit](../../../test/e2e/helpers.bash), wraps the starter session exactly like `run_onbox_noninteractive` but holds its transient unit open for a bounded 30 s **after** the talkbox session exits, recording the session's exit status to a file and finishing the unit with that status. The unit keeps the SPEC-mandated `RuntimeMaxSec` and `KillMode=control-group` properties; the hold stays far below `RuntimeMaxSec` (the unit runs ~40 s against the 55 s per-unit cap of a direct bats run and the 235 s cap under `make test-e2e`), so the harness's anti-hang purpose is intact — only the moment of the deactivation kill is deferred past the test's observation window. The talkbox session itself still ends when its exec ends, so the starter's stop-on-last-session decision is genuinely exercised.
+- The test synchronizes on the starter's session completion through the recorded status file (which appears only once the starter's talkbox has fully exited, so its stop decision is complete), then retains the original assertions in order: the starter session exited 0; the container is still running; the exec-session listing is non-empty; the surviving session exits 0; the container is stopped — verified while the starter's unit is still held alive, so the stop is attributable only to the last session's talkbox; finally the held unit finishes with the starter's recorded status 0. No assertion of the original test was deleted or relaxed.
+
+A regression red-check (a scratch tree copy with the pre-phase-28a unconditional stop restored in `stop_container_when_no_sessions_remain`) confirms the repaired test still catches a non-deferring starter deterministically: after the starter's session exit the container is `Running=false` with an empty `{{json .ExecIDs}}` listing and the surviving session exits 137, so both the container-liveness/listing assertions and the survivor-status assertions fail.
+
+## Verification
+
+- The dispute's claims were independently validated: reproduced the original failure in isolation (direct bats: the only failing test, at line 194, with the companion test passing); confirmed conmon/pasta cgroup membership in the starter unit via `systemd-cgls --user-unit`; confirmed the starter's talkbox issues no `stop` (timestamped logging shim) while the container dies within ~40 ms of its exec-session listing, exited 0; confirmed the harness-free scenario satisfies the plan exactly; and ran the red/green checks above (repaired test passes against the implementation and fails against the regression).
+- After repair: `make lint` and `make format` pass; `make test-unit` — `total=314 pass=314 fail=0 skip=0 exit=0`; `make test-e2e` — `total=83 pass=83 fail=0 skip=0 exit=0` (including the repaired test, previously the sole failure at 82/83).
+- Every remaining failure (none) is attributable to the project implementation rather than to a test error or timeout.

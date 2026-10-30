@@ -6,4 +6,4 @@ Dispute documents describing tests whose implementation is erroneous or inconsis
 - [x] [`onbox sync` e2e test expects a fast-forward the plan now refuses (Case 1 untracked-file conflict)](phase-5b-sync-fast-forward-refusal.gen.md)
 - [x] [Submodule e2e tests assert exact/empty `$output` that the SPEC-mandated `sdrun` harness makes unsatisfiable](submodule-tests-assert-noise-free-output.gen.md)
 - [x] [The `podman()` unit mock swallows the probe's not-found exit, making the missing-HEAD `run_merge` test unpassable](gitdir-history-probe-not-found-exit-swallowed.gen.md)
-- [ ] [The phase-28a e2e "short session starts the container" test requires the container to outlive its starting session's `sdrun` unit, which `KillMode=control-group` kills](phase-28a-e2e-starter-exit-harness-kill.gen.md)
+- [x] [The phase-28a e2e "short session starts the container" test requires the container to outlive its starting session's `sdrun` unit, which `KillMode=control-group` kills](phase-28a-e2e-starter-exit-harness-kill.gen.md)

@@ -177,8 +177,10 @@ container_exec_sessions() {
 	local bglog_first bglog_second apid_first apid_second astatus sessions
 	bglog_first="$BATS_TEST_TMPDIR/session-short.log"
 	bglog_second="$BATS_TEST_TMPDIR/session-long.log"
-	# short session: creates and starts the container, stays live for a while
-	{ run_onbox_noninteractive "$PROJECT" "$TALKBOX" 'sleep 8'; } >"$bglog_first" 2>&1 &
+	# short session: creates and starts the container, stays live for a while;
+	# its unit is held open past the session so its deactivation kill cannot
+	# destroy the container it started
+	{ run_onbox_session_holding_unit "$PROJECT" "$TALKBOX" 'sleep 8' 30 "$BATS_TEST_TMPDIR/session-short.status"; } >"$bglog_first" 2>&1 &
 	apid_first=$!
 	wait_for_container_e2e "$CTR"
 	# long session attaches while the first is still live; the marker proves
@@ -187,16 +189,22 @@ container_exec_sessions() {
 	apid_second=$!
 	wait_for_session_marker "$PROJECT/.session-ready"
 	sdrun podman inspect -f '{{.State.Running}}' "$CTR" 2>/dev/null | grep -qx 'true'
-	astatus=0
-	wait "$apid_first" || astatus=$?
-	[[ "$astatus" -eq 0 ]]
-	# the starter's exit must not stop the container while the other is live
+	# the starter's session has fully exited once its status file exists, so
+	# its stop decision is complete; it must have been 0 and must not have
+	# stopped the container while the other session is live
+	wait_for_session_marker "$BATS_TEST_TMPDIR/session-short.status"
+	[[ "$(cat "$BATS_TEST_TMPDIR/session-short.status")" == 0 ]]
 	sdrun podman inspect -f '{{.State.Running}}' "$CTR" 2>/dev/null | grep -qx 'true'
 	sessions="$(container_exec_sessions "$CTR")"
 	[[ -n "$sessions" && "$sessions" != '[]' ]]
-	# the last (attaching) session's exit stops the container
+	# the last (attaching) session's exit stops the container while the
+	# starter's unit is still held alive, so only talkbox can have stopped it
 	astatus=0
 	wait "$apid_second" || astatus=$?
 	[[ "$astatus" -eq 0 ]]
 	wait_until_stopped "$CTR"
+	# the held unit finishes with the short session's exit status
+	astatus=0
+	wait "$apid_first" || astatus=$?
+	[[ "$astatus" -eq 0 ]]
 }

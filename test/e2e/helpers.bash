@@ -229,6 +229,21 @@ run_onbox_noninteractive() {
 	sdrun bash -c 'cd "$1" && "$0/talkbox.sh" onbox -c --noninteractive "$2"' "$talkbox" "$project" "$cmd"
 }
 
+run_onbox_session_holding_unit() {
+	# <project> <talkbox> <cmd> <hold-seconds> <status-file>: like
+	# run_onbox_noninteractive, but the transient unit hosting the session is
+	# held open for <hold-seconds> after the talkbox session exits, recording
+	# the session's exit status to <status-file> and finishing with it. A
+	# session's unit deactivation (KillMode=control-group) destroys the
+	# container the session started, since conmon and pasta live in the unit's
+	# cgroup, so a test that observes a started container after its session
+	# exits must hold the unit open; the bounded hold stays below the unit's
+	# RuntimeMaxSec.
+	local project="$1" talkbox="$2" cmd="$3" hold="$4" status_file="$5"
+	# shellcheck disable=SC2016 # $0/$1/$2/$3/$4 expand inside the wrapped bash -c
+	sdrun bash -c 'cd "$1" && "$0/talkbox.sh" onbox -c --noninteractive "$2"; st=$?; printf "%s\n" "$st" >"$3"; sleep "$4"; exit "$st"' "$talkbox" "$project" "$cmd" "$status_file" "$hold"
+}
+
 run_talkbox() {
 	# <project> <talkbox> [args…]; when e2e_use_podman_shim has registered a
 	# shim directory, PATH="$shimdir:$PATH" is prepended for the wrapped
