@@ -70,5 +70,5 @@ Resolution of the remaining unchecked issues:
 
 Support for one container open in multiple terminals:
 
-- [ ] [Phase 28a: stop the container only when no exec sessions remain](phase-28a-concurrent-session-stop-on-last-session.gen.md) #flow/redgreen #model/default
+- [x] [Phase 28a: stop the container only when no exec sessions remain](phase-28a-concurrent-session-stop-on-last-session.gen.md) #flow/redgreen #model/default
 - [ ] [Phase 28b: serialize the create/recreate/rm paths with a per-container lock](phase-28b-concurrent-create-race-lock.gen.md) #flow/redgreen #model/default
