@@ -6,6 +6,7 @@ source "$TALKBOX_ROOT/lib/common.sh"
 source "$TALKBOX_ROOT/lib/definitions.sh"
 source "$TALKBOX_ROOT/lib/naming.sh"
 source "$TALKBOX_ROOT/lib/git.sh"
+source "$TALKBOX_ROOT/lib/locking.sh"
 
 STOP_GRACE_SECONDS=5
 
@@ -281,13 +282,13 @@ execute_plan() {
 	local arg
 	for arg in "${plan[@]}"; do
 		if [[ "$arg" == podman ]] && ((${#cmd[@]} > 0)); then
-			"${cmd[@]}" || return $?
+			run_without_lock_fd "${cmd[@]}" || return $?
 			cmd=()
 		fi
 		cmd+=("$arg")
 	done
 	if ((${#cmd[@]} > 0)); then
-		"${cmd[@]}" || return $?
+		run_without_lock_fd "${cmd[@]}" || return $?
 	fi
 }
 
@@ -484,10 +485,12 @@ run_container() {
 	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5" _deny="$6" _allow="$7"
 	local ctr
 	ctr="$(container_name_of "$container" "$project")"
+	acquire_container_lock "$ctr"
 	if ! container_exists "$ctr"; then
 		create_sandbox "$container" "$project" "$interactive" "$1" "$2" "$3" "$4" "$5"
 	fi
-	podman start "$ctr"
+	run_without_lock_fd podman start "$ctr"
+	release_container_lock
 	if [[ "$(container_config nft_enforce "$container")" == yes ]]; then
 		install_nft_deny_or_die "$ctr" "$6" "$7"
 	fi
@@ -501,12 +504,14 @@ run_recreate() {
 	local -n _read="$1" _write="$2" _srcs="$3" _dsts="$4" _ports="$5" _deny="$6" _allow="$7"
 	local ctr source image
 	ctr="$(container_name_of "$container" "$project")"
+	acquire_container_lock "$ctr"
 	resolve_inheritance "$container" "$rebuild" "$project" source image
 	local -a plan=()
 	plan_recreate plan "$container" "$rebuild" "$interactive" "$project" "$1" "$2" "$3" "$4" "$5" "$source"
 	if ! execute_plan "${plan[@]}"; then
 		rollback_creation_and_die "$container" "$project" "$4"
 	fi
+	release_container_lock
 	if [[ "$(container_config nft_enforce "$container")" == yes ]]; then
 		install_nft_deny_or_die "$ctr" "$6" "$7"
 	fi
@@ -516,15 +521,20 @@ run_recreate() {
 
 run_rm_container() {
 	local container="$1" project="$2"
+	local ctr
+	ctr="$(container_name_of "$container" "$project")"
+	acquire_container_lock "$ctr"
 	local -a plan=()
 	plan_rm_container plan "$container" "$project"
 	execute_plan "${plan[@]}"
+	release_container_lock
 }
 
 run_rm_image() {
 	local container="$1" project="$2"
 	local ctr
 	ctr="$(container_name_of "$container" "$project")"
+	acquire_container_lock "$ctr"
 	if image_in_use "$(base_image_name)" "$ctr"; then
 		die "cannot remove base image: it is in use by other containers" 1
 	fi
@@ -533,6 +543,7 @@ run_rm_image() {
 	local -a plan=()
 	plan_rm_image plan
 	execute_plan "${plan[@]}"
+	release_container_lock
 }
 
 container_sync_cmd() {
