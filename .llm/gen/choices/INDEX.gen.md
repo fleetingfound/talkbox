@@ -136,6 +136,12 @@
 - [x] [Consolidation scope](container-consolidation-scope.gen.md) - whether all ~12 container-conditional branch points become configuration, or 2-3 readable cases (notably `inherit_source`) are retained. Selected: full config-driven.
 - [x] [Post-consolidation naming interface](container-naming-interface.gen.md) - what replaces the 9 naming one-liners and the 4 `*_of` dispatchers (genericized `*_of` dispatchers, one parametric resource-name helper, or no change). Selected: genericized `*_of` dispatchers.
 
+## Concurrent-session lifecycle choices
+
+- [x] [Concurrent session stop mechanism](concurrent-session-stop-mechanism.gen.md) - how the session-exit stop is gated so the container stops only when no other sessions are attached. Selected: count the container's live podman exec sessions via `podman exec list` after the exiting session's exec terminates; stop only when none remain.
+- [x] [Concurrent create/recreate serialization](concurrent-create-serialization.gen.md) - how simultaneous first invocations and concurrent lifecycle verbs are kept from destroying each other's containers. Selected: per-container flock serializing the create/recreate/rm paths.
+- [x] [Failure-path stops under concurrent sessions](failure-stop-semantics-under-concurrency.gen.md) - whether failure stops (`stop_and_die`, rollback) stay unconditional or become session-aware. Selected: unconditional stops.
+
 ## Gitdir history probe (`require_git_history`)
 
 - [x] [Gitdir history probe mechanism](gitdir-history-probe-mechanism.gen.md) - how `require_git_history` validates the gitdir volume contents (podman-run volume-mounted HEAD probe, drop the pre-check in favour of downstream failure mapping, or host-stat with podman fallback). Selected: podman-run volume-mounted HEAD probe.

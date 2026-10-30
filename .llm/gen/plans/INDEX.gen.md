@@ -67,3 +67,8 @@ Resolution of the remaining unchecked issues:
 - [x] [Phase 25b: per-container configuration consolidation of the container implementation](phase-25b-container-config-consolidation.gen.md) #flow/refactor #model/big
 - [x] [Fix the dangling submodule gitfile: include absorbed `modules/` in the container gitdir volume](submodule-gitdir-inclusion-in-container.gen.md) #flow/redgreen #model/default
 - [x] [Podman-backed gitdir history probe in `require_git_history`](gitdir-history-podman-probe.gen.md) #flow/redgreen #model/default
+
+## Issue resolutions: concurrent session lifecycle
+
+- [ ] [Stop the container only when no exec sessions remain](concurrent-session-stop-on-last-session.gen.md) #flow/redgreen #model/default
+- [ ] [Serialize the create/recreate/rm paths with a per-container lock](concurrent-create-race-lock.gen.md) #flow/redgreen #model/default
