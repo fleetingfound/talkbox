@@ -72,3 +72,7 @@ Support for one container open in multiple terminals:
 
 - [x] [Phase 28a: stop the container only when no exec sessions remain](phase-28a-concurrent-session-stop-on-last-session.gen.md) #flow/redgreen #model/default
 - [x] [Phase 28b: serialize the create/recreate/rm paths with a per-container lock](phase-28b-concurrent-create-race-lock.gen.md) #flow/redgreen #model/default
+
+Release automation:
+
+- [ ] [Phase 29: Release automation for the main/dev branch split (`.release/release.sh`)](phase-29-release-automation.gen.md) #flow/unified #model/big

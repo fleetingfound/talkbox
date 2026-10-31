@@ -146,3 +146,10 @@
 
 - [x] [Gitdir history probe mechanism](gitdir-history-probe-mechanism.gen.md) - how `require_git_history` validates the gitdir volume contents (podman-run volume-mounted HEAD probe, drop the pre-check in favour of downstream failure mapping, or host-stat with podman fallback). Selected: podman-run volume-mounted HEAD probe.
 - [x] [Gitdir probe failure diagnostics](gitdir-probe-failure-diagnostics.gen.md) - how probe failures are reported (three-way exit-code interpretation with surfaced podman stderr vs uniform "no git history" message). Selected: three-way exit-code interpretation with surfaced stderr.
+
+## Release automation (main/dev split)
+
+- [x] [Release tag type](release-script-tag-type.gen.md) - whether the `v<version>`/`dev/v<version>` tags are lightweight pointers (current practice) or annotated with the main commit message. Selected: lightweight tags on both branches.
+- [x] [Main-commit construction](release-script-commit-construction.gen.md) - how the pruned main tree is built from the dev commit (temp-index plumbing vs temporary worktree). Selected: temp-index plumbing.
+- [x] [Release-message customization](release-script-message-editing.gen.md) - how the user adds release notes to the main commit message (editor over a template, flags, or none). Selected: editor over template.
+- [x] [Release push behaviour](release-script-push-behaviour.gen.md) - whether the script pushes branches and tags to the `gh`/`origin` remotes or leaves pushing to the user. Selected: no push, left to the user.
