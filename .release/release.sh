@@ -13,9 +13,11 @@ usage: release.sh <version>
 
 Cut a release from the current dev commit. The main commit carries the dev tree
 minus every path matched by .coreignore (parsed with git's gitignore rules),
-a subject containing the version, the user-edited release notes and a trailing
-'Commit: <dev hash>' line. The main commit is tagged v<version> and the dev
-commit dev/v<version>, both as lightweight tags.
+a subject containing the version, the user-edited release notes, a trailing
+'Commit: <dev hash>' line and the author and committer timestamps of the dev
+commit. The main commit is tagged v<version> and the dev commit dev/v<version>,
+both as lightweight tags, so the tag timestamps are those of the commits they
+point to.
 
 The version argument may carry a leading v (v0.1.3 or 0.1.3). The script must
 be run on the dev branch with a clean worktree. Nothing is pushed; push main
@@ -140,7 +142,7 @@ finalize_message() {
 run_release() {
 	local version="$1"
 	local toplevel dev_hash coreignore_file ignored_file main_tree
-	local message_file main_parent main_commit
+	local message_file main_parent main_commit dev_author_date dev_commit_date
 	if [[ "$version" == -h || "$version" == --help ]]; then
 		print_help
 		exit 0
@@ -150,6 +152,8 @@ run_release() {
 	cd "$toplevel"
 	validate_release_state "$version"
 	dev_hash="$(git rev-parse HEAD)"
+	dev_author_date="$(git show -s --format=%aI "$dev_hash")"
+	dev_commit_date="$(git show -s --format=%cI "$dev_hash")"
 	coreignore_file="$tmp_dir/coreignore"
 	extract_coreignore "$dev_hash" "$coreignore_file"
 	ignored_file="$tmp_dir/ignored"
@@ -159,7 +163,8 @@ run_release() {
 	edit_message "$version" "$dev_hash" "$message_file"
 	finalize_message "$version" "$dev_hash" "$message_file"
 	main_parent="$(git rev-parse refs/heads/main)"
-	main_commit="$(git commit-tree "$main_tree" -p "$main_parent" -F "$message_file")" || die 'git commit-tree failed'
+	main_commit="$(GIT_AUTHOR_DATE="$dev_author_date" GIT_COMMITTER_DATE="$dev_commit_date" \
+		git commit-tree "$main_tree" -p "$main_parent" -F "$message_file")" || die 'git commit-tree failed'
 	git update-ref refs/heads/main "$main_commit" "$main_parent" || die 'failed to advance main'
 	git tag "v$version" "$main_commit" || die "failed to create tag v$version"
 	git tag "dev/v$version" "$dev_hash" || die "failed to create tag dev/v$version"
