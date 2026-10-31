@@ -30,6 +30,10 @@ Core files implemented for the test harness:
 
 - [Makefile](Makefile) - top-level makefile which includes the test harness definitions from `test/runner.mk`.
 
+Release tooling (dev-only, excluded from main via `.coreignore`):
+
+- [.release/release.sh](.release/release.sh) - standalone release script invoked as `.release/release.sh <version>` from a clean `dev` worktree: it validates the invocation (branch, clean worktree, existing `main`, no pre-existing tags, no other worktree holding `main`), extracts `.coreignore` from the dev commit, filters the dev tree listing with git's gitignore semantics via a hermetic `git check-ignore` (a throwaway `GIT_DIR`/`GIT_WORK_TREE` makes `.coreignore` the only pattern source, with gitlink paths given a trailing slash so directory patterns match submodules), prunes the matched paths from the dev tree through a temporary `GIT_INDEX_FILE` (`read-tree`/`update-index --force-remove`/`write-tree`), opens the release message in the user's editor for notes (subject `talkbox v<version>` plus a preserved `Commit: <dev hash>` trailer), creates the main commit with `git commit-tree` and advances `main` with `git update-ref`, tags the commits `v<version>` and `dev/v<version>` as lightweight tags and prints a summary without pushing.
+
 Repository meta files:
 
 - [.gitignore](.gitignore) - ignores the untracked `.tmp/` scratch and `.mdi/` working directories.

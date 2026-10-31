@@ -8,6 +8,7 @@ opencode.json
 
 test/
 Makefile
+.release/
 
 .llm/
 

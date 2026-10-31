@@ -75,4 +75,4 @@ Support for one container open in multiple terminals:
 
 Release automation:
 
-- [ ] [Phase 29: Release automation for the main/dev branch split (`.release/release.sh`)](phase-29-release-automation.gen.md) #flow/unified #model/big
+- [x] [Phase 29: Release automation for the main/dev branch split (`.release/release.sh`)](phase-29-release-automation.gen.md) #flow/unified #model/big

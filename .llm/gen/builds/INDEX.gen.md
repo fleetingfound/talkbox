@@ -57,3 +57,4 @@
 - [Phase 27: podman-backed gitdir history probe in `require_git_history`](.llm/gen/builds/phase-27-gitdir-history-podman-probe.gen.md)
 - [Phase 28a: stop the container only when no exec sessions remain](.llm/gen/builds/phase-28a-concurrent-session-stop-on-last-session.gen.md)
 - [Phase 28b: serialize the create/recreate/rm paths with a per-container lock](.llm/gen/builds/phase-28b-concurrent-create-race-lock.gen.md)
+- [Phase 29: release automation for the main/dev branch split (`.release/release.sh`)](.llm/gen/builds/phase-29-release-automation.gen.md)
