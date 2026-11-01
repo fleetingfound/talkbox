@@ -14,7 +14,7 @@ usage: release.sh <version>
 Cut a release from the current dev commit. The main commit carries the dev tree
 minus every path matched by .coreignore (parsed with git's gitignore rules),
 a subject containing the version, the user-edited release notes, a trailing
-'Commit: <dev hash>' line and the author and committer timestamps of the dev
+'Source: <dev hash>' line and the author and committer timestamps of the dev
 commit. The main commit is tagged v<version> and the dev commit dev/v<version>,
 both as lightweight tags, so the tag timestamps are those of the commits they
 point to.
@@ -96,7 +96,7 @@ edit_message() {
 		printf 'talkbox v%s\n\n' "$version"
 		printf '# release notes: one bullet per line\n'
 		printf '# lines starting with # are removed; the release aborts if no notes remain\n'
-		printf 'Commit: %s\n' "$dev_hash"
+		printf 'Source: %s\n' "$dev_hash"
 	} >"$message_file"
 	editor="${GIT_EDITOR:-${EDITOR:-vi}}"
 	sh -c "$editor \"\$@\"" "$editor" "$message_file" || die "editor '$editor' exited with a non-zero status"
@@ -110,8 +110,8 @@ finalize_message() {
 	while ((${#lines[@]} > 0)) && [[ -z "${lines[${#lines[@]} - 1]}" ]]; do
 		unset "lines[${#lines[@]} - 1]"
 	done
-	((${#lines[@]} >= 2)) || die "edited message is empty or missing the 'Commit: $dev_hash' line"
-	[[ "${lines[${#lines[@]} - 1]}" == "Commit: $dev_hash" ]] || die "message must end with the 'Commit: $dev_hash' line"
+	((${#lines[@]} >= 2)) || die "edited message is empty or missing the 'Source: $dev_hash' line"
+	[[ "${lines[${#lines[@]} - 1]}" == "Source: $dev_hash" ]] || die "message must end with the 'Source: $dev_hash' line"
 	[[ "${lines[0]}" == *"v$version"* ]] || die "subject must contain v$version"
 	for ((i = 1; i < ${#lines[@]} - 1; i++)); do
 		line="${lines[i]}"
@@ -127,7 +127,7 @@ finalize_message() {
 		blank_run=no
 		body+=("$line")
 	done
-	[[ "$seen_notes" == yes ]] || die 'no release notes: add notes between the subject and the Commit: line'
+	[[ "$seen_notes" == yes ]] || die 'no release notes: add notes between the subject and the Source: line'
 	while ((${#body[@]} > 0)) && [[ -z "${body[${#body[@]} - 1]}" ]]; do
 		unset "body[${#body[@]} - 1]"
 	done
@@ -135,7 +135,7 @@ finalize_message() {
 	for line in "${body[@]}"; do
 		final+=("$line")
 	done
-	final+=("${lines[${#lines[@]} - 1]}")
+	final+=('' "${lines[${#lines[@]} - 1]}")
 	printf '%s\n' "${final[@]}" >"$message_file"
 }
 
