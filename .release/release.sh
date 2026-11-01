@@ -135,7 +135,7 @@ finalize_message() {
 	for line in "${body[@]}"; do
 		final+=("$line")
 	done
-	final+=("${lines[${#lines[@]} - 1]}")
+	final+=('' "${lines[${#lines[@]} - 1]}")
 	printf '%s\n' "${final[@]}" >"$message_file"
 }
 
